@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  mongodb:
+    container_name: mongodb
+    image: mongodb/mongodb-community-server:5.0.6-ubuntu2004
+    volumes:
+      - ./mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=pass
+      - MONGO_INITDB_DATABASE=brewbuds
+    ports:
+      - "27017:27017"
+    restart: on-failure
+
+  mongo-express:
+    container_name: mongo-express
+    image: mongo-express
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=pass
+      - ME_CONFIG_MONGODB_URL=mongodb://admin:pass@mongodb:27017
+    ports:
+      - "8081:8081"
+    depends_on:
+        - mongodb
+    restart: on-failure
+
+  django:
+    container_name: django
+    build:
+      context: .
+      dockerfile: docker/dev.Dockerfile
+    environment:
+      - GITHUB_WORKFLOW=True
+    entrypoint:
+      - sh
+      - -c
+      - |
+        poetry run python manage.py migrate &&
+        poetry run python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo-express
+    restart: on-failure
