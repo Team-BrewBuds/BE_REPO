@@ -83,13 +83,28 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if DEBUG:
+    DATABASES = {
+        "default": {
+                "ENGINE": "django.db.backends.mysql",
+                "NAME": env.str("LOCAL_MYSQL_DATABASE", "brewbuds"),
+                "USER": env.str("LOCAL_MYSQL_USER", "root"),
+                "PASSWORD": env.str("LOCAL_MYSQL_PASSWORD", "password"),
+                "HOST": env.str("LOCAL_MYSQL_HOST","localhost"),
+                "PORT": env.int("LOCAL_MYSQL_PORT", 3306),
+            }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+                "ENGINE": "django.db.backends.mysql",
+                "NAME": env.str("DEV_MYSQL_DATABASE"),
+                "USER": env.str("DEV_MYSQL_USER"),
+                "PASSWORD": env.str("DEV_MYSQL_PASSWORD"),
+                "HOST": env.str("DEV_MYSQL_HOST"),
+                "PORT": env.int("DEV_MYSQL_PORT"),
+            }
+    }
 
 
 # Password validation
