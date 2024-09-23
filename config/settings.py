@@ -45,7 +45,13 @@ INSTALLED_APPS = [
     # third-party-apps
     'corsheaders',
     'rest_framework',
+
     # local apps
+    'profiles',
+    'beans',
+    'records',
+    'search',
+    'recommendation',
 
 ]
 
