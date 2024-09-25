@@ -38,7 +38,7 @@ class Bean_Taste(models.Model):
     Taste_point_choices = list(zip(range(0, 6), range(0, 6)))  # 0~5
 
     bean = models.OneToOneField(Bean, on_delete=models.CASCADE, verbose_name="원두")
-    taste = models.TextField(verbose_name="맛")
+    flavor = models.TextField(verbose_name="맛")
     body = models.IntegerField(choices=Taste_point_choices, verbose_name="바디감")
     acidity = models.IntegerField(choices=Taste_point_choices, verbose_name="산미")
     bitterness = models.IntegerField(choices=Taste_point_choices, verbose_name="쓴맛")
@@ -51,3 +51,17 @@ class Bean_Taste(models.Model):
         db_table = 'bean_taste'
         verbose_name = '원두 맛'
         verbose_name_plural = '원두 맛'
+
+class Bean_Taste_And_Review(Bean_Taste):
+    taste_review_id = models.OneToOneField('records.Tasted_Record', on_delete=models.CASCADE, verbose_name="시음기록")
+    star = models.IntegerField(choices=Bean_Taste.Taste_point_choices, verbose_name="별점")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
+    place = models.CharField(max_length=100, verbose_name="시음 장소")
+
+    def __str(self):
+        return f"bean :{self.taste_review_id.bean.name} - writer: {self.taste_review_id.user.nickname}"
+
+    class Meta:
+        db_table = 'taste_and_review'
+        verbose_name = '원두 맛&평가'
+        verbose_name_plural = '원두 맛&평가'
