@@ -1,3 +1,7 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import Tasted_Record, Post, Photo
+
+admin.site.register(Tasted_Record)
+admin.site.register(Post)
+admin.site.register(Photo)
