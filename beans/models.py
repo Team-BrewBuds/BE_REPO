@@ -64,7 +64,7 @@ class Bean_Taste_Review(Bean_Taste_Base):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     place = models.CharField(max_length=100, verbose_name="시음 장소")
 
-    def __str(self):
+    def __str__(self):
         return f"bean :{self.flavor} - {self.created_at}"
 
     class Meta:
