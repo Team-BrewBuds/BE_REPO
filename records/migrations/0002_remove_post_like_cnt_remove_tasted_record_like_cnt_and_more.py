@@ -6,27 +6,27 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('profiles', '0001_initial'),
-        ('records', '0001_initial'),
+        ("profiles", "0001_initial"),
+        ("records", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='post',
-            name='like_cnt',
+            model_name="post",
+            name="like_cnt",
         ),
         migrations.RemoveField(
-            model_name='tasted_record',
-            name='like_cnt',
+            model_name="tasted_record",
+            name="like_cnt",
         ),
         migrations.AddField(
-            model_name='post',
-            name='likes',
-            field=models.ManyToManyField(related_name='like_posts', to='profiles.user'),
+            model_name="post",
+            name="likes",
+            field=models.ManyToManyField(related_name="like_posts", to="profiles.user"),
         ),
         migrations.AddField(
-            model_name='tasted_record',
-            name='likes',
-            field=models.ManyToManyField(related_name='like_tasted_records', to='profiles.user'),
+            model_name="tasted_record",
+            name="likes",
+            field=models.ManyToManyField(related_name="like_tasted_records", to="profiles.user"),
         ),
     ]

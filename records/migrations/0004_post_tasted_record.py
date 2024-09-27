@@ -7,13 +7,19 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('records', '0003_rename_likes_post_like_cnt_and_more'),
+        ("records", "0003_rename_likes_post_like_cnt_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='post',
-            name='tasted_record',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='records.tasted_record', verbose_name='관련 시음 기록'),
+            model_name="post",
+            name="tasted_record",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="records.tasted_record",
+                verbose_name="관련 시음 기록",
+            ),
         ),
     ]

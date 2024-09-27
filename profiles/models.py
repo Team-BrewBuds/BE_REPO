@@ -1,14 +1,13 @@
-from django.db import models
-
 # create user model with additional fields
 from django.db import models
+
 
 class User(models.Model):
 
     login_type_choices = [
-        ('naver', '네이버'),
-        ('kakao', '카카오'),
-        ('apple', '애플'),
+        ("naver", "네이버"),
+        ("kakao", "카카오"),
+        ("apple", "애플"),
     ]
 
     user_id = models.AutoField(primary_key=True)
@@ -24,6 +23,6 @@ class User(models.Model):
         return self.nickname
 
     class Meta:
-        db_table = 'user'
-        verbose_name = '사용자'
-        verbose_name_plural = '사용자'
+        db_table = "user"
+        verbose_name = "사용자"
+        verbose_name_plural = "사용자"

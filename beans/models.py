@@ -1,23 +1,21 @@
 from django.db import models
 
+
 class Bean(models.Model):
 
-    bean_type_choices = [
-        ('single', '싱글 오리진'),
-        ('blend', '블랜드')
-    ]
+    bean_type_choices = [("single", "싱글 오리진"), ("blend", "블랜드")]
     roasting_point_choices = list(zip(range(0, 6), range(0, 6)))  # 0~5
 
     # 필수
     bean_id = models.AutoField(primary_key=True)
-    bean_type = models.CharField(max_length=20, choices=bean_type_choices,  verbose_name="원두 유형")
+    bean_type = models.CharField(max_length=20, choices=bean_type_choices, verbose_name="원두 유형")
     is_decaf = models.BooleanField(default=False, verbose_name="디카페인")
     name = models.CharField(max_length=100, verbose_name="원두명")
     origin_country = models.CharField(max_length=100, verbose_name="원산지")
 
     # 선택
     extraction = models.CharField(max_length=50, null=True, verbose_name="추출 방식")
-    roast_point = models.IntegerField(choices=roasting_point_choices, null=True,  verbose_name="로스팅 포인트")
+    roast_point = models.IntegerField(choices=roasting_point_choices, null=True, verbose_name="로스팅 포인트")
     process = models.CharField(max_length=50, null=True, verbose_name="가공 방식")
     region = models.CharField(max_length=100, null=True, verbose_name="지역")
     bev_type = models.BooleanField(default=False, null=True, verbose_name="음료 유형")
@@ -29,9 +27,9 @@ class Bean(models.Model):
         return f"{self.bean_id} - {self.name}"
 
     class Meta:
-        db_table = 'bean'
-        verbose_name = '원두'
-        verbose_name_plural = '원두'
+        db_table = "bean"
+        verbose_name = "원두"
+        verbose_name_plural = "원두"
 
 
 class Bean_Taste_Base(models.Model):
@@ -46,6 +44,7 @@ class Bean_Taste_Base(models.Model):
     class Meta:
         abstract = True  # 추상 모델 사용
 
+
 class Bean_Taste(Bean_Taste_Base):
     bean_taste_id = models.AutoField(primary_key=True)
 
@@ -53,9 +52,9 @@ class Bean_Taste(Bean_Taste_Base):
         return f"{self.bean_taste_id} - {self.flavor}"
 
     class Meta:
-        db_table = 'bean_taste'
-        verbose_name = '원두 맛'
-        verbose_name_plural = '원두 맛'
+        db_table = "bean_taste"
+        verbose_name = "원두 맛"
+        verbose_name_plural = "원두 맛"
 
 
 class Bean_Taste_Review(Bean_Taste_Base):
@@ -68,6 +67,6 @@ class Bean_Taste_Review(Bean_Taste_Base):
         return f"bean :{self.flavor} - {self.created_at}"
 
     class Meta:
-        db_table = 'taste_and_review'
-        verbose_name = '원두 맛&평가'
-        verbose_name_plural = '원두 맛&평가'
+        db_table = "taste_and_review"
+        verbose_name = "원두 맛&평가"
+        verbose_name_plural = "원두 맛&평가"
