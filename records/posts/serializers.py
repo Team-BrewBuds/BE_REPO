@@ -13,8 +13,4 @@ class PostFeedSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = (
-            'post_id', 'title', 'content', 'subject', 'view_cnt', 'like_cnt', 'created_at',
-            'user_id', 'user_nickname', 'user_profile_image', 'photos',
-            'tasted_record'
-        )
+        fields = "__all__" 

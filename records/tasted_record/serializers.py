@@ -18,21 +18,7 @@ class TastedRecordFeedSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tasted_Record
-        fields = (
-            "tasted_record_id",
-            "content",
-            "view_cnt",
-            "like_cnt",
-            "created_at",
-            "photos",
-            "user_id",
-            "user_nickname",
-            "user_profile_image",
-            "bean_name",
-            "bean_type",
-            "star_rating",
-            "flavor",
-        )
+        fields = "__all__" 
 
 
 class TastedRecordDetailSerializer(serializers.ModelSerializer):
@@ -47,16 +33,4 @@ class TastedRecordDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tasted_Record
-        fields = (
-            "tasted_record_id",
-            "content",
-            "view_cnt",
-            "like_cnt",
-            "created_at",
-            "photos",
-            "user_id",
-            "user_nickname",
-            "user_profile_image",
-            "bean",
-            "taste_and_review",
-        )
+        fields = "__all__" 
