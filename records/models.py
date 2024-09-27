@@ -23,6 +23,7 @@ class Tasted_Record(models.Model):
 class Post(models.Model):
     post_id = models.AutoField(primary_key=True)
     user = models.ForeignKey('profiles.User', on_delete=models.CASCADE, verbose_name="작성자")
+    tasted_record = models.ForeignKey(Tasted_Record, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 시음 기록")
     title = models.CharField(max_length=200, verbose_name="제목")
     content = models.TextField(verbose_name="내용")
     subject = models.CharField(max_length=100, verbose_name="주제")
