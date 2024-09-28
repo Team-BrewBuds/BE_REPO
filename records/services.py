@@ -107,3 +107,16 @@ def get_post_feed2(user, page=1):
     page_obj = paginator.get_page(page)
 
     return page_obj.object_list, page_obj.has_next()
+
+def get_post_detail(post_id):
+    post = (
+        Post.objects.filter(pk=post_id)
+        .select_related("user", "tasted_record")
+        .prefetch_related(
+            Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
+        )
+        .first()
+    )
+
+    return post
+
