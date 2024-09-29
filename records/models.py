@@ -12,7 +12,10 @@ class Tasted_Record(models.Model):
     is_private = models.BooleanField(default=False, verbose_name="비공개 여부")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, verbose_name="태그")  # 여러 태그 가능
-
+    
+    def is_user_liked(self, user):
+        return user in self.like_cnt.all()
+    
     def __str__(self):
         return f"{self.user.nickname} - {self.bean.name}"
 
@@ -33,7 +36,10 @@ class Post(models.Model):
     like_cnt = models.ManyToManyField("profiles.User", related_name="like_posts")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, verbose_name="태그")  # 여러 태그 가능
-
+    
+    def is_user_liked(self, user):
+        return user in self.like_cnt.all()
+    
     def __str__(self):
         return f"{self.user.nickname} - {self.title}"
 
