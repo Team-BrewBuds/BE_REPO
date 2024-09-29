@@ -55,12 +55,11 @@ def get_tasted_record_feed2(user, page=1):
 
 def get_tasted_record_detail(record_id):
     record = (
-        Tasted_Record.objects.filter(pk=record_id)
-        .select_related("user", "bean", "taste_and_review")
+        Tasted_Record.objects.select_related("user", "bean", "taste_and_review")
         .prefetch_related(
             Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
         )
-        .first()
+        .get(pk=record_id)
     )
 
     return record
@@ -109,14 +108,16 @@ def get_post_feed2(user, page=1):
     return page_obj.object_list, page_obj.has_next()
 
 def get_post_detail(post_id):
+
     post = (
-        Post.objects.filter(pk=post_id)
-        .select_related("user", "tasted_record")
+        Post.objects.select_related("user", "tasted_record")
         .prefetch_related(
-            Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
+            Prefetch("photo_set", queryset=Photo.objects.only("photo_url"))
         )
-        .first()
+        .get(pk=post_id)
     )
+
+    print(post)
 
     return post
 
