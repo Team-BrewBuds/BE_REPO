@@ -62,7 +62,6 @@ def create_test_data(db):
 
 def assert_tasted_record_detail(response_data, tasted_record):
     assert response_data.get("tasted_record_id") == tasted_record.tasted_record_id
-    assert response_data.get("user_id") == tasted_record.user.user_id
     assert response_data.get("bean")["name"] == tasted_record.bean.name
     assert response_data.get("taste_and_review")["star"] == tasted_record.taste_and_review.star
     assert response_data.get("taste_and_review")["flavor"] == tasted_record.taste_and_review.flavor
@@ -71,22 +70,23 @@ def assert_tasted_record_detail(response_data, tasted_record):
     assert response_data.get("view_cnt") == 0
     assert response_data.get("content") == tasted_record.content
     assert response_data.get("created_at") == tasted_record.created_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    assert response_data.get("user_nickname") == tasted_record.user.nickname
-    assert response_data.get("user_profile_image") == tasted_record.user.profile_image
+    assert response_data.get("user")['user_id'] == tasted_record.user.user_id
+    assert response_data.get("user")["nickname"] == tasted_record.user.nickname
+    assert response_data.get("user")["profile_image"] == tasted_record.user.profile_image
     assert response_data.get("bean")["bean_type"] == tasted_record.bean.bean_type
 
 
 def assert_post_detail(response_data, post):
     assert response_data.get("post_id") == post.post_id
-    assert response_data.get("user_id") == post.user.user_id
     assert response_data.get("title") == post.title
     assert response_data.get("content") == post.content
     assert response_data.get("subject") == post.subject
     assert response_data.get("view_cnt") == 0
     assert response_data.get("like_cnt") == 0
     assert response_data.get("created_at") == post.created_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    assert response_data.get("user_nickname") == post.user.nickname
-    assert response_data.get("user_profile_image") == post.user.profile_image
+    assert response_data.get("user")['user_id'] == post.user.user_id
+    assert response_data.get("user")["nickname"] == post.user.nickname
+    assert response_data.get("user")["profile_image"] == post.user.profile_image
     assert response_data.get("tasted_record")["tasted_record_id"] == post.tasted_record.tasted_record_id
     assert response_data.get("photos") == []
 

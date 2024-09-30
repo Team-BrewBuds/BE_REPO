@@ -20,6 +20,7 @@ def get_object(
         - (None, Response): 기본 키가 제공되지 않은 경우
         - (None, Response): 객체를 찾을 수 없는 경우
         - (data, None): 객체가 성공적으로 검색된 경우
+    작성자 : hwstar1204
     """
 
     if not pk:
@@ -64,6 +65,7 @@ def update(
         partial (bool, optional): 부분 업데이트 여부를 지정합니다. 기본값은 False
     Returns:
         Response: 업데이트 결과에 따라 HTTP 응답을 반환
+    작성자 : hwstar1204
     """
 
     data, response = get_object(pk, model)
@@ -85,6 +87,7 @@ def delete(request: Request, pk: int, model: Type[Model]) -> Response:
         model (Model): 삭제할 객체의 모델 클래스
     Returns:
         Response: 삭제 결과에 따라 HTTP 응답을 반환
+    작성자 : hwstar1204
     """
     
     data, response = get_object(pk, model)

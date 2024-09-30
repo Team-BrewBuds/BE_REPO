@@ -21,6 +21,7 @@ class TastedRecordFeedView(APIView):
     주의
     - id로 조회하는 것이 아닌, 팔로워, 최신순 조회
     - 나만보기로 설정한 시음기록은 제외
+    담당자 : hwstar1204
     """
 
     def get(self, request, *args, **kwargs):
@@ -45,6 +46,7 @@ class TastedRecordDetailApiView(APIView):
         시음기록: id, 시음 내용, 사진, 조회수, 생성일, 좋아요
         프로필: id, 닉네임, 프로필 사진
         원두: 원두 상세정보, 원두 맛&평가
+    담당자 : hwstar1204
     """
 
     def get(self, request, pk):
