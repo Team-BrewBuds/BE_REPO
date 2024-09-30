@@ -1,3 +1,7 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import Bean, Bean_Taste, Bean_Taste_Review
+
+admin.site.register(Bean)
+admin.site.register(Bean_Taste)
+admin.site.register(Bean_Taste_Review)

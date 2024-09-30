@@ -13,6 +13,8 @@ django-environ = "^0.11.2"
 django-cors-headers = "^4.4.0"
 pre-commit = "^3.8.0"
 mysqlclient = "^2.2.4"
+pytest = "^8.3.3"
+pytest-django = "^4.9.0"
 
 
 [build-system]
