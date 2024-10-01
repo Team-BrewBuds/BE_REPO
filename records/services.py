@@ -1,5 +1,5 @@
 from itertools import chain
-
+from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Prefetch
 
@@ -121,3 +121,22 @@ def get_post_detail(post_id):
 
     return post
 
+def get_post_or_tasted_record_detail(object_type, object_id):
+    if object_type == "post":
+        obj = get_object_or_404(Post, pk=object_id)
+    elif object_type == "tasted_record":
+        obj = get_object_or_404(Tasted_Record, pk=object_id)
+
+    return obj
+
+def get_comment_list(object_type, object_id, page):
+    obj = get_post_or_tasted_record_detail(object_type, object_id)
+
+    comments = obj.comment_set.filter(parent_id=None).order_by("created_at")
+    paginator = Paginator(comments, 10)
+    page_obj = paginator.get_page(page)
+
+    for comment in page_obj.object_list:
+        comment.replies_list = comment.replies.all().order_by("created_at")
+
+    return page_obj.object_list, page_obj.has_next()
