@@ -88,14 +88,14 @@ REST_AUTH = {
 AUTH_USER_MODEL = "profiles.CustomUser"
 
 # Kakao 관련 설정
-KAKAO_REST_API_KEY = '6c435ca8c42b3ff7c1822342a552d2a6'
-KAKAO_CLIENT_SECRET = '00ba45d8cd1b50657a2327da8489c350'
-KAKAO_REDIRECT_URI = 'http://localhost:8000/profiles/login/oauth/kakao'
+KAKAO_REST_API_KEY = env.str("KAKAO_REST_API_KEY")
+KAKAO_CLIENT_SECRET = env.str("KAKAO_CLIENT_SECRET")
+KAKAO_REDIRECT_URI = env.str("KAKAO_REDIRECT_URI")
 
 # naver 관련 설정
-NAVER_CLIENT_ID = 'ikOEw736XXL9l3AfxOOV'
-NAVER_CLIENT_SECRET = 'jKif265gYl'
-NAVER_REDIRECT_URI = 'http://localhost:8000/profiles/login/oauth/naver'
+NAVER_CLIENT_ID = env.str("NAVER_CLIENT_ID")
+NAVER_CLIENT_SECRET = env.str("NAVER_CLIENT_SECRET")
+NAVER_REDIRECT_URI = env.str("NAVER_REDIRECT_URI")
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
