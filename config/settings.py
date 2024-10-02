@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+from datetime import timedelta
 import os
 import environ
 from pathlib import Path
@@ -45,7 +46,18 @@ INSTALLED_APPS = [
     # third-party-apps
     'corsheaders',
     'rest_framework',
+    'rest_framework.authtoken',
 
+    # allauth
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.kakao',
+
+    # swagger
+    'drf_spectacular',
+    
     # local apps
     'profiles',
     'beans',
@@ -54,6 +66,36 @@ INSTALLED_APPS = [
     'recommendation',
 
 ]
+
+# jwt 권한 인증 관련
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 5,
+}
+
+REST_AUTH = {
+    "USE_JWT": True,
+    "JWT_AUTH_COOKIE": "jwt-auth",
+    "REGISTER_SERIALIZER": "profiles.serializers.UserRegisterSerializer",
+    "JWT_AUTH_HTTPONLY": False,
+}
+
+AUTH_USER_MODEL = "profiles.CustomUser"
+
+# Kakao 관련 설정
+KAKAO_REST_API_KEY = '6c435ca8c42b3ff7c1822342a552d2a6'
+KAKAO_CLIENT_SECRET = '00ba45d8cd1b50657a2327da8489c350'
+KAKAO_REDIRECT_URI = 'http://localhost:8000/profiles/login/oauth/kakao'
+
+# naver 관련 설정
+NAVER_CLIENT_ID = 'ikOEw736XXL9l3AfxOOV'
+NAVER_CLIENT_SECRET = 'jKif265gYl'
+NAVER_REDIRECT_URI = 'http://localhost:8000/profiles/login/oauth/naver'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -64,7 +106,74 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    # allauth
+    'allauth.account.middleware.AccountMiddleware',
 ]
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+# JWT 발급 관련
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": env("SECRET_KEY"),
+    "VERIFYING_KEY": None,
+    "AUDIENCE": None,
+    "ISSUER": None,
+    "JWK_URL": None,
+    "LEEWAY": 0,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+    "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
+    "JTI_CLAIM": "jti",
+    "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
+    "SLIDING_TOKEN_LIFETIME": timedelta(hours=5),
+    "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=30),
+}
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_VERIFICATION = "none"
+
+SITE_ID = 1
+
+# Kakao 관련 설정
+SOCIALACCOUNT_PROVIDERS = {
+    'kakao': {
+        'APP': {
+            'client_id': '6c435ca8c42b3ff7c1822342a552d2a6',
+            'secret': '00ba45d8cd1b50657a2327da8489c350',
+            'key': '',
+        }
+    }
+}
+
+LOGIN_REDIRECT_URL = '/' 
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+
+# drf-spectacular
+SPECTACULAR_SETTINGS = {
+    "TITLE": "my API",
+    "DESCRIPTION": "my API",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
 
 ROOT_URLCONF = 'config.urls'
 
