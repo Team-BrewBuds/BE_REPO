@@ -1,5 +1,5 @@
 from django.db import models
-
+from records.managers import NoteManagers
 
 class Tasted_Record(models.Model):
     tasted_record_id = models.AutoField(primary_key=True)
@@ -89,3 +89,22 @@ class Comment(models.Model):
         db_table = "comment"
         verbose_name = "댓글"
         verbose_name_plural = "댓글"
+
+class Note(models.Model):
+    note_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey("profiles.User", on_delete=models.CASCADE, verbose_name="작성자")
+    post = models.ForeignKey(Post, null=True, blank=True, on_delete=models.CASCADE, verbose_name="게시글")
+    tasted_record = models.ForeignKey(Tasted_Record, null=True, blank=True, on_delete=models.CASCADE, verbose_name="시음 기록")
+    bean = models.ForeignKey("beans.Bean", null=True, blank=True, on_delete=models.CASCADE, verbose_name="원두")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
+
+    objects = models.Manager()  # The default manager
+    custom_objects = NoteManagers()
+
+    def __str__(self):
+        return f"Note: {self.note_id}"
+    
+    class Meta:
+        db_table = "note"
+        verbose_name = "노트"
+        verbose_name_plural = "노트"
