@@ -3,7 +3,7 @@ from rest_framework.test import APIClient
 
 from beans.models import Bean, Bean_Taste_Review
 from profiles.models import User
-from records.models import Post, Tasted_Record, Comment
+from records.models import Post, Tasted_Record, Comment, Note
 
 
 @pytest.fixture
@@ -82,9 +82,21 @@ def post_comment(user, post):
         content="Test Post Comment!"
     )
 
+@pytest.fixture
 def tasted_record_comment(user, tasted_record):
     return Comment(
         user=user,
         tasted_record=tasted_record,
         content="Test Tasted_Record Comment!"
     )
+
+@pytest.fixture
+def post_note(user, post):
+    note = Note.objects.create(user=user, post=post)
+    return note
+
+
+@pytest.fixture
+def tasted_record_note(user, tasted_record):
+    note = Note.objects.create(user=user, tasted_record=tasted_record)
+    return note
