@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from records.models import Photo, Comment
+from records.models import Photo, Comment, Note
 from profiles.serializers import UserSimpleSerializer
 
 
@@ -34,3 +34,8 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ["comment_id", "content", "user", "like_cnt", "created_at", "replies"]
+
+class NoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Note
+        fields = "__all__"

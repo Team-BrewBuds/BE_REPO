@@ -3,9 +3,10 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from records.models import Post, Tasted_Record, Comment
-from records.serializers import PageNumberSerializer, CommentSerializer
+from records.models import Post, Tasted_Record, Comment, Note
+from records.serializers import PageNumberSerializer, CommentSerializer, NoteSerializer
 from records.services import get_comment_list, get_post_or_tasted_record_detail, get_comment
+
 from common.utils import update, delete
 
 
@@ -46,6 +47,60 @@ class LikeApiView(APIView):
             obj.like_cnt.add(user)
 
         return Response(status=status.HTTP_200_OK)
+
+class NoteApiView(APIView):
+    """
+    게시글, 시음기록, 원두 노트 생성, 조회 API
+    Args:
+        - object_type : "post" 또는 "tasted_record" 또는 "bean"
+        - object_id : 노트를 처리할 객체의 ID
+    Returns:
+    - status: 200
+    담당자: hwstar1204
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        id = kwargs.get("object_id")
+        type = kwargs.get("object_type")
+
+        if not id or not type:
+            return Response({"error": "object_id and object_type are required"}, status=status.HTTP_400_BAD_REQUEST)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, object_type, object_id):
+        user = request.user
+        notes = Note.custom_objects.get_notes_for_user_and_object(user, object_type, object_id)
+        serializer = NoteSerializer(notes, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+    def post(self, request, object_type, object_id):
+        user = request.user
+        note = Note.custom_objects.create_note_for_object(user, object_type, object_id)
+        serializer = NoteSerializer(note)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class NoteDetailApiView(APIView):
+    """
+    노트 상세정보 조회, 삭제 API
+    Args:
+        - id : 노트 ID
+    Returns:
+        - status: 200
+    담당자: hwstar1204
+    """
+
+    def get(self, request, id):
+        note = get_object_or_404(Note, pk=id)
+        note_serializer = NoteSerializer(note)
+        return Response(note_serializer.data, status=status.HTTP_200_OK)
+    
+    def delete(self, request, id):
+        return delete(request, id, Note)
+
 
 class CommentApiView(APIView):
     """
