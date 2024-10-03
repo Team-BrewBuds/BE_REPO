@@ -67,3 +67,25 @@ class Photo(models.Model):
         db_table = "photo"
         verbose_name = "사진"
         verbose_name_plural = "사진"
+
+class Comment(models.Model):
+    comment_id = models.AutoField(primary_key=True)
+    parent_id = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name='replies', verbose_name="상위 댓글")
+    user = models.ForeignKey("profiles.User", on_delete=models.CASCADE, verbose_name="작성자")
+    post = models.ForeignKey(Post, null=True, blank=True, on_delete=models.CASCADE, verbose_name="게시글")
+    tasted_record = models.ForeignKey(Tasted_Record, null=True, blank=True, on_delete=models.CASCADE, verbose_name="시음 기록")
+    content = models.TextField(verbose_name="내용")
+    like_cnt = models.ManyToManyField("profiles.User", related_name="like_comments")
+    is_deleted = models.BooleanField(default=False, verbose_name="삭제 여부")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
+
+    def __str__(self):
+        if self.is_deleted:
+            return f"삭제된 댓글 ID: {self.comment_id}"
+        else:
+            return f"{self.user.nickname} - {self.content[:20]}"
+    
+    class Meta:
+        db_table = "comment"
+        verbose_name = "댓글"
+        verbose_name_plural = "댓글"
