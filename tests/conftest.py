@@ -75,9 +75,16 @@ def post(user, tasted_record):
 
 
 @pytest.fixture
-def comment(user, post):
+def post_comment(user, post):
     return Comment(
         user=user,
         post=post,
-        content="Test Comment!"
+        content="Test Post Comment!"
+    )
+
+def tasted_record_comment(user, tasted_record):
+    return Comment(
+        user=user,
+        tasted_record=tasted_record,
+        content="Test Tasted_Record Comment!"
     )
