@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Prefetch
 
-from .models import Photo, Post, Tasted_Record
+from .models import Photo, Post, Tasted_Record, Comment
 
 # TODO
 # - user 인자를 받아서 팔로우한 사용자의 시음 기록만 가져오기(추후 이것으로 변경)
@@ -117,8 +117,6 @@ def get_post_detail(post_id):
         .get(pk=post_id)
     )
 
-    print(post)
-
     return post
 
 def get_post_or_tasted_record_detail(object_type, object_id):
@@ -140,3 +138,7 @@ def get_comment_list(object_type, object_id, page):
         comment.replies_list = comment.replies.all().order_by("created_at")
 
     return page_obj.object_list, page_obj.has_next()
+
+def get_comment(comment_id):
+    comment = Comment.objects.get(pk=comment_id)
+    return comment
