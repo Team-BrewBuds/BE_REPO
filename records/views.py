@@ -13,26 +13,33 @@ class LikeApiView(APIView):
     """
     게시글 및 시음기록에 좋아요를 추가하거나 취소하는 API
     Args:
-        - object_type : "post" 또는 "tasted_record"
+        - object_type : "post" or "tasted_record" or "comment"
         - object_id : 좋아요를 처리할 객체의 ID
     Returns:
         - status: 200
+    담당자: hwstar1204
     """
 
     def post(self, request):
         user = request.user
         object_type = request.data.get("object_type")
-        object_id = request.data.get("object_id")
-        # action = request.data.get('action')
+        object_id = request.data.get("object_id") 
+
+        model_map = {
+            "post": Post,
+            "tasted_record": Tasted_Record,
+            "comment": Comment
+        }
 
         if not object_id or not object_type:
             return Response({"error": "object_id and object_type are required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        if object_type == "post":
-            obj = get_object_or_404(Post, pk=object_id)
-        else:
-            obj = get_object_or_404(Tasted_Record, pk=object_id)
-
+        
+        model_class = model_map.get(object_type.lower())
+        if not model_class:
+            return Response({"error": "invalid object_type"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        obj = get_object_or_404(model_class, pk=object_id)
+        
         if user in obj.like_cnt.all():
             obj.like_cnt.remove(user)
         else:
@@ -53,6 +60,7 @@ class CommentApiView(APIView):
     주의:
     - 댓글 생성시 content 필수
     - 대댓글 생성시 parent_id 필수
+    담당자: hwstar1204
     """
 
     def get(self, request, object_type, object_id):
@@ -75,6 +83,9 @@ class CommentApiView(APIView):
             - object_id : 댓글을 처리할 객체의 ID
             - content : 댓글 내용
             - parent_id : 대댓글인 경우 부모 댓글의 ID
+        Returns:
+            - status: 200
+        담당자: hwstar1204
         """
         user = request.user
         content = request.data.get("content")
@@ -107,7 +118,7 @@ class CommentDetailAPIView(APIView):
         - id : 댓글 ID
     Returns:
         - status: 200
-
+    담당자: hwstar1204
     """
 
     def get(self, request, id):
