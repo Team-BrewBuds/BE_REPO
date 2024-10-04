@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
-from records.models import Photo, Comment, Note
+from records.models import Post, Tasted_Record, Photo, Comment, Note
 from profiles.serializers import UserSimpleSerializer
+
 
 
 class PhotoSerializer(serializers.ModelSerializer):
@@ -17,6 +18,19 @@ class PageNumberSerializer(serializers.Serializer):
         if value < 1:
             raise serializers.ValidationError("Page number must be a positive integer.")
         return value
+    
+class FeedSerializer(serializers.ModelSerializer):
+    
+    def to_representation(self, instance):
+        # 순환 참조 피하기 위함
+        from records.posts.serializers import PostFeedSerializer
+        from records.tasted_record.serializers import TastedRecordFeedSerializer
+        
+        if isinstance(instance, Post):
+            return PostFeedSerializer(instance).data
+        elif isinstance(instance, Tasted_Record):
+            return TastedRecordFeedSerializer(instance).data
+        return super().to_representation(instance)
 
 class CommentSerializer(serializers.ModelSerializer):
     content = serializers.CharField(max_length=200)

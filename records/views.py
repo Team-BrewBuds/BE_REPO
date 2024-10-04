@@ -4,10 +4,55 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from records.models import Post, Tasted_Record, Comment, Note
-from records.serializers import PageNumberSerializer, CommentSerializer, NoteSerializer
+from records.serializers import PageNumberSerializer, CommentSerializer, NoteSerializer, FeedSerializer
+from records.services import get_following_feed
 from records.services import get_comment_list, get_post_or_tasted_record_detail, get_comment
 
 from common.utils import update, delete
+from common.view_counter import is_viewed
+class FeedAPIView(APIView):
+    """
+    홈 [전체] - 게시글 + 시음기록 리스트를 반환하는 API
+    Args:
+        - page : 조회할 페이지 번호
+    Returns:
+        - status: 200
+
+    주의: 
+    - 전체(시음기록, 게시글) 피드 리스트 조회 
+        - 팔로잉하는 사용자들의 기록 우선 노출 (팔로잉 O, 조회 X) (최신순)
+        - 이후 일반 사용자들의 기록 노출  (팔로잉X, 조회 X) (최신순)
+        - 새로고침시 사용자가 10분 이내 본 기록물은 노출 X 
+        - 페이지네이션 적용
+    담당자: hwstar1204
+    """
+
+    def get(self, request):
+        page_serializer = PageNumberSerializer(data=request.GET)
+        if page_serializer.is_valid():
+            page = page_serializer.validated_data["page"]
+        else:
+            return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        feed_items, has_next = get_following_feed(user, page)
+
+        results = []
+        for item in feed_items:
+            if isinstance(item, Post):
+                item_id = "post_id"
+            elif isinstance(item, Tasted_Record):
+                item_id = "tasted_record_id"
+            else:
+                continue
+
+            if not is_viewed(request, cookie_name="post_viewed", content_id=item_id):
+                results.append(item)
+
+        post_serializer = FeedSerializer(results, many=True)
+        return Response({"records": post_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
+
+
 
 
 class LikeApiView(APIView):
