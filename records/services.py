@@ -55,6 +55,45 @@ def get_following_feed(user, page=1):
 
     return all_records, has_next
 
+def get_common_feed(user, page=1):
+
+    one_hour_ago = timezone.now() - timedelta(hours=1)
+
+    following_Tasted_Record = (
+        Tasted_Record.objects.filter(
+            is_private=False,
+            created_at__gte=one_hour_ago
+        )
+        .select_related("user", "bean", "taste_and_review")
+        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .order_by("-created_at")
+    )
+
+    following_Post = (
+        Post.objects.filter(
+            created_at__gte=one_hour_ago
+            )
+        .select_related("user", "tasted_record")
+        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .order_by("-created_at")
+    )
+
+    # 각각 페이징 처리
+    paginator_Tasted_Record = Paginator(following_Tasted_Record, 5)
+    paginator_Post = Paginator(following_Post, 5)
+
+    # 페이지 가져오기
+    page_obj_Tasted_Record = paginator_Tasted_Record.get_page(page)
+    page_obj_Post = paginator_Post.get_page(page)
+
+    # 페이지 결합
+    all_records = list(chain(page_obj_Tasted_Record.object_list, page_obj_Post.object_list))
+    all_records = sorted(all_records, key=lambda x: x.created_at, reverse=True)
+
+    has_next = page_obj_Tasted_Record.has_next() or page_obj_Post.has_next()
+
+    return all_records, has_next    
+
 def get_tasted_record_feed(user, page=1):
     following_users = user.following.all()
 

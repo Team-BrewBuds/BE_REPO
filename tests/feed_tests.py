@@ -6,9 +6,9 @@ import json
 
 
 @pytest.mark.django_db
-def test_feed_api_view(api_client, following_user, multiple_posts, multiple_tasted_records):
+def test_follow_feed(api_client, following_user, multiple_posts, multiple_tasted_records):
     api_client.force_authenticate(user=following_user)
-    url = reverse('feed')
+    url = reverse('feed-follow')
     response = api_client.get(url, {'page': 1})
 
     assert response.status_code == status.HTTP_200_OK

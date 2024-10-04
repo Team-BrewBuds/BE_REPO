@@ -5,7 +5,8 @@ from records import views
 urlpatterns = [
     path("post/", include("records.posts.urls")),
     path("tasted_record/", include("records.tasted_record.urls")),
-    path('feed/', views.FeedAPIView.as_view(), name="feed"),
+    path('feed/follow/', views.FollowFeedAPIView.as_view(), name="feed-follow"),
+    path('feed/common/', views.CommonFeedAPIView.as_view(), name="feed-common"),
     path("like", views.LikeApiView.as_view(), name="records-likes"),
     path("comment/<int:id>", views.CommentDetailAPIView.as_view(), name="comment-detail"),
     path("comment/<str:object_type>/<int:object_id>", views.CommentApiView.as_view(), name="comment-list"),
