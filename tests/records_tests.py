@@ -32,7 +32,7 @@ def test_get_post_detail(api_client, post):
     url = reverse("post-detail", kwargs={"pk": post.post_id})
     response = api_client.get(url, format="json")
     assert response.status_code == status.HTTP_200_OK
-    print(response.cookies.get("post_viewed"))
+    # print(response.cookies.get("post_viewed"))
     assert_post_detail(response.data, post)
 
 def assert_tasted_record_detail(response_data, tasted_record):
@@ -44,7 +44,7 @@ def assert_tasted_record_detail(response_data, tasted_record):
     assert response_data.get("like_cnt") == 0
     assert response_data.get("view_cnt") == 1
     assert response_data.get("content") == tasted_record.content
-    print('생성 시간: ', tasted_record.created_at.strftime("%Y-%m-%dT%H:%M:%S.%f"))
+    # print('생성 시간: ', tasted_record.created_at.strftime("%Y-%m-%dT%H:%M:%S.%f"))
     assert response_data.get("created_at") == tasted_record.created_at.strftime("%Y-%m-%dT%H:%M:%S.%f")
     assert response_data.get("user")['user_id'] == tasted_record.user.user_id
     assert response_data.get("user")["nickname"] == tasted_record.user.nickname
