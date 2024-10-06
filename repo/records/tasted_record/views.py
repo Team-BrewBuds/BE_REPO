@@ -2,12 +2,12 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from records.serializers import PageNumberSerializer
-from records.services import get_tasted_record_detail, get_tasted_record_feed2
-from records.tasted_record.serializers import TastedRecordDetailSerializer, TastedRecordFeedSerializer
-from records.models import TastedRecord
-from common.utils import get_object, create, update, delete
-from common.view_counter import update_view_count
+from repo.records.serializers import PageNumberSerializer
+from repo.records.services import get_tasted_record_detail, get_tasted_record_feed2
+from repo.records.tasted_record.serializers import TastedRecordDetailSerializer, TastedRecordFeedSerializer
+from repo.records.models import TastedRecord
+from repo.common.utils import get_object, create, update, delete
+from repo.common.view_counter import update_view_count
 
 
 class TastedRecordFeedView(APIView):

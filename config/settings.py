@@ -43,11 +43,11 @@ INSTALLED_APPS = [
     'drf_spectacular',
     
     # local apps
-    "profiles",
-    "beans",
-    "records",
-    "search",
-    "recommendation",
+    "repo.profiles",
+    "repo.beans",
+    "repo.records",
+    "repo.search",
+    "repo.recommendation",
 
 ]
 
@@ -65,7 +65,7 @@ REST_FRAMEWORK = {
 REST_AUTH = {
     "USE_JWT": True,
     "JWT_AUTH_COOKIE": "jwt-auth",
-    "REGISTER_SERIALIZER": "profiles.serializers.UserRegisterSerializer",
+    "REGISTER_SERIALIZER": "repo.profiles.serializers.UserRegisterSerializer",
     "JWT_AUTH_HTTPONLY": False,
 }
 

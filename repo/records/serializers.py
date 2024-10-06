@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
-from records.models import Post, TastedRecord, Photo, Comment, Note
-from profiles.serializers import UserSimpleSerializer
+from repo.records.models import Post, TastedRecord, Photo, Comment, Note
+from repo.profiles.serializers import UserSimpleSerializer
 
 
 class PhotoSerializer(serializers.ModelSerializer):

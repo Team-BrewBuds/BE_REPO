@@ -1,10 +1,10 @@
 from django.urls import include, path
 
-from records import views
+from repo.records import views
 
 urlpatterns = [
-    path("post/", include("records.posts.urls")),
-    path("tasted_record/", include("records.tasted_record.urls")),
+    path("post/", include("repo.records.posts.urls")),
+    path("tasted_record/", include("repo.records.tasted_record.urls")),
     path('feed/follow/', views.FollowFeedAPIView.as_view(), name="feed-follow"),
     path('feed/common/', views.CommonFeedAPIView.as_view(), name="feed-common"),
     path('feed/refresh/', views.RefreshFeedAPIView.as_view(), name="feed-refresh"),

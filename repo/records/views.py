@@ -3,13 +3,13 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from records.models import Post, TastedRecord, Comment, Note
-from records.serializers import PageNumberSerializer, CommentSerializer, NoteSerializer, FeedSerializer
-from records.services import get_following_feed, get_common_feed
-from records.services import get_comment_list, get_post_or_tasted_record_detail, get_comment
+from repo.records.models import Post, TastedRecord, Comment, Note
+from repo.records.serializers import PageNumberSerializer, CommentSerializer, NoteSerializer, FeedSerializer
+from repo.records.services import get_following_feed, get_common_feed
+from repo.records.services import get_comment_list, get_post_or_tasted_record_detail, get_comment
 
-from common.utils import update, delete
-from common.view_counter import is_viewed
+from repo.common.utils import update, delete
+from repo.common.view_counter import is_viewed
 
 
 class FollowFeedAPIView(APIView):

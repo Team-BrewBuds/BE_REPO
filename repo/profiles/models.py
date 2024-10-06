@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 
 # from profiles.managers import CustomUserManager
-from profiles.managers import RelationshipManager
+from repo.profiles.managers import RelationshipManager
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     """

@@ -2,12 +2,12 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from records.posts.serializers import PostFeedSerializer, PostDetailSerializer
-from records.serializers import PageNumberSerializer
-from records.services import get_post_feed2, get_post_detail
-from records.models import Post
-from common.utils import get_object, create, update, delete
-from common.view_counter import update_view_count
+from repo.records.posts.serializers import PostFeedSerializer, PostDetailSerializer
+from repo.records.serializers import PageNumberSerializer
+from repo.records.services import get_post_feed2, get_post_detail
+from repo.records.models import Post
+from repo.common.utils import get_object, create, update, delete
+from repo.common.view_counter import update_view_count
 
 class PostFeedAPIView(APIView):
     """

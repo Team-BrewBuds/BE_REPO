@@ -1,8 +1,8 @@
 from rest_framework import serializers
-from records.models import Post
-from records.serializers import PhotoSerializer
-from records.tasted_record.serializers import TastedRecordFeedSerializer
-from profiles.serializers import UserSimpleSerializer
+from repo.records.models import Post
+from repo.records.serializers import PhotoSerializer
+from repo.records.tasted_record.serializers import TastedRecordFeedSerializer
+from repo.profiles.serializers import UserSimpleSerializer
 
 class PostFeedSerializer(serializers.ModelSerializer):
     author = UserSimpleSerializer(read_only=True)

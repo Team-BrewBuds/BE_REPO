@@ -1,9 +1,9 @@
 from rest_framework import serializers
 
-from beans.serializers import BeanSerializer, BeanTasteAndReviewSerializer
-from records.models import TastedRecord
-from records.serializers import PhotoSerializer
-from profiles.serializers import UserSimpleSerializer
+from repo.beans.serializers import BeanSerializer, BeanTasteAndReviewSerializer
+from repo.records.models import TastedRecord
+from repo.records.serializers import PhotoSerializer
+from repo.profiles.serializers import UserSimpleSerializer
 
 
 class TastedRecordFeedSerializer(serializers.ModelSerializer):

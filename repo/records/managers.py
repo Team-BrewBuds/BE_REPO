@@ -12,13 +12,13 @@ class NoteManagers(models.Manager):
     }
 
     def get_notes_for_user_and_object(self, user, object_type, object_id):
-        model = self._get_model(object_type)
+        model = self.model_map.get(object_type)
         obj = get_object_or_404(model, pk=object_id)
         notes = obj.note_set.filter(author=user).order_by("-created_at")
         return notes
 
     def create_note_for_object(self, user, object_type, object_id):
-        model = self._get_model(object_type)
+        model = self.model_map.get(object_type)
         obj = get_object_or_404(model, pk=object_id)
         # 올바른 필드에 객체를 설정
         if object_type == 'post':
@@ -32,8 +32,8 @@ class NoteManagers(models.Manager):
         note.save()
         return note
     
-    def _get_model(self, object_type):
-        model_path = self.model_map.get(object_type)
-        app_label, model_name = model_path.split(".")
-        return apps.get_model(app_label,model_name)
-    
+    # def _get_model(self, object_type):
+    #     model_path = self.model_map.get(object_type)
+    #     app_label, model_name = model_path.split(".")
+    #     return apps.get_model(app_label,model_name)
+    #

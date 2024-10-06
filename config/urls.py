@@ -6,9 +6,9 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('beans/', include('beans.urls')),
-    path('profiles/', include('profiles.urls')),
-    path('records/', include('records.urls')),
+    path('beans/', include('repo.beans.urls')),
+    path('profiles/', include('repo.profiles.urls')),
+    path('records/', include('repo.records.urls')),
      
     # 스키마를 제공하는 엔드포인트
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

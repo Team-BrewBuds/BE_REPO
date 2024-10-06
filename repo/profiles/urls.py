@@ -1,7 +1,6 @@
 from django.urls import path, include
 
-from profiles import views
-
+from repo.profiles import views
 
 urlpatterns = [
     path('/', include('allauth.urls'), name='socialaccount_signup'),

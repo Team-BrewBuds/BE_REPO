@@ -5,8 +5,8 @@ from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Prefetch
 
-from records.models import Photo, Post, TastedRecord, Comment
-from profiles.models import Relationship
+from repo.records.models import Photo, Post, TastedRecord, Comment
+from repo.profiles.models import Relationship
 
 
 # TODO

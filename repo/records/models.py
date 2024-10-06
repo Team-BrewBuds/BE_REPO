@@ -1,13 +1,15 @@
 from django.db import models
-from records.managers import NoteManagers
+from repo.profiles.models import CustomUser
+from repo.beans.models import Bean, BeanTasteReview
+from repo.records.managers import NoteManagers
 
 class TastedRecord(models.Model):
-    author = models.ForeignKey("profiles.CustomUser", on_delete=models.CASCADE, verbose_name="작성자")
-    bean = models.ForeignKey("beans.Bean", on_delete=models.CASCADE, verbose_name="원두")
-    taste_review = models.OneToOneField("beans.BeanTasteReview", on_delete=models.CASCADE, verbose_name="맛&평가")
+    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
+    bean = models.ForeignKey(Bean, on_delete=models.CASCADE, verbose_name="원두")
+    taste_review = models.OneToOneField(BeanTasteReview, on_delete=models.CASCADE, verbose_name="맛&평가")
     content = models.TextField(verbose_name="노트 내용")
     view_cnt = models.IntegerField(default=0, verbose_name="조회수")
-    like_cnt = models.ManyToManyField("profiles.CustomUser", related_name="like_tasted_records")
+    like_cnt = models.ManyToManyField(CustomUser, related_name="like_tasted_records")
     is_private = models.BooleanField(default=False, verbose_name="비공개 여부")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
@@ -25,13 +27,13 @@ class TastedRecord(models.Model):
 
 
 class Post(models.Model):
-    author = models.ForeignKey("profiles.CustomUser", on_delete=models.CASCADE, verbose_name="작성자")
+    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
     tasted_record = models.ForeignKey(TastedRecord, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 시음 기록")
     title = models.CharField(max_length=200, verbose_name="제목")
     content = models.TextField(verbose_name="내용")
     subject = models.CharField(max_length=100, verbose_name="주제")
     view_cnt = models.IntegerField(default=0, verbose_name="조회수")
-    like_cnt = models.ManyToManyField("profiles.CustomUser", related_name="like_posts")
+    like_cnt = models.ManyToManyField(CustomUser, related_name="like_posts")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
     
@@ -63,11 +65,11 @@ class Photo(models.Model):
 
 class Comment(models.Model):
     parent = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name='replies', verbose_name="상위 댓글")
-    author = models.ForeignKey("profiles.CustomUser", on_delete=models.CASCADE, verbose_name="작성자")
-    post = models.ForeignKey('Post', null=True, blank=True, on_delete=models.CASCADE, verbose_name="게시글")
-    tasted_record = models.ForeignKey('TastedRecord', null=True, blank=True, on_delete=models.CASCADE, verbose_name="시음 기록")
+    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
+    post = models.ForeignKey(Post, null=True, blank=True, on_delete=models.CASCADE, verbose_name="게시글")
+    tasted_record = models.ForeignKey(TastedRecord, null=True, blank=True, on_delete=models.CASCADE, verbose_name="시음 기록")
     content = models.TextField(verbose_name="내용")
-    like_cnt = models.ManyToManyField("profiles.CustomUser", related_name="like_comments")
+    like_cnt = models.ManyToManyField(CustomUser, related_name="like_comments")
     is_deleted = models.BooleanField(default=False, verbose_name="삭제 여부")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
 
@@ -80,10 +82,10 @@ class Comment(models.Model):
         verbose_name_plural = "댓글"
 
 class Note(models.Model):
-    author = models.ForeignKey("profiles.CustomUser", on_delete=models.CASCADE, verbose_name="작성자")
+    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
     post = models.ForeignKey(Post, null=True, blank=True, on_delete=models.CASCADE, verbose_name="게시글")
     tasted_record = models.ForeignKey(TastedRecord, null=True, blank=True, on_delete=models.CASCADE, verbose_name="시음 기록")
-    bean = models.ForeignKey("beans.Bean", null=True, blank=True, on_delete=models.CASCADE, verbose_name="원두")
+    bean = models.ForeignKey(Bean, null=True, blank=True, on_delete=models.CASCADE, verbose_name="원두")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
 
     objects = models.Manager()  # The default manager
