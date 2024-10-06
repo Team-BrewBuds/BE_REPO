@@ -55,14 +55,15 @@ def get_following_feed(user, page=1):
 
     return all_records, has_next
 
-def get_common_feed(user, page=1):
+def get_common_feed(user, page=1, last_id=None):
 
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
     following_Tasted_Record = (
         Tasted_Record.objects.filter(
             is_private=False,
-            created_at__gte=one_hour_ago
+            created_at__gte=one_hour_ago,
+            tasted_record_id__gt=last_id
         )
         .select_related("user", "bean", "taste_and_review")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
@@ -71,7 +72,8 @@ def get_common_feed(user, page=1):
 
     following_Post = (
         Post.objects.filter(
-            created_at__gte=one_hour_ago
+            created_at__gte=one_hour_ago,
+            post_id__gt=last_id
             )
         .select_related("user", "tasted_record")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))

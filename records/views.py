@@ -89,6 +89,45 @@ class CommonFeedAPIView(APIView):
         post_serializer = FeedSerializer(results, many=True)
         return Response({"records": post_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
 
+class RefreshFeedAPIView(APIView):
+    """
+    홈 [전체] - 사용자가 마지막으로 본 게시물 이후 데이터 반환하는 API
+    Args:
+        - last_id : 사용자가 마지막으로 본 게시물의 ID
+        - page : 조회할 페이지 번호
+    Returns:
+        - status: 200
+    담당자: hwstar1204
+    """
+    
+    def get(self, request):
+        last_id = request.GET.get("last_id")
+        page_serializer = PageNumberSerializer(data=request.GET)
+        if page_serializer.is_valid():
+            page = page_serializer.validated_data["page"]
+        else:
+            return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        feed_items, has_next = get_common_feed(user, page, last_id)
+
+        results = []
+        for item in feed_items:
+            if isinstance(item, Post):
+                item_id = "post_id"
+            elif isinstance(item, Tasted_Record):
+                item_id = "tasted_record_id"
+            else:
+                continue
+
+            if not is_viewed(request, cookie_name="records_viewed", content_id=item_id):
+                results.append(item)
+
+        post_serializer = FeedSerializer(results, many=True)
+        return Response({"records": post_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
+        
+
+
 
 class LikeApiView(APIView):
     """
