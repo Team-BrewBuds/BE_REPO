@@ -20,3 +20,18 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         instance.nickname = validated_data.get('nickname', instance.nickname)
         instance.save()
         return instance
+
+
+# from .models import User
+
+
+# class UserSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = User
+#         fields = "__all__"
+
+# class UserSimpleSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = User
+#         fields = ["user_id", "nickname", "profile_image"]
+
