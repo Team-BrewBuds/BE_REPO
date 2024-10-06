@@ -7,7 +7,7 @@ from records.serializers import PageNumberSerializer
 from records.services import get_post_feed2, get_post_detail
 from records.models import Post
 from common.utils import get_object, create, update, delete
-
+from common.view_counter import update_view_count
 
 class PostFeedAPIView(APIView):
     """
@@ -49,8 +49,12 @@ class PostDetailApiView(APIView):
         
         post = get_post_detail(pk)
 
-        post_detail_serializer = PostDetailSerializer(post)
-        return Response(post_detail_serializer.data, status=status.HTTP_200_OK)
+        instance, response = update_view_count(request, post, Response(), "post_viewed")
+
+        serializer = PostDetailSerializer(instance)
+        response.data = serializer.data
+        response.status = status.HTTP_200_OK
+        return response
 
     def post(self, request):
         return create(request, PostDetailSerializer)
