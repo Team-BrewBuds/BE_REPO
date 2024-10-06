@@ -157,8 +157,8 @@ SITE_ID = 1
 SOCIALACCOUNT_PROVIDERS = {
     'kakao': {
         'APP': {
-            'client_id': '6c435ca8c42b3ff7c1822342a552d2a6',
-            'secret': '00ba45d8cd1b50657a2327da8489c350',
+            'client_id': KAKAO_REST_API_KEY,
+            'secret': KAKAO_CLIENT_SECRET,
             'key': '',
         }
     }
