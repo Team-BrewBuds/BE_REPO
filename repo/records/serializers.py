@@ -1,3 +1,4 @@
+import importlib
 from rest_framework import serializers
 
 from repo.records.models import Post, TastedRecord, Photo, Comment, Note
@@ -22,9 +23,11 @@ class FeedSerializer(serializers.ModelSerializer):
     
     def to_representation(self, instance):
         # 순환 참조 피하기 위함
-        from records.posts.serializers import PostFeedSerializer
-        from records.tasted_record.serializers import TastedRecordFeedSerializer
-        
+        post_serializer_module = importlib.import_module('repo.records.posts.serializers')
+        tasted_record_serializer_module = importlib.import_module('repo.records.tasted_record.serializers')
+        PostFeedSerializer = getattr(post_serializer_module, 'PostFeedSerializer')
+        TastedRecordFeedSerializer = getattr(tasted_record_serializer_module, 'TastedRecordFeedSerializer')
+
         if isinstance(instance, Post):
             return PostFeedSerializer(instance).data
         elif isinstance(instance, TastedRecord):
