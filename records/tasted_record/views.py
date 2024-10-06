@@ -7,6 +7,7 @@ from records.services import get_tasted_record_detail, get_tasted_record_feed2
 from records.tasted_record.serializers import TastedRecordDetailSerializer, TastedRecordFeedSerializer
 from records.models import Tasted_Record
 from common.utils import get_object, create, update, delete
+from common.view_counter import update_view_count
 
 
 class TastedRecordFeedView(APIView):
@@ -54,10 +55,14 @@ class TastedRecordDetailApiView(APIView):
         if response:
             return response
         
-        record = get_tasted_record_detail(pk)
+        tasted_record = get_tasted_record_detail(pk)
 
-        record_serializer = TastedRecordDetailSerializer(record)
-        return Response(record_serializer.data, status=status.HTTP_200_OK)
+        instance, response = update_view_count(request, tasted_record, Response(), "tasted_record_viewed")
+
+        serializer = TastedRecordDetailSerializer(instance)
+        response.data = serializer.data
+        response.status = status.HTTP_200_OK
+        return response
 
     def post(self, request):
         return create(request, TastedRecordDetailSerializer)
