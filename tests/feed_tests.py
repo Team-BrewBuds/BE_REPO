@@ -51,7 +51,7 @@ def test_refresh_feed(api_client, following_user, multiple_posts, multiple_taste
     assert response_data == serializers_data
 
     url = reverse('feed-refresh')
-    response = api_client.get(url, {'page': 1, 'last_id': response.data['records'][-1]['tasted_record_id']})
+    response = api_client.get(url, {'page': 1, 'last_id': response.data['records'][-1]['id']})
     assert response.status_code == status.HTTP_200_OK
     assert 'records' in response.data
     # print(json.dumps(response.data.get('records'), indent=4))

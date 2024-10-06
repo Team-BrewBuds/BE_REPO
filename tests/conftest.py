@@ -1,9 +1,9 @@
 import pytest
 from rest_framework.test import APIClient
 
-from beans.models import Bean, Bean_Taste_Review
-from profiles.models import User, Relationship
-from records.models import Post, Tasted_Record, Comment, Note
+from beans.models import Bean, BeanTasteReview
+from profiles.models import CustomUser, Relationship
+from records.models import Post, TastedRecord, Comment, Note
 
 
 @pytest.fixture
@@ -13,7 +13,7 @@ def api_client():
 
 @pytest.fixture
 def user():
-    return User.objects.create(
+    return CustomUser.objects.create(
         nickname="testuser",
         login_type="naver",
         email='user@example.com',
@@ -22,7 +22,7 @@ def user():
 
 @pytest.fixture
 def following_user(user):
-    user2 = User.objects.create(
+    user2 = CustomUser.objects.create(
         nickname="testuser2",
         login_type="kakao",
         email='following_user@example.com',
@@ -58,7 +58,7 @@ def bean():
 
 @pytest.fixture
 def bean_taste_review():
-    return Bean_Taste_Review.objects.create(
+    return BeanTasteReview.objects.create(
         flavor="Test Flavor",
         body=3,
         acidity=3,
@@ -71,11 +71,10 @@ def bean_taste_review():
 
 @pytest.fixture
 def tasted_record(user, bean, bean_taste_review):
-
-    return Tasted_Record.objects.create(
-        user=user,
+    return TastedRecord.objects.create(
+        author=user,
         bean=bean,
-        taste_and_review=bean_taste_review,
+        taste_review=bean_taste_review,
         content="Test Content",
         tag="tags"
     )
@@ -84,7 +83,7 @@ def tasted_record(user, bean, bean_taste_review):
 @pytest.fixture
 def post(user, tasted_record):
     return Post.objects.create(
-        user=user,
+        author=user,
         title="Test Post",
         content="Test Content",
         subject="Test Subject",
@@ -96,7 +95,7 @@ def post(user, tasted_record):
 def multiple_tasted_records(user, bean):
     records = []
     for i in range(5):
-        bean_taste_review = Bean_Taste_Review.objects.create(
+        bean_taste_review = BeanTasteReview.objects.create(
             flavor=f"Test Flavor {i}",
             body=3,
             acidity=3,
@@ -105,10 +104,10 @@ def multiple_tasted_records(user, bean):
             star=3,
             place=f"Test Place {i}"
         )
-        record = Tasted_Record.objects.create(
-            user=user,
+        record = TastedRecord.objects.create(
+            author=user,
             bean=bean,
-            taste_and_review=bean_taste_review,
+            taste_review=bean_taste_review,
             content=f"Test Content {i}",
             tag=f"tags_{i}"
         )
@@ -121,7 +120,7 @@ def multiple_posts(user, multiple_tasted_records):
     posts = []
     for i, tasted_record in enumerate(multiple_tasted_records):
         post = Post.objects.create(
-            user=user,
+            author=user,
             title=f"Test Post {i}",
             content=f"Test Content {i}",
             subject=f"Test Subject {i}",
@@ -135,7 +134,7 @@ def multiple_posts(user, multiple_tasted_records):
 @pytest.fixture
 def post_comment(user, post):
     return Comment(
-        user=user,
+        author=user,
         post=post,
         content="Test Post Comment!"
     )
@@ -143,18 +142,18 @@ def post_comment(user, post):
 @pytest.fixture
 def tasted_record_comment(user, tasted_record):
     return Comment(
-        user=user,
+        author=user,
         tasted_record=tasted_record,
         content="Test Tasted_Record Comment!"
     )
 
 @pytest.fixture
 def post_note(user, post):
-    note = Note.objects.create(user=user, post=post)
+    note = Note.objects.create(author=user, post=post)
     return note
 
 
 @pytest.fixture
 def tasted_record_note(user, tasted_record):
-    note = Note.objects.create(user=user, tasted_record=tasted_record)
+    note = Note.objects.create(author=user, tasted_record=tasted_record)
     return note

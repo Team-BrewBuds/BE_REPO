@@ -15,35 +15,35 @@ class TestLikeApiView:
         return response
 
     def test_like_post(self, api_client, user, post):
-        response = self.like_unlike(api_client, user, "post", post.post_id, True)
+        response = self.like_unlike(api_client, user, "post", post.id, True)
         assert user in post.like_cnt.all()
         assert post.like_cnt.count() == 1
 
     def test_unlike_post(self, api_client, user, post):
         post.like_cnt.add(user)
-        response = self.like_unlike(api_client, user, "post", post.post_id, False)
+        response = self.like_unlike(api_client, user, "post", post.id, False)
         assert user not in post.like_cnt.all()
         assert post.like_cnt.count() == 0
 
     def test_like_tasted_record(self, api_client, user, tasted_record):
-        response = self.like_unlike(api_client, user, "tasted_record", tasted_record.tasted_record_id, True)
+        response = self.like_unlike(api_client, user, "tasted_record", tasted_record.id, True)
         assert user in tasted_record.like_cnt.all()
 
     def test_unlike_tasted_record(self, api_client, user, tasted_record):
         tasted_record.like_cnt.add(user)
-        response = self.like_unlike(api_client, user, "tasted_record", tasted_record.tasted_record_id, False)
+        response = self.like_unlike(api_client, user, "tasted_record", tasted_record.id, False)
         assert user not in tasted_record.like_cnt.all()
         assert tasted_record.like_cnt.count() == 0
 
     def test_like_comment(self, api_client, user, post_comment):
         post_comment.save()
-        response = self.like_unlike(api_client, user, "comment", post_comment.comment_id, True)
+        response = self.like_unlike(api_client, user, "comment", post_comment.id, True)
         assert user in post_comment.like_cnt.all()
 
     def test_unlike_comment(self, api_client, user, post_comment):
         post_comment.save()
         post_comment.like_cnt.add(user)
-        response = self.like_unlike(api_client, user, "comment", post_comment.comment_id, False)
+        response = self.like_unlike(api_client, user, "comment", post_comment.id, False)
         assert user not in post_comment.like_cnt.all()
         assert post_comment.like_cnt.count() == 0
 
