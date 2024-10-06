@@ -1,8 +1,8 @@
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from records.models import Note
-from records.serializers import NoteSerializer
+from repo.records.models import Note
+from repo.records.serializers import NoteSerializer
 
 
 @pytest.mark.django_db

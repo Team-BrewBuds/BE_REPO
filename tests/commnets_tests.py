@@ -3,7 +3,7 @@ import json
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from records.models import Comment
+from repo.records.models import Comment
 
 
 @pytest.mark.django_db

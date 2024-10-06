@@ -1,7 +1,7 @@
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from records.serializers import FeedSerializer
+from repo.records.serializers import FeedSerializer
 import json
 
 

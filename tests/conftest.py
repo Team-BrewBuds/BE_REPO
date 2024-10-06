@@ -1,9 +1,9 @@
 import pytest
 from rest_framework.test import APIClient
 
-from beans.models import Bean, BeanTasteReview
-from profiles.models import CustomUser, Relationship
-from records.models import Post, TastedRecord, Comment, Note
+from repo.beans.models import Bean, BeanTasteReview
+from repo.profiles.models import CustomUser, Relationship
+from repo.records.models import Post, TastedRecord, Comment, Note
 
 
 @pytest.fixture
