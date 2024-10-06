@@ -34,6 +34,7 @@ class KakaoCallbackView(APIView):
         JSON 응답: 카카오 로그인 인증 결과 및 사용자 정보.
         성공 시: 카카오 OAuth2를 통해 받아온 프로필 정보를 백엔드에 전달하고 처리된 결과 반환.
         실패 시: 로그인 실패 메시지와 HTTP 상태 코드.
+
     담당자: blakej2432
     """
     def get(self, request):
@@ -67,6 +68,7 @@ class KakaoLoginView(SocialLoginView):
         request: 클라이언트의 로그인 요청.
     Returns:
         JSON 응답: Kakao OAuth2 인증 후 사용자 로그인 결과(jwt 토큰 반환).
+
     담당자: blakej2432
     """
     adapter_class = kakao_view.KakaoOAuth2Adapter
@@ -81,6 +83,7 @@ class NaverLoginView(SocialLoginView):
         request: 클라이언트의 로그인 요청.
     Returns:
         JSON 응답: naver OAuth2 인증 후 사용자 로그인 결과(jwt 토큰 반환).
+
     담당자: blakej2432
     """
     adapter_class = naver_view.NaverOAuth2Adapter

@@ -22,16 +22,13 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         return instance
 
 
-# from .models import User
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = "__all__"
 
-
-# class UserSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = User
-#         fields = "__all__"
-
-# class UserSimpleSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = User
-#         fields = ["user_id", "nickname", "profile_image"]
+class UserSimpleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ["id", "nickname", "profile_image"]
 

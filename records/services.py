@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Prefetch
 
-from records.models import Photo, Post, Tasted_Record, Comment
+from records.models import Photo, Post, TastedRecord, Comment
 from profiles.models import Relationship
 
 
@@ -19,22 +19,22 @@ def get_following_feed(user, page=1):
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
     following_Tasted_Record = (
-        Tasted_Record.objects.filter(
-            user__in=following_users,
+        TastedRecord.objects.filter(
+            author__in=following_users,
             is_private=False,
             created_at__gte=one_hour_ago
         )
-        .select_related("user", "bean", "taste_and_review")
+        .select_related("author", "bean", "taste_review")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
     following_Post = (
         Post.objects.filter(
-            user__in=following_users,
+            author__in=following_users,
             created_at__gte=one_hour_ago
             )
-        .select_related("user", "tasted_record")
+        .select_related("author", "tasted_record")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
@@ -60,12 +60,12 @@ def get_common_feed(user, page=1, last_id=None):
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
     following_Tasted_Record = (
-        Tasted_Record.objects.filter(
+        TastedRecord.objects.filter(
             is_private=False,
             created_at__gte=one_hour_ago,
-            tasted_record_id__gt=last_id
+            id__gt=last_id
         )
-        .select_related("user", "bean", "taste_and_review")
+        .select_related("author", "bean", "taste_review")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
@@ -73,9 +73,9 @@ def get_common_feed(user, page=1, last_id=None):
     following_Post = (
         Post.objects.filter(
             created_at__gte=one_hour_ago,
-            post_id__gt=last_id
+            id__gt=last_id
             )
-        .select_related("user", "tasted_record")
+        .select_related("author", "tasted_record")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
@@ -100,22 +100,22 @@ def get_tasted_record_feed(user, page=1):
     following_users = user.following.all()
 
     followed_records = (
-        Tasted_Record.objects.filter(user__in=following_users, is_private=False)
-        .select_related("user", "bean", "taste_and_review")
+        TastedRecord.objects.filter(author__in=following_users, is_private=False)
+        .select_related("author", "bean", "taste_review")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
     if not following_users.exists() or followed_records.count() < 10:
         additional_records = (
-            Tasted_Record.objects.filter(is_private=False)
-            .exclude(user__in=following_users)
-            .select_related("user", "bean", "taste_and_review")
+            TastedRecord.objects.filter(is_private=False)
+            .exclude(author__in=following_users)
+            .select_related("author", "bean", "taste_review")
             .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
             .order_by("-created_at")
         )
     else:
-        additional_records = Tasted_Record.objects.none()
+        additional_records = TastedRecord.objects.none()
 
     all_records = list(chain(followed_records, additional_records))
 
@@ -127,8 +127,8 @@ def get_tasted_record_feed(user, page=1):
 
 def get_tasted_record_feed2(user, page=1):
     records = (
-        Tasted_Record.objects.filter(is_private=False)
-        .select_related("user", "bean", "taste_and_review")
+        TastedRecord.objects.filter(is_private=False)
+        .select_related("author", "bean", "taste_review")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
@@ -141,7 +141,7 @@ def get_tasted_record_feed2(user, page=1):
 
 def get_tasted_record_detail(record_id):
     record = (
-        Tasted_Record.objects.select_related("user", "bean", "taste_and_review")
+        TastedRecord.objects.select_related("author", "bean", "taste_review")
         .prefetch_related(
             Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
         )
@@ -155,8 +155,8 @@ def get_post_feed(user, page=1):
     following_users = user.following.all()
 
     followed_posts = (
-        Post.objects.filter(user__in=following_users)
-        .select_related("user", "tasted_record")
+        Post.objects.filter(author__in=following_users)
+        .select_related("author", "tasted_record")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
@@ -164,13 +164,13 @@ def get_post_feed(user, page=1):
     if not following_users.exists() or followed_posts.count() < 10:
         additional_posts = (
             Post.objects.filter(is_private=False)
-            .exclude(user__in=following_users)
-            .select_related("user", "taste_and_review")
+            .exclude(author__in=following_users)
+            .select_related("author", "taste_and_review")
             .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
             .order_by("-created_at")
         )
     else:
-        additional_posts = Tasted_Record.objects.none()
+        additional_posts = TastedRecord.objects.none()
 
     all_posts = list(chain(followed_posts, additional_posts))
 
@@ -183,7 +183,7 @@ def get_post_feed(user, page=1):
 def get_post_feed2(user, page=1):
 
     posts = (
-        Post.objects.select_related("user", "tasted_record")
+        Post.objects.select_related("author", "tasted_record")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
@@ -196,7 +196,7 @@ def get_post_feed2(user, page=1):
 def get_post_detail(post_id):
 
     post = (
-        Post.objects.select_related("user", "tasted_record")
+        Post.objects.select_related("author", "tasted_record")
         .prefetch_related(
             Prefetch("photo_set", queryset=Photo.objects.only("photo_url"))
         )
@@ -209,14 +209,14 @@ def get_post_or_tasted_record_detail(object_type, object_id):
     if object_type == "post":
         obj = get_object_or_404(Post, pk=object_id)
     elif object_type == "tasted_record":
-        obj = get_object_or_404(Tasted_Record, pk=object_id)
+        obj = get_object_or_404(TastedRecord, pk=object_id)
 
     return obj
 
 def get_comment_list(object_type, object_id, page):
     obj = get_post_or_tasted_record_detail(object_type, object_id)
 
-    comments = obj.comment_set.filter(parent_id=None).order_by("created_at")
+    comments = obj.comment_set.filter(parent=None).order_by("created_at")
     paginator = Paginator(comments, 10)
     page_obj = paginator.get_page(page)
 

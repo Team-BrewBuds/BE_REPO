@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from records.models import Post, Tasted_Record, Comment, Note
+from records.models import Post, TastedRecord, Comment, Note
 from records.serializers import PageNumberSerializer, CommentSerializer, NoteSerializer, FeedSerializer
 from records.services import get_following_feed, get_common_feed
 from records.services import get_comment_list, get_post_or_tasted_record_detail, get_comment
@@ -22,6 +22,7 @@ class FollowFeedAPIView(APIView):
 
     주의: 
         - 팔로잉하는 사용자들의 기록 우선 노출 (팔로잉 O, 조회 X) (최신순)
+
     담당자: hwstar1204
     """
 
@@ -37,14 +38,7 @@ class FollowFeedAPIView(APIView):
 
         results = []
         for item in feed_items:
-            if isinstance(item, Post):
-                item_id = "post_id"
-            elif isinstance(item, Tasted_Record):
-                item_id = "tasted_record_id"
-            else:
-                continue
-
-            if not is_viewed(request, cookie_name="records_viewed", content_id=item_id):
+            if not is_viewed(request, cookie_name="records_viewed", content_id=id):
                 results.append(item)
 
         post_serializer = FeedSerializer(results, many=True)
@@ -61,6 +55,7 @@ class CommonFeedAPIView(APIView):
 
     주의: 
         - 일반 사용자들의 기록 노출  (팔로잉X, 조회 X) (최신순)
+
     담당자: hwstar1204
     """
 
@@ -76,14 +71,7 @@ class CommonFeedAPIView(APIView):
 
         results = []
         for item in feed_items:
-            if isinstance(item, Post):
-                item_id = "post_id"
-            elif isinstance(item, Tasted_Record):
-                item_id = "tasted_record_id"
-            else:
-                continue
-
-            if not is_viewed(request, cookie_name="records_viewed", content_id=item_id):
+            if not is_viewed(request, cookie_name="records_viewed", content_id=id):
                 results.append(item)
 
         post_serializer = FeedSerializer(results, many=True)
@@ -97,6 +85,7 @@ class RefreshFeedAPIView(APIView):
         - page : 조회할 페이지 번호
     Returns:
         - status: 200
+
     담당자: hwstar1204
     """
     
@@ -113,14 +102,7 @@ class RefreshFeedAPIView(APIView):
 
         results = []
         for item in feed_items:
-            if isinstance(item, Post):
-                item_id = "post_id"
-            elif isinstance(item, Tasted_Record):
-                item_id = "tasted_record_id"
-            else:
-                continue
-
-            if not is_viewed(request, cookie_name="records_viewed", content_id=item_id):
+            if not is_viewed(request, cookie_name="records_viewed", content_id=id):
                 results.append(item)
 
         post_serializer = FeedSerializer(results, many=True)
@@ -133,10 +115,11 @@ class LikeApiView(APIView):
     """
     게시글 및 시음기록에 좋아요를 추가하거나 취소하는 API
     Args:
-        - object_type : "post" or "tasted_record" or "comment"
+        - object_type : "post" or "TastedRecord" or "comment"
         - object_id : 좋아요를 처리할 객체의 ID
     Returns:
         - status: 200
+
     담당자: hwstar1204
     """
 
@@ -147,7 +130,7 @@ class LikeApiView(APIView):
 
         model_map = {
             "post": Post,
-            "tasted_record": Tasted_Record,
+            "tasted_record": TastedRecord,
             "comment": Comment
         }
 
@@ -171,10 +154,11 @@ class NoteApiView(APIView):
     """
     게시글, 시음기록, 원두 노트 생성, 조회 API
     Args:
-        - object_type : "post" 또는 "tasted_record" 또는 "bean"
+        - object_type : "post" 또는 "TastedRecord" 또는 "bean"
         - object_id : 노트를 처리할 객체의 ID
     Returns:
     - status: 200
+
     담당자: hwstar1204
     """
 
@@ -209,6 +193,7 @@ class NoteDetailApiView(APIView):
         - id : 노트 ID
     Returns:
         - status: 200
+
     담당자: hwstar1204
     """
 
@@ -225,7 +210,7 @@ class CommentApiView(APIView):
     """
     게시글 및 시음기록에 댓글 생성, 리스트 조회 API
     Args:
-        - object_type : "post" 또는 "tasted_record"
+        - object_type : "post" 또는 "TastedRecord"
         - object_id : 댓글을 처리할 객체의 ID
         - content : 댓글 내용
     Returns:
@@ -234,6 +219,7 @@ class CommentApiView(APIView):
     주의:
     - 댓글 생성시 content 필수
     - 대댓글 생성시 parent_id 필수
+
     담당자: hwstar1204
     """
 
@@ -253,29 +239,30 @@ class CommentApiView(APIView):
         """
         댓글, 대댓글 생성 API
         Args:
-            - object_type : "post" 또는 "tasted_record"
+            - object_type : "post" 또는 "TastedRecord"
             - object_id : 댓글을 처리할 객체의 ID
             - content : 댓글 내용
             - parent_id : 대댓글인 경우 부모 댓글의 ID
         Returns:
             - status: 200
+
         담당자: hwstar1204
         """
         user = request.user
         content = request.data.get("content")
-        parent_id = request.data.get("parent_id")
+        parent = request.data.get("parent")
 
         if not content:
             return Response({"error": "content is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         obj = get_post_or_tasted_record_detail(object_type, object_id)
 
-        parent_comment = get_comment(parent_id) if parent_id else None
+        parent_comment = get_comment(parent) if parent else None
         
         comment_data = {
-            "user": user,
+            "author": user,
             "content": content,
-            "parent_id": parent_comment,
+            "parent": parent_comment,
             "post": obj if object_type == "post" else None,
             "tasted_record": obj if object_type == "tasted_record" else None
         }
@@ -292,6 +279,7 @@ class CommentDetailAPIView(APIView):
         - id : 댓글 ID
     Returns:
         - status: 200
+
     담당자: hwstar1204
     """
 
@@ -307,12 +295,12 @@ class CommentDetailAPIView(APIView):
         return update(request, id, Comment, CommentSerializer, True)
 
     def delete(self, request, id):
-        commnet = get_object_or_404(Comment, pk=id)
+        comment = get_object_or_404(Comment, pk=id)
 
-        if commnet.parent_id is None:  # soft delete
-            commnet.is_deleted = True
-            commnet.content = "삭제된 댓글입니다."
-            commnet.save()
+        if comment.parent is None:  # soft delete
+            comment.is_deleted = True
+            comment.content = "삭제된 댓글입니다."
+            comment.save()
             return Response(status=status.HTTP_200_OK)
     
         return delete(request, id, Comment)

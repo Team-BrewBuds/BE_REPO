@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Bean, Bean_Taste, Bean_Taste_Review
+from .models import Bean, BeanTasteReview
 
 
 class BeanSerializer(serializers.ModelSerializer):
@@ -11,5 +11,5 @@ class BeanSerializer(serializers.ModelSerializer):
 
 class BeanTasteAndReviewSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Bean_Taste_Review
+        model = BeanTasteReview
         fields = "__all__"

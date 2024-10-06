@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from records.serializers import PageNumberSerializer
 from records.services import get_tasted_record_detail, get_tasted_record_feed2
 from records.tasted_record.serializers import TastedRecordDetailSerializer, TastedRecordFeedSerializer
-from records.models import Tasted_Record
+from records.models import TastedRecord
 from common.utils import get_object, create, update, delete
 from common.view_counter import update_view_count
 
@@ -22,6 +22,7 @@ class TastedRecordFeedView(APIView):
     주의
     - id로 조회하는 것이 아닌, 팔로워, 최신순 조회
     - 나만보기로 설정한 시음기록은 제외
+
     담당자 : hwstar1204
     """
 
@@ -47,11 +48,12 @@ class TastedRecordDetailApiView(APIView):
         시음기록: id, 시음 내용, 사진, 조회수, 생성일, 좋아요
         프로필: id, 닉네임, 프로필 사진
         원두: 원두 상세정보, 원두 맛&평가
+
     담당자 : hwstar1204
     """
 
     def get(self, request, pk):
-        _, response = get_object(pk, Tasted_Record)
+        _, response = get_object(pk, TastedRecord)
         if response:
             return response
         
@@ -68,10 +70,10 @@ class TastedRecordDetailApiView(APIView):
         return create(request, TastedRecordDetailSerializer)
     
     def put(self, request, pk):
-        return update(request, pk, Tasted_Record, TastedRecordDetailSerializer, False)
+        return update(request, pk, TastedRecord, TastedRecordDetailSerializer, False)
 
     def patch(self, request, pk):
-        return update(request, pk, Tasted_Record, TastedRecordDetailSerializer, True)
+        return update(request, pk, TastedRecord, TastedRecordDetailSerializer, True)
 
     def delete(self, request, pk):
-        return delete(request, pk, Tasted_Record)
+        return delete(request, pk, TastedRecord)

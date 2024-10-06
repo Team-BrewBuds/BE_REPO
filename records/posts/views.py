@@ -15,6 +15,7 @@ class PostFeedAPIView(APIView):
     Returns:
         게시글: 카테고리, 제목, 내용, 조회수, 좋아요 수, 작성일, 선택(사진 or 시음기록)
         프로필: id, 닉네임, 프로필 사진
+
     담당자 : hwstar1204
     """
 
@@ -39,6 +40,7 @@ class PostDetailApiView(APIView):
     Returns:
         게시글: 제목, 내용, 주제, 조회수, 좋아요 수, 작성일, 선택(사진 or 시음기록)
         프로필: id, 닉네임, 프로필 사진
+
     담당자 : hwstar1204
     """
 

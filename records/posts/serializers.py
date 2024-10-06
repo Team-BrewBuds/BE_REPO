@@ -5,13 +5,13 @@ from records.tasted_record.serializers import TastedRecordFeedSerializer
 from profiles.serializers import UserSimpleSerializer
 
 class PostFeedSerializer(serializers.ModelSerializer):
-    user = UserSimpleSerializer(read_only=True)
+    author = UserSimpleSerializer(read_only=True)
     photos = PhotoSerializer(many=True, source='photo_set')
     tasted_record = TastedRecordFeedSerializer('tasted_record', read_only=True)
     is_user_liked = serializers.SerializerMethodField()
 
     def get_is_user_liked(self, obj):
-        return obj.is_user_liked(obj.user)
+        return obj.is_user_liked(obj.author)
     
     class Meta:
         model = Post
@@ -19,7 +19,7 @@ class PostFeedSerializer(serializers.ModelSerializer):
 
 
 class PostDetailSerializer(serializers.ModelSerializer):
-    user = UserSimpleSerializer(read_only=True)
+    author = UserSimpleSerializer(read_only=True)
     photos = PhotoSerializer(many=True, source='photo_set')
     tasted_record = TastedRecordFeedSerializer('tasted_record', read_only=True)
 
@@ -27,7 +27,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
     is_user_liked = serializers.SerializerMethodField()
 
     def get_is_user_liked(self, obj):
-        return obj.is_user_liked(obj.user)
+        return obj.is_user_liked(obj.author)
     
     class Meta:
         model = Post

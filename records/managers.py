@@ -14,7 +14,7 @@ class NoteManagers(models.Manager):
     def get_notes_for_user_and_object(self, user, object_type, object_id):
         model = self._get_model(object_type)
         obj = get_object_or_404(model, pk=object_id)
-        notes = obj.note_set.filter(user=user).order_by("-created_at")
+        notes = obj.note_set.filter(author=user).order_by("-created_at")
         return notes
 
     def create_note_for_object(self, user, object_type, object_id):
@@ -22,11 +22,11 @@ class NoteManagers(models.Manager):
         obj = get_object_or_404(model, pk=object_id)
         # 올바른 필드에 객체를 설정
         if object_type == 'post':
-            note = self.model(user=user, post=obj)
+            note = self.model(author=user, post=obj)
         elif object_type == 'tasted_record':
-            note = self.model(user=user, tasted_record=obj)
+            note = self.model(author=user, tasted_record=obj)
         elif object_type == 'bean':
-            note = self.model(user=user, bean=obj)
+            note = self.model(author=user, bean=obj)
         else:
             raise ValueError("Invalid object_type")
         note.save()

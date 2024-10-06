@@ -1,8 +1,6 @@
 import json
 from django.utils import timezone
 from datetime import datetime, timedelta
-from rest_framework.response import Response
-from records.models import Post, Tasted_Record
 
 
 COOKIE_EXP_MIN = 30
@@ -12,11 +10,12 @@ def update_view_count(request, instance, response, cookie_name, expiration_minut
     쿠키를 기반으로 조회수를 업데이트하는 헬퍼 함수 
     Args:
         request: request 객체
-        content: 조회수를 업데이트할 모델 객체
+        instance: 조회수를 업데이트할 모델 객체
+        response: Response 객체
         cookie_name: 쿠키 이름
         expiration_minutes: 쿠키 만료 시간 (분)
     Returns:
-        Response 객체
+        tuple: 업데이트된 모델 객체와 Response 객체
     담당자: hwstar1204
     """
     update_needed = is_need_update(request, cookie_name, expiration_minutes)
@@ -34,15 +33,7 @@ def update_view_count(request, instance, response, cookie_name, expiration_minut
         else:
             viewed_contents = []
 
-        if isinstance(instance, Post):
-            instance_id = instance.post_id
-        elif isinstance(instance, Tasted_Record):
-            instance_id = instance.tasted_record_id
-        else:
-            instance_id = None
-
-        if instance_id is not None:
-            viewed_contents.append(str(instance_id))
+        viewed_contents.append(str(instance.id))
 
         response.set_cookie(cookie_name, json.dumps(viewed_contents), max_age=expiration_minutes * 60)
 

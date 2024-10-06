@@ -1,8 +1,7 @@
 from rest_framework import serializers
 
-from records.models import Post, Tasted_Record, Photo, Comment, Note
+from records.models import Post, TastedRecord, Photo, Comment, Note
 from profiles.serializers import UserSimpleSerializer
-
 
 
 class PhotoSerializer(serializers.ModelSerializer):
@@ -28,13 +27,13 @@ class FeedSerializer(serializers.ModelSerializer):
         
         if isinstance(instance, Post):
             return PostFeedSerializer(instance).data
-        elif isinstance(instance, Tasted_Record):
+        elif isinstance(instance, TastedRecord):
             return TastedRecordFeedSerializer(instance).data
         return super().to_representation(instance)
 
 class CommentSerializer(serializers.ModelSerializer):
     content = serializers.CharField(max_length=200)
-    user = UserSimpleSerializer(read_only=True)
+    author = UserSimpleSerializer(read_only=True)
     like_cnt = serializers.IntegerField(source="like_cnt.count")
     created_at = serializers.DateTimeField(read_only=True)
     replies = serializers.SerializerMethodField()
@@ -47,7 +46,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ["comment_id", "content", "user", "like_cnt", "created_at", "replies"]
+        fields = ["id", "content", "author", "like_cnt", "created_at", "replies"]
 
 class NoteSerializer(serializers.ModelSerializer):
     class Meta:
