@@ -92,6 +92,7 @@ class TopSubjectPostsAPIView(APIView):
 
         subject_value = subject_mapping.get(subject, 'all')
 
-        posts = Post.objects.get_top_subject_posts(subject_value, self.POST_CNT)
+        # TODO 캐시 적용
+        posts = Post.objects.get_top_subject_weekly_posts(subject_value, self.POST_CNT)
         serializer = TopPostSerializer(posts, many=True)
         return Response({"records": serializer.data}, status=status.HTTP_200_OK)
