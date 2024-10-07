@@ -31,7 +31,7 @@ def following_user(user):
         profile_image="http://example.com/profile.jpg"
     )
 
-    Relationship.custom_objects.create(
+    Relationship.objects.create(
         from_user=user2,
         to_user=user,
         relationship_type="follow"

@@ -2,7 +2,7 @@ import requests
 
 from django.conf import settings
 from django.http import JsonResponse
-
+from django.shortcuts import get_object_or_404
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from allauth.socialaccount.providers.kakao import views as kakao_view
 from allauth.socialaccount.providers.naver import views as naver_view
@@ -13,6 +13,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from repo.profiles.serializers import UserRegisterSerializer
+from repo.profiles.models import CustomUser, Relationship
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -143,3 +144,44 @@ class RegistrationView(APIView):
 #     def get_object(self):
 #         # 현재 로그인한 유저 정보를 반환
 #         return self.request.user
+
+class FollowAPIView(APIView):
+    """
+    팔로우, 팔로우 취소 API
+    Args:
+        (post) follow_user_id: 팔로우할 사용자의 id
+        (delete) following_user_id: 팔로우 취소할 사용자의 id
+    Returns:
+        팔로우 성공 시: HTTP 201 Created
+        팔로우 취소 성공 시: HTTP 200 OK
+        실패 시: HTTP 400 Bad Request or 404 Not Found
+
+    담당자: hwstar1204
+    """
+
+    def post(self, request):
+        user = request.user
+        follow_user_id = request.data.get("follow_user_id")
+        if not follow_user_id:
+            return Response({"error": "follow_user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        follow_user = get_object_or_404(CustomUser, id=follow_user_id)
+
+        relationship, created = Relationship.custom_objects.follow(user, follow_user)
+        if not created:
+            return Response({"error": "already following"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"success": "create follow success"}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request):
+        user = request.user
+        following_user_id = request.data.get("following_user_id")
+        if not following_user_id:
+            return Response({"error": "following_user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        following_user = get_object_or_404(CustomUser, id=following_user_id)
+
+        relationship, deleted = Relationship.custom_objects.unfollow(user, following_user)
+        if not deleted:
+            return Response({"error": "not following"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"success": "delete follow success"}, status=status.HTTP_200_OK)

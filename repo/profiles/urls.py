@@ -9,5 +9,6 @@ urlpatterns = [
     path('login/oauth/naver/', views.NaverLoginView.as_view(), name='naver-login'),
     
     path('user/complete-registration/', views.RegistrationView.as_view(), name='complete_registration'),
+    path('follow/', views.FollowAPIView.as_view(), name='follow'),
 
 ]
