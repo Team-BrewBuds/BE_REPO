@@ -1,7 +1,30 @@
 from django.db import models
 from django.apps import apps
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from datetime import timedelta
 
+
+class PostManagers(models.Manager):
+
+    def get_subject_posts(self, subject):
+        from .models import Post
+        posts = Post.objects.filter(subject=subject)
+        return posts
+
+    def get_subject_weekly_posts(self, subject):
+        from .models import Post
+
+        posts = Post.objects.filter(subject=subject, created_at__gte=timezone.now()-timedelta(days=7))
+        return posts
+
+    def get_top_subject_weekly_posts(self, subject, cnt):
+        if subject == 'all':
+            # 전체 주제의 게시글 중 일주일 안에 조회수 상위 10개
+            posts = self.get_subject_weekly_posts(subject).order_by('-view_cnt')[:cnt]
+        else:
+            posts = self.get_subject_weekly_posts(subject).order_by('-view_cnt')[:cnt]
+        return posts
 
 class NoteManagers(models.Manager):
 

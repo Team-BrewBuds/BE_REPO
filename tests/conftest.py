@@ -1,3 +1,5 @@
+import random
+
 import pytest
 from rest_framework.test import APIClient
 
@@ -117,17 +119,19 @@ def multiple_tasted_records(user, bean):
 
 @pytest.fixture
 def multiple_posts(user, multiple_tasted_records):
+    subjects = ["normal", "cafe", "bean", "info", "gear", "question", "worry"]
     posts = []
-    for i, tasted_record in enumerate(multiple_tasted_records):
-        post = Post.objects.create(
+    for i, tr_data in enumerate(multiple_tasted_records):
+        post_data = Post.objects.create(
             author=user,
             title=f"Test Post {i}",
             content=f"Test Content {i}",
-            subject=f"Test Subject {i}",
+            subject=random.choice(subjects),
             tag=f"Test Tag {i}",
-            tasted_record=tasted_record
+            tasted_record=tr_data,
+            view_cnt=random.randint(0, 100),
         )
-        posts.append(post)
+        posts.append(post_data)
     return posts
 
 

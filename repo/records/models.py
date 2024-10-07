@@ -1,7 +1,8 @@
 from django.db import models
 from repo.profiles.models import CustomUser
 from repo.beans.models import Bean, BeanTasteReview
-from repo.records.managers import NoteManagers
+from repo.records.managers import NoteManagers, PostManagers
+
 
 class TastedRecord(models.Model):
     author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
@@ -27,19 +28,39 @@ class TastedRecord(models.Model):
 
 
 class Post(models.Model):
+
+    SUBJECT_TYPE_CHOICES = (
+        ("전체", "all"),
+        ("일반", "normal"),
+        ("카페", "cafe"),
+        ("원두", "bean"),
+        ("정보", "info"),
+        ("장비", "gear"),
+        ("질문", "question"),
+        ("고민", "worry"),
+    )
+
     author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
     tasted_record = models.ForeignKey(TastedRecord, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 시음 기록")
     title = models.CharField(max_length=200, verbose_name="제목")
     content = models.TextField(verbose_name="내용")
-    subject = models.CharField(max_length=100, verbose_name="주제")
+    subject = models.CharField(max_length=100, choices=SUBJECT_TYPE_CHOICES, verbose_name="주제")
     view_cnt = models.IntegerField(default=0, verbose_name="조회수")
     like_cnt = models.ManyToManyField(CustomUser, related_name="like_posts")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
-    
+
+    objects = PostManagers()
+
     def is_user_liked(self, user):
         return user in self.like_cnt.all()
-    
+
+    def is_saved(self, user):
+        return user.note_set.filter(post=self).exists()
+
+    def comment_cnt(self):
+        return self.comment_set.count()
+
     def __str__(self):
         return f"{self.author.nickname} - {self.title}"
 

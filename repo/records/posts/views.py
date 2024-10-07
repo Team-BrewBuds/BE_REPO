@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.records.posts.serializers import PostFeedSerializer, PostDetailSerializer
+from repo.records.posts.serializers import *
 from repo.records.serializers import PageNumberSerializer
 from repo.records.services import get_post_feed2, get_post_detail
 from repo.records.models import Post
@@ -69,3 +69,30 @@ class PostDetailApiView(APIView):
     
     def delete(self, request, pk):
         return delete(request, pk, Post)
+
+class TopSubjectPostsAPIView(APIView):
+    """
+    홈 [전체] - 주제별 조회수 상위 10개 인기 게시글 조회 API
+    Args:
+        - subject : 조회할 주제
+    Returns:
+        - status: 200
+    주제 종류 : 일반, 카페, 원두, 정보, 장비, 질문, 고민 (default: 전체)
+
+    담당자 : hwstar1204
+    """
+    POST_CNT = 10
+
+    def get(self, request):
+        subject = request.GET.get('subject')
+
+        if subject not in [choice[0] for choice in Post.SUBJECT_TYPE_CHOICES]:
+            subject = '전체'
+        subject_mapping = dict(Post.SUBJECT_TYPE_CHOICES)
+
+        subject_value = subject_mapping.get(subject, 'all')
+
+        # TODO 캐시 적용
+        posts = Post.objects.get_top_subject_weekly_posts(subject_value, self.POST_CNT)
+        serializer = TopPostSerializer(posts, many=True)
+        return Response({"records": serializer.data}, status=status.HTTP_200_OK)
