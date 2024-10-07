@@ -1,7 +1,8 @@
 from django.db import models
 from repo.profiles.models import CustomUser
 from repo.beans.models import Bean, BeanTasteReview
-from repo.records.managers import NoteManagers
+from repo.records.managers import NoteManagers, PostManagers
+
 
 class TastedRecord(models.Model):
     author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
@@ -48,10 +49,18 @@ class Post(models.Model):
     like_cnt = models.ManyToManyField(CustomUser, related_name="like_posts")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
-    
+
+    objects = PostManagers()
+
     def is_user_liked(self, user):
         return user in self.like_cnt.all()
-    
+
+    def is_saved(self, user):
+        return user.note_set.filter(post=self).exists()
+
+    def comment_cnt(self):
+        return self.comment_set.count()
+
     def __str__(self):
         return f"{self.author.nickname} - {self.title}"
 

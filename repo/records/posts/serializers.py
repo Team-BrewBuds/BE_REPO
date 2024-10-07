@@ -32,3 +32,20 @@ class PostDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = "__all__"
+
+class TopPostSerializer(serializers.ModelSerializer):
+    author = UserSimpleSerializer(read_only=True)
+    photos = PhotoSerializer(many=True, source='photo_set')
+    is_user_liked = serializers.SerializerMethodField()
+    like_cnt = serializers.IntegerField(source="like_cnt.count")
+    comment_cnt = serializers.SerializerMethodField()
+
+    def get_is_user_liked(self, obj):
+        return obj.is_user_liked(obj.author)
+
+    def get_comment_cnt(self, obj):
+        return obj.comment_cnt()
+
+    class Meta:
+        model = Post
+        fields = "__all__"

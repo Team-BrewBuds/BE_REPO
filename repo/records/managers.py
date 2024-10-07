@@ -2,6 +2,19 @@ from django.db import models
 from django.apps import apps
 from django.shortcuts import get_object_or_404
 
+class PostManagers(models.Manager):
+
+    def get_subject_posts(self, subject):
+        from .models import Post
+        posts = Post.objects.filter(subject=subject)
+        return posts
+
+    def get_top_subject_posts(self, subject, cnt):
+        if subject == 'all':
+            posts = self.get_queryset().order_by('-view_cnt')[:cnt]
+        else:
+            posts = self.get_subject_posts(subject).order_by('-view_cnt')[:cnt]
+        return posts
 
 class NoteManagers(models.Manager):
 
