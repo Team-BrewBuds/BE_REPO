@@ -148,6 +148,15 @@ class RegistrationView(APIView):
 class FollowAPIView(APIView):
     """
     팔로우, 팔로우 취소 API
+    Args:
+        (post) follow_user_id: 팔로우할 사용자의 id
+        (delete) following_user_id: 팔로우 취소할 사용자의 id
+    Returns:
+        팔로우 성공 시: HTTP 201 Created
+        팔로우 취소 성공 시: HTTP 200 OK
+        실패 시: HTTP 400 Bad Request or 404 Not Found
+
+    담당자: hwstar1204
     """
 
     def post(self, request):
@@ -158,10 +167,9 @@ class FollowAPIView(APIView):
 
         follow_user = get_object_or_404(CustomUser, id=follow_user_id)
 
-        if Relationship.objects.filter(from_user=user, to_user=follow_user, relationship_type="follow").exists():
+        relationship, created = Relationship.custom_objects.follow(user, follow_user)
+        if not created:
             return Response({"error": "already following"}, status=status.HTTP_400_BAD_REQUEST)
-
-        Relationship.objects.create(from_user=user, to_user=follow_user, relationship_type="follow")
 
         return Response({"success": "create follow success"}, status=status.HTTP_201_CREATED)
 
@@ -173,9 +181,7 @@ class FollowAPIView(APIView):
 
         following_user = get_object_or_404(CustomUser, id=following_user_id)
 
-        relationship = Relationship.objects.filter(from_user=user, to_user=following_user, relationship_type="follow")
-        if not relationship.exists():
+        relationship, deleted = Relationship.custom_objects.unfollow(user, following_user)
+        if not deleted:
             return Response({"error": "not following"}, status=status.HTTP_400_BAD_REQUEST)
-
-        relationship.delete()
         return Response({"success": "delete follow success"}, status=status.HTTP_200_OK)
