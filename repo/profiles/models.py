@@ -96,6 +96,11 @@ class UserDetail(models.Model):
     preferred_bean_taste = models.JSONField(default=default_taste, verbose_name="선호하는 원두 맛")
     is_certificated = models.BooleanField(default=False, verbose_name="인증 여부")
 
+    def get_coffee_life_helper(self):
+        return CoffeeLifeHelper(self.coffee_life)
+
+    def get_preferred_bean_taste_helper(self):
+        return PreferredBeanTasteHelper(self.preferred_bean_taste)
 
     def __str__(self):
         return f"{self.user.nickname}의 상세정보"

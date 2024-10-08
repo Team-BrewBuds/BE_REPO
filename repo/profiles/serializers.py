@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from repo.profiles.models import CustomUser
+from repo.profiles.models import CustomUser, Relationship
+
 
 class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,3 +33,10 @@ class UserSimpleSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ["id", "nickname", "profile_image"]
 
+class BudyRecommendSerializer(serializers.ModelSerializer):
+    user = UserSimpleSerializer()
+    follower_cnt = serializers.IntegerField()
+
+    class Meta:
+        model = CustomUser
+        fields = ["user", "follower_cnt"]
