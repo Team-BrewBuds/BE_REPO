@@ -2,6 +2,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 
+from repo.profiles.helpers import CoffeeLifeHelper, PreferredBeanTasteHelper
 # from profiles.managers import CustomUserManager
 from repo.profiles.managers import RelationshipManager
 
@@ -63,6 +64,52 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 #     login_type = models.CharField(max_length=50, choices=login_type_choices, verbose_name="로그인 방식")
 #     profile_image = models.URLField(max_length=500, null=True, verbose_name="프로필 이미지 URL")
 #     created_at = models.DateTimeField(auto_now_add=True, verbose_name="가입일")
+
+class UserDetail(models.Model):
+
+    COFFEE_LIFE_CHOICES = [
+        "cafe_tour", " coffee_extraction",
+        "coffee_study", "cafe_alba",
+        "cafe_work", "cafe_operation"
+    ]
+
+    default_coffee_life = dict({
+        COFFEE_LIFE_CHOICES[0]: False,
+        COFFEE_LIFE_CHOICES[1]: False,
+        COFFEE_LIFE_CHOICES[2]: False,
+        COFFEE_LIFE_CHOICES[3]: False,
+        COFFEE_LIFE_CHOICES[4]: False,
+        COFFEE_LIFE_CHOICES[5]: False,
+    })
+
+    default_taste = dict({
+        "body": 3,
+        "acidity": 3,
+        "bitterness": 3,
+        "sweetness": 3,
+    })
+
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="user_detail")
+    introduction = models.TextField(null=True, blank=True, verbose_name="소개")
+    profile_link = models.URLField(max_length=200, null=True, blank=True, verbose_name="프로필 링크")
+    coffee_life = models.JSONField(default=default_coffee_life, verbose_name="커피 생활")
+    preferred_bean_taste = models.JSONField(default=default_taste, verbose_name="선호하는 원두 맛")
+    is_certificated = models.BooleanField(default=False, verbose_name="인증 여부")
+
+    def get_coffee_life_helper(self):
+        return CoffeeLifeHelper(self.coffee_life)
+
+    def get_preferred_bean_taste_helper(self):
+        return PreferredBeanTasteHelper(self.preferred_bean_taste)
+
+    def __str__(self):
+        return f"{self.user.nickname}의 상세정보"
+
+    class Meta:
+        db_table = "user_detail"
+        verbose_name = "사용자 상세 정보"
+        verbose_name_plural = "사용자 상세 정보"
+
 
 class Relationship(models.Model):
 

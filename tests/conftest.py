@@ -1,10 +1,10 @@
-import random
-
 import pytest
+import random
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from repo.beans.models import Bean, BeanTasteReview
-from repo.profiles.models import CustomUser, Relationship
+from repo.profiles.models import CustomUser, Relationship, UserDetail
 from repo.records.models import Post, TastedRecord, Comment, Note
 
 
@@ -130,6 +130,7 @@ def multiple_posts(user, multiple_tasted_records):
             tag=f"Test Tag {i}",
             tasted_record=tr_data,
             view_cnt=random.randint(0, 100),
+            created_at=timezone.now() - timezone.timedelta(days=1)
         )
         posts.append(post_data)
     return posts
@@ -161,3 +162,20 @@ def post_note(user, post):
 def tasted_record_note(user, tasted_record):
     note = Note.objects.create(author=user, tasted_record=tasted_record)
     return note
+
+@pytest.fixture
+def multiple_users_with_coffee_life():
+    users = []
+    for i in range(10):
+        user = CustomUser.objects.create(
+            nickname=f"testuser{i}",
+            login_type="naver",
+            email=f"user{i}@example.com",
+            profile_image="http://example.com/profile.jpg"
+        )
+        UserDetail.objects.create(
+            user=user,
+            coffee_life={"cafe_tour": bool(i % 2), "coffee_extraction": bool((i + 1) % 2), "coffee_study": bool(i % 3 == 0)}
+        )
+        users.append(user)
+    return users

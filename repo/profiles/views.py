@@ -1,4 +1,5 @@
 import requests
+import random
 
 from django.conf import settings
 from django.http import JsonResponse
@@ -12,8 +13,8 @@ from dj_rest_auth.registration.views import SocialLoginView
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from repo.profiles.serializers import UserRegisterSerializer
-from repo.profiles.models import CustomUser, Relationship
+from repo.profiles.serializers import UserRegisterSerializer, BudyRecommendSerializer
+from repo.profiles.models import CustomUser, Relationship, UserDetail
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -38,6 +39,7 @@ class KakaoCallbackView(APIView):
 
     담당자: blakej2432
     """
+
     def get(self, request):
         kakao_access_token = request.data.get("access_token")
 
@@ -50,15 +52,15 @@ class KakaoCallbackView(APIView):
         # profile_data = profile_request.json()
         # kakao_oid = profile_data.get("id")
 
-        data = {"access_token": kakao_access_token} 
+        data = {"access_token": kakao_access_token}
         accept = requests.post(f"{BASE_BACKEND_URL}/profiles/kakao/login/finish/", data=data)
-        
+
         accept_status = accept.status_code
         accept_json = accept.json()
 
         if accept_status != 200:
             return JsonResponse({"err_msg": "failed to signin"}, status=accept_status)
-        
+
         return JsonResponse(accept_json)
 
 
@@ -97,15 +99,15 @@ class RegistrationView(APIView):
     """
     사용자 회원가입을 처리하는 API
     """
+
     def get(self, request):
         # user = request.user
         # serializer = UserRegisterSerializer(user)
 
         # return Response(serializer.data)
         return Response('회원가입 완료')
-    
-    def patch(self, request):
 
+    def patch(self, request):
         user = request.user  # 현재 로그인한 사용자
         serializer = UserRegisterSerializer(user, data=request.data, partial=True)
 
@@ -114,7 +116,7 @@ class RegistrationView(APIView):
             serializer.save(is_active=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
 
 # TODO: Profile - User 정보 수정 관련 구현
 # class UpdateUserInfoView(generics.UpdateAPIView):
@@ -134,7 +136,7 @@ class RegistrationView(APIView):
 #         self.perform_update(serializer)
 
 #         return Response(serializer.data)
-    
+
 
 # class GetUserInfoView(generics.RetrieveAPIView):
 #     queryset = CustomUser.objects.all()
@@ -185,3 +187,55 @@ class FollowAPIView(APIView):
         if not deleted:
             return Response({"error": "not following"}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"success": "delete follow success"}, status=status.HTTP_200_OK)
+
+
+class BudyRecommendAPIView(APIView):
+    """
+    유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환
+    Args:
+        request: 클라이언트로부터 받은 요청 객체
+    Returns:
+        users:
+            user: 유저의 커피 생활 방식에 해당 하는 유저 리스트 반환 (10명)
+            follower_cnt: 유저의 팔로워 수
+        category: 커피 생활 방식
+        실패 시: HTTP 404 Not Found
+
+    담당자: hwtar1204
+    """
+
+    def get(self, request):
+        user = request.user
+
+        user_detail = get_object_or_404(UserDetail, user=user)
+        coffee_life_helper = user_detail.get_coffee_life_helper()
+        true_categories = coffee_life_helper.get_true_categories()
+
+        if not true_categories:
+            # 커피 생활을 선택하지 않은 경우 무작위 카테고리에 해당 하는 유저 리스트 반환
+            random_category = random.choice(UserDetail.COFFEE_LIFE_CHOICES)
+            user_list = CustomUser.objects.select_related(
+                "user_detail"
+            ).filter(
+                user_detail__coffee_life__contains={random_category: True}
+            ).order_by("?")[:10]
+        else:
+            random_true_category = random.choice(true_categories)
+            user_list = CustomUser.objects.select_related(
+                "user_detail"
+            ).filter(
+                user_detail__coffee_life__contains={random_true_category: True}
+            ).order_by("?")[:10]
+
+        recommend_user_list = []
+        for user in user_list:
+            recommend_user_list.append({
+                "user": user,
+                "follower_cnt": Relationship.custom_objects.followers(user).count()
+            })
+
+        serializer = BudyRecommendSerializer(recommend_user_list, many=True)
+        category = random_true_category if true_categories else random_category
+        response_data = {"users": serializer.data, "category": category}
+
+        return Response(response_data, status=status.HTTP_200_OK)

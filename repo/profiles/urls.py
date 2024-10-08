@@ -10,5 +10,6 @@ urlpatterns = [
     
     path('user/complete-registration/', views.RegistrationView.as_view(), name='complete_registration'),
     path('follow/', views.FollowAPIView.as_view(), name='follow'),
+    path('recommend/', views.BudyRecommendAPIView.as_view(), name='budy-recommend'),
 
 ]
