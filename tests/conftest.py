@@ -1,10 +1,9 @@
-import random
-
 import pytest
+import random
 from rest_framework.test import APIClient
 
 from repo.beans.models import Bean, BeanTasteReview
-from repo.profiles.models import CustomUser, Relationship
+from repo.profiles.models import CustomUser, Relationship, UserDetail
 from repo.records.models import Post, TastedRecord, Comment, Note
 
 
@@ -161,3 +160,20 @@ def post_note(user, post):
 def tasted_record_note(user, tasted_record):
     note = Note.objects.create(author=user, tasted_record=tasted_record)
     return note
+
+@pytest.fixture
+def multiple_users_with_coffee_life():
+    users = []
+    for i in range(10):
+        user = CustomUser.objects.create(
+            nickname=f"testuser{i}",
+            login_type="naver",
+            email=f"user{i}@example.com",
+            profile_image="http://example.com/profile.jpg"
+        )
+        UserDetail.objects.create(
+            user=user,
+            coffee_life={"cafe_tour": bool(i % 2), "coffee_extraction": bool((i + 1) % 2), "coffee_study": bool(i % 3 == 0)}
+        )
+        users.append(user)
+    return users
