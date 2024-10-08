@@ -39,6 +39,7 @@ class KakaoCallbackView(APIView):
 
     담당자: blakej2432
     """
+
     def get(self, request):
         kakao_access_token = request.data.get("access_token")
 
@@ -51,15 +52,15 @@ class KakaoCallbackView(APIView):
         # profile_data = profile_request.json()
         # kakao_oid = profile_data.get("id")
 
-        data = {"access_token": kakao_access_token} 
+        data = {"access_token": kakao_access_token}
         accept = requests.post(f"{BASE_BACKEND_URL}/profiles/kakao/login/finish/", data=data)
-        
+
         accept_status = accept.status_code
         accept_json = accept.json()
 
         if accept_status != 200:
             return JsonResponse({"err_msg": "failed to signin"}, status=accept_status)
-        
+
         return JsonResponse(accept_json)
 
 
@@ -98,15 +99,15 @@ class RegistrationView(APIView):
     """
     사용자 회원가입을 처리하는 API
     """
+
     def get(self, request):
         # user = request.user
         # serializer = UserRegisterSerializer(user)
 
         # return Response(serializer.data)
         return Response('회원가입 완료')
-    
-    def patch(self, request):
 
+    def patch(self, request):
         user = request.user  # 현재 로그인한 사용자
         serializer = UserRegisterSerializer(user, data=request.data, partial=True)
 
@@ -115,7 +116,7 @@ class RegistrationView(APIView):
             serializer.save(is_active=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
 
 # TODO: Profile - User 정보 수정 관련 구현
 # class UpdateUserInfoView(generics.UpdateAPIView):
@@ -135,7 +136,7 @@ class RegistrationView(APIView):
 #         self.perform_update(serializer)
 
 #         return Response(serializer.data)
-    
+
 
 # class GetUserInfoView(generics.RetrieveAPIView):
 #     queryset = CustomUser.objects.all()

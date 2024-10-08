@@ -1,5 +1,6 @@
 import pytest
 import random
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from repo.beans.models import Bean, BeanTasteReview
@@ -129,6 +130,7 @@ def multiple_posts(user, multiple_tasted_records):
             tag=f"Test Tag {i}",
             tasted_record=tr_data,
             view_cnt=random.randint(0, 100),
+            created_at=timezone.now() - timezone.timedelta(days=1)
         )
         posts.append(post_data)
     return posts

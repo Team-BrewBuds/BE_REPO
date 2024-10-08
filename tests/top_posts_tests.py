@@ -10,7 +10,7 @@ from repo.records.models import Post
 def test_get_top_posts_all(api_client, multiple_posts):
     url = reverse("post-top")
     data = {
-        "subject": "invalid",
+        "subject": "전체",
     }
     response = api_client.get(url, data, format="json")
     print(json.dumps(response.data, indent=4))
