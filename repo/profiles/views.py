@@ -49,11 +49,11 @@ class KakaoCallbackView(APIView):
         )
 
         # TODO: 회원가입 구현 시 수정
-        # profile_data = profile_request.json()
-        # kakao_oid = profile_data.get("id")
+        profile_data = profile_request.json()
+        kakao_oid = profile_data.get("id")
 
-        data = {"access_token": kakao_access_token}
-        accept = requests.post(f"{BASE_BACKEND_URL}/profiles/kakao/login/finish/", data=data)
+        data = {"access_token": kakao_access_token, "kakao_oid": kakao_oid}
+        accept = requests.post(f"{BASE_BACKEND_URL}/profiles/login/kakao/finish/", data=data)
 
         accept_status = accept.status_code
         accept_json = accept.json()
@@ -63,6 +63,41 @@ class KakaoCallbackView(APIView):
 
         return JsonResponse(accept_json)
 
+
+class NaverCallbackView(APIView):
+    """
+    Naver 로그인 후 사용자 정보를 처리하는 콜백 API
+    Args:
+        request: 클라이언트로부터 받은 요청 객체, access_token을 포함함.
+    Returns:
+        JSON 응답: 네이버 로그인 인증 결과 및 사용자 정보.
+        성공 시: 네이버 OAuth2를 통해 받아온 프로필 정보를 백엔드에 전달하고 처리된 결과 반환.
+        실패 시: 로그인 실패 메시지와 HTTP 상태 코드.
+
+    담당자: blakej2432
+    """
+
+    def get(self, request):
+        naver_access_token = request.data.get("access_token")
+
+        # 네이버 사용자 정보 API 호출
+        profile_request = requests.get(
+            "https://openapi.naver.com/v1/nid/me",
+            headers={"Authorization": f"Bearer {naver_access_token}"},
+        )
+
+        # NaverLogin View에 POST 요청
+        data = {"access_token": naver_access_token}
+        accept = requests.post(f"{BASE_BACKEND_URL}/profiles/login/naver/finish/", data=data)
+
+        accept_status = accept.status_code
+        accept_json = accept.json()
+
+        if accept_status != 200:
+            return JsonResponse({"err_msg": "failed to signin"}, status=accept_status)
+
+        return JsonResponse(accept_json)
+    
 
 class KakaoLoginView(SocialLoginView):
     """
@@ -77,15 +112,15 @@ class KakaoLoginView(SocialLoginView):
     adapter_class = kakao_view.KakaoOAuth2Adapter
     client_class = OAuth2Client
     callback_url = KAKAO_REDIRECT_URI
-
+    
 
 class NaverLoginView(SocialLoginView):
     """
-    naver 소셜 로그인 후 장고 CustomUserModel에서 등록/확인 위한 API
+    Naver 소셜 로그인 후 사용자 정보를 CustomUserModel에 저장하는 API
     Args:
         request: 클라이언트의 로그인 요청.
     Returns:
-        JSON 응답: naver OAuth2 인증 후 사용자 로그인 결과(jwt 토큰 반환).
+        JSON 응답: Naver OAuth2 인증 후 사용자 로그인 결과(JWT 토큰 반환).
 
     담당자: blakej2432
     """
