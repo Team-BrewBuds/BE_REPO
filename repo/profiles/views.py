@@ -50,9 +50,7 @@ class KakaoCallbackView(APIView):
 
         # TODO: 회원가입 구현 시 수정
         profile_data = profile_request.json()
-        print(f'profile_data: {profile_data}')
         kakao_oid = profile_data.get("id")
-        print(f'kakao_oid: {kakao_oid}')
 
         data = {"access_token": kakao_access_token, "kakao_oid": kakao_oid}
         accept = requests.post(f"{BASE_BACKEND_URL}/profiles/login/kakao/finish/", data=data)
