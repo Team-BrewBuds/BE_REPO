@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.kakao',
+    'allauth.socialaccount.providers.naver',
 
     # swagger
     'drf_spectacular',
@@ -153,6 +154,13 @@ SOCIALACCOUNT_PROVIDERS = {
         'APP': {
             'client_id': KAKAO_REST_API_KEY,
             'secret': KAKAO_CLIENT_SECRET,
+            'key': '',
+        }
+    },
+    'naver': {
+        'APP': {
+            'client_id': NAVER_CLIENT_ID,
+            'secret': NAVER_CLIENT_SECRET,
             'key': '',
         }
     }
