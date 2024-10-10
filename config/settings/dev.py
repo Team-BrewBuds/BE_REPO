@@ -1,10 +1,10 @@
 import pymysql
+
 from ._base import *
 
-
 DEBUG = True
-ALLOWED_HOSTS = ['*']  # 모든 호스트 허용
-WSGI_APPLICATION = 'config.wsgi.dev.application'  # 수정
+ALLOWED_HOSTS = ["*"]  # 모든 호스트 허용
+WSGI_APPLICATION = "config.wsgi.dev.application"  # 수정
 INSTALLED_APPS += []
 
 pymysql.install_as_MySQLdb()

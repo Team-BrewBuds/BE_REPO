@@ -1,15 +1,15 @@
 import os
-import environ
 from datetime import timedelta
 from pathlib import Path
 
+import environ
 import pymysql
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env()
-env.read_env(os.path.join(BASE_DIR, '.env'))
+env.read_env(os.path.join(BASE_DIR, ".env"))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env.str("SECRET_KEY", "test")
@@ -42,20 +42,18 @@ LOCAL_APPS = [
 ]
 
 THIRD_PARTY_APPS = [
-    'corsheaders',
-    'rest_framework',
-    'rest_framework.authtoken',
-
+    "corsheaders",
+    "rest_framework",
+    "rest_framework.authtoken",
     # allauth
-    'django.contrib.sites',
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.kakao',
-    'allauth.socialaccount.providers.naver',
-
+    "django.contrib.sites",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.kakao",
+    "allauth.socialaccount.providers.naver",
     # swagger
-    'drf_spectacular',
+    "drf_spectacular",
 ]
 
 INSTALLED_APPS = [
@@ -70,25 +68,22 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # allauth
-    'allauth.account.middleware.AccountMiddleware',
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 # jwt 권한 인증 관련
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 5,
@@ -120,8 +115,8 @@ APPLE_REDIRECT_URI = env.str("APPLE_REDIRECT_URI")
 
 
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
 # JWT 발급 관련
@@ -163,24 +158,24 @@ SITE_ID = 1
 
 # Kakao 관련 설정
 SOCIALACCOUNT_PROVIDERS = {
-    'kakao': {
-        'APP': {
-            'client_id': KAKAO_REST_API_KEY,
-            'secret': KAKAO_CLIENT_SECRET,
-            'key': '',
+    "kakao": {
+        "APP": {
+            "client_id": KAKAO_REST_API_KEY,
+            "secret": KAKAO_CLIENT_SECRET,
+            "key": "",
         }
     },
-    'naver': {
-        'APP': {
-            'client_id': NAVER_CLIENT_ID,
-            'secret': NAVER_CLIENT_SECRET,
-            'key': '',
+    "naver": {
+        "APP": {
+            "client_id": NAVER_CLIENT_ID,
+            "secret": NAVER_CLIENT_SECRET,
+            "key": "",
         }
-    }
+    },
 }
 
-LOGIN_REDIRECT_URL = '/'
-ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = "/"
+ACCOUNT_LOGOUT_REDIRECT_URL = "/"
 
 # drf-spectacular
 SPECTACULAR_SETTINGS = {
@@ -199,7 +194,7 @@ CORS_ORIGIN_WHITELIST = env.list("DJANGO_CORS_ORIGIN_WHITELIST", default=[BASE_F
 CSRF_TRUSTED_ORIGINS = [BASE_FRONTEND_URL]
 
 
-ROOT_URLCONF = 'config.urls'
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {

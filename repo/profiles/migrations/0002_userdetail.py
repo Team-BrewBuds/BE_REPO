@@ -8,25 +8,46 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('profiles', '0001_initial'),
+        ("profiles", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='UserDetail',
+            name="UserDetail",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('introduction', models.TextField(blank=True, null=True, verbose_name='소개')),
-                ('profile_link', models.URLField(blank=True, null=True, verbose_name='프로필 링크')),
-                ('coffee_life', models.JSONField(default={' coffee_extraction': False, 'cafe_alba': False, 'cafe_operation': False, 'cafe_tour': False, 'cafe_work': False, 'coffee_study': False}, verbose_name='커피 생활')),
-                ('preferred_bean_taste', models.JSONField(default={'acidity': 3, 'bitterness': 3, 'body': 3, 'sweetness': 3}, verbose_name='선호하는 원두 맛')),
-                ('is_certificated', models.BooleanField(default=False, verbose_name='인증 여부')),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='user_detail', to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("introduction", models.TextField(blank=True, null=True, verbose_name="소개")),
+                ("profile_link", models.URLField(blank=True, null=True, verbose_name="프로필 링크")),
+                (
+                    "coffee_life",
+                    models.JSONField(
+                        default={
+                            " coffee_extraction": False,
+                            "cafe_alba": False,
+                            "cafe_operation": False,
+                            "cafe_tour": False,
+                            "cafe_work": False,
+                            "coffee_study": False,
+                        },
+                        verbose_name="커피 생활",
+                    ),
+                ),
+                (
+                    "preferred_bean_taste",
+                    models.JSONField(default={"acidity": 3, "bitterness": 3, "body": 3, "sweetness": 3}, verbose_name="선호하는 원두 맛"),
+                ),
+                ("is_certificated", models.BooleanField(default=False, verbose_name="인증 여부")),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="user_detail", to=settings.AUTH_USER_MODEL
+                    ),
+                ),
             ],
             options={
-                'verbose_name': '사용자 상세 정보',
-                'verbose_name_plural': '사용자 상세 정보',
-                'db_table': 'user_detail',
+                "verbose_name": "사용자 상세 정보",
+                "verbose_name_plural": "사용자 상세 정보",
+                "db_table": "user_detail",
             },
         ),
     ]

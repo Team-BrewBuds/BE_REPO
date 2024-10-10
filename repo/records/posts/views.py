@@ -2,12 +2,13 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from repo.common.utils import create, delete, get_object, update
+from repo.common.view_counter import update_view_count
+from repo.records.models import Post
 from repo.records.posts.serializers import *
 from repo.records.serializers import PageNumberSerializer
-from repo.records.services import get_post_feed2, get_post_detail
-from repo.records.models import Post
-from repo.common.utils import get_object, create, update, delete
-from repo.common.view_counter import update_view_count
+from repo.records.services import get_post_detail, get_post_feed2
+
 
 class PostFeedAPIView(APIView):
     """
@@ -35,7 +36,7 @@ class PostFeedAPIView(APIView):
 class PostDetailApiView(APIView):
     """
     게시글 상세정보 조회, 생성, 수정, 삭제 API
-    Args: 
+    Args:
         pk
     Returns:
         게시글: 제목, 내용, 주제, 조회수, 좋아요 수, 작성일, 선택(사진 or 시음기록)
@@ -48,7 +49,7 @@ class PostDetailApiView(APIView):
         _, response = get_object(pk, Post)
         if response:
             return response
-        
+
         post = get_post_detail(pk)
 
         instance, response = update_view_count(request, post, Response(), "post_viewed")
@@ -63,12 +64,13 @@ class PostDetailApiView(APIView):
 
     def put(self, request, pk):
         return update(request, pk, Post, PostDetailSerializer, False)
-    
+
     def patch(self, request, pk):
         return update(request, pk, Post, PostDetailSerializer, True)
-    
+
     def delete(self, request, pk):
         return delete(request, pk, Post)
+
 
 class TopSubjectPostsAPIView(APIView):
     """
@@ -81,16 +83,17 @@ class TopSubjectPostsAPIView(APIView):
 
     담당자 : hwstar1204
     """
+
     POST_CNT = 10
 
     def get(self, request):
-        subject = request.GET.get('subject')
+        subject = request.GET.get("subject")
 
         if subject not in [choice[0] for choice in Post.SUBJECT_TYPE_CHOICES]:
-            subject = '전체'
+            subject = "전체"
         subject_mapping = dict(Post.SUBJECT_TYPE_CHOICES)
 
-        subject_value = subject_mapping.get(subject, 'all')
+        subject_value = subject_mapping.get(subject, "all")
 
         # TODO 캐시 적용
         posts = Post.objects.get_top_subject_weekly_posts(subject_value, self.POST_CNT)
