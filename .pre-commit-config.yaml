@@ -12,7 +12,11 @@ repos:
     hooks:
     - id: black
       args: ['-l', '140', '-t', 'py312']
-      exclude: '*/migrations/*'
+      exclude: |
+          (?x)(
+              ^migrations/|
+              ^tests/
+          )
 
   - repo: https://github.com/myint/autoflake
     rev: v1.4
@@ -29,7 +33,11 @@ repos:
     hooks:
       - id: isort
         args: ['--profile', 'black', '--filter-files', 'true']
-        exclude: "*/migrations/*|config/*"
+        exclude: |
+          (?x)(
+              ^migrations/|
+              ^tests/
+          )
 
 default_language_version:
   python: python3.12
