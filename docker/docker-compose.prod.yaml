@@ -4,7 +4,7 @@ services: # 컨테이너 설정
   web: # 컨테이너1 : web
     container_name: web
     build:
-      context: ./
+      context: ../
       dockerfile: ./docker/prod.Dockerfile # 배포용인 Dockerfile.prod
     command: gunicorn config.wsgi.prod:application --bind 0.0.0.0:8000 # 배포에서는 gunicorn으로 웹서버(nginx) -> 장고 연결
     environment:
