@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
+    'storages',
 
     # allauth
     'django.contrib.sites',
@@ -81,6 +82,38 @@ NAVER_CLIENT_ID = env.str("NAVER_CLIENT_ID")
 NAVER_CLIENT_SECRET = env.str("NAVER_CLIENT_SECRET")
 NAVER_REDIRECT_URI = env.str("NAVER_REDIRECT_URI")
 
+
+if DEBUG:
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    MEDIA_URL = "/media/"
+    # FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024  # 5MB
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+
+else:
+    AWS_STORAGE_BUCKET_NAME = env.str("AWS_STORAGE_BUCKET_NAME", default="")
+    AWS_S3_ACCESS_KEY_ID = env.str("AWS_S3_ACCESS_KEY_ID", default="")
+    AWS_S3_SECRET_ACCESS_KEY = env.str("AWS_S3_SECRET_ACCESS_KEY", default="")
+    AWS_S3_REGION_NAME = env.str("AWS_S3_REGION_NAME", default="ap-northeast-2")
+    AWS_S3_CUSTOM_DOMAIN = '%s.s3.%s.amazonaws.com' % (AWS_STORAGE_BUCKET_NAME, AWS_S3_REGION_NAME)
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+    AWS_DEFAULT_ACL = 'public-read'
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "repo.common.bucket.AwsMediaStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "repo.common.bucket.AwsStaticStorage",
+        },
+    }
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
