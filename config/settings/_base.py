@@ -3,31 +3,45 @@ import environ
 from datetime import timedelta
 from pathlib import Path
 
+import pymysql
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env()
-ENV_MODE = env.str("ENV_MODE", default="local")
-env_file = f".env.{ENV_MODE}"
-env.read_env(os.path.join(BASE_DIR, env_file))
+env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env.str("SECRET_KEY", "test")
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.bool("DEBUG")
-
+#
+# # SECURITY WARNING: don't run with debug turned on in production!
+# DEBUG = env.bool("DEBUG")
+#
 ALLOWED_HOSTS = ["*"]
 
-INSTALLED_APPS = [
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
-    
-    # third-party-apps
+# Database
+if os.environ.get("GITHUB_WORKFLOW"):
+    pymysql.install_as_MySQLdb()
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": "github_actions",
+            "USER": "root",
+            "PASSWORD": "password",
+            "HOST": "mysql",
+            "PORT": "3306",
+        }
+    }
+
+LOCAL_APPS = [
+    "repo.profiles",
+    "repo.beans",
+    "repo.records",
+    "repo.search",
+    "repo.recommendation",
+]
+
+THIRD_PARTY_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
@@ -42,14 +56,31 @@ INSTALLED_APPS = [
 
     # swagger
     'drf_spectacular',
-    
-    # local apps
-    "repo.profiles",
-    "repo.beans",
-    "repo.records",
-    "repo.search",
-    "repo.recommendation",
+]
 
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    *THIRD_PARTY_APPS,
+    *LOCAL_APPS,
+]
+
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    # allauth
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 # jwt 권한 인증 관련
@@ -81,29 +112,6 @@ KAKAO_REDIRECT_URI = env.str("KAKAO_REDIRECT_URI")
 NAVER_CLIENT_ID = env.str("NAVER_CLIENT_ID")
 NAVER_CLIENT_SECRET = env.str("NAVER_CLIENT_SECRET")
 NAVER_REDIRECT_URI = env.str("NAVER_REDIRECT_URI")
-
-
-MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
-    # allauth
-    'allauth.account.middleware.AccountMiddleware',
-]
-
-# CORS settings
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False
-BASE_BACKEND_URL = env.str("DJANGO_BASE_BACKEND_URL", default="http://localhost:8000")
-BASE_FRONTEND_URL = env.str("DJANGO_BASE_FRONTEND_URL", default="http://localhost:3000")
-CORS_ORIGIN_WHITELIST = env.list("DJANGO_CORS_ORIGIN_WHITELIST", default=[BASE_FRONTEND_URL])
-CSRF_TRUSTED_ORIGINS = [BASE_FRONTEND_URL]
 
 
 AUTHENTICATION_BACKENDS = [
@@ -166,16 +174,25 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-LOGIN_REDIRECT_URL = '/' 
+LOGIN_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 
 # drf-spectacular
 SPECTACULAR_SETTINGS = {
-    "TITLE": "my API",
-    "DESCRIPTION": "my API",
+    "TITLE": "brewbuds API",
+    "DESCRIPTION": "developing API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
+
+# CORS settings
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False
+BASE_BACKEND_URL = env.str("DJANGO_BASE_BACKEND_URL", default="http://localhost:8000")
+BASE_FRONTEND_URL = env.str("DJANGO_BASE_FRONTEND_URL", default="http://localhost:3000")
+CORS_ORIGIN_WHITELIST = env.list("DJANGO_CORS_ORIGIN_WHITELIST", default=[BASE_FRONTEND_URL])
+CSRF_TRUSTED_ORIGINS = [BASE_FRONTEND_URL]
+
 
 ROOT_URLCONF = 'config.urls'
 
@@ -195,34 +212,6 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "config.wsgi.application"
-
-
-# Database
-if DEBUG:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.mysql",
-            "NAME": env.str("LOCAL_MYSQL_DATABASE", "brewbuds"),
-            "USER": env.str("LOCAL_MYSQL_USER", "root"),
-            "PASSWORD": env.str("LOCAL_MYSQL_PASSWORD", "password"),
-            "HOST": env.str("LOCAL_MYSQL_HOST", "localhost"),
-            "PORT": env.int("LOCAL_MYSQL_PORT", 3306),
-        }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.mysql",
-            "NAME": env.str("DEV_MYSQL_DATABASE"),
-            "USER": env.str("DEV_MYSQL_USER"),
-            "PASSWORD": env.str("DEV_MYSQL_PASSWORD"),
-            "HOST": env.str("DEV_MYSQL_HOST"),
-            "PORT": env.int("DEV_MYSQL_PORT"),
-        }
-    }
-
-
 # Password validation
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -240,9 +229,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# WSGI_APPLICATION = 'config.wsgi.application'  # 수정
 
-# Internationalization
-# https://docs.djangoproject.com/en/4.2/topics/i18n/
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Seoul"
@@ -250,12 +238,6 @@ USE_I18N = True
 USE_TZ = False
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.2/howto/static-files/
-
 STATIC_URL = "static/"
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
