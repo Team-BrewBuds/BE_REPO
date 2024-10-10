@@ -18,10 +18,10 @@ def test_follow_feed(api_client, following_user, multiple_posts, multiple_tasted
     serialized_posts = FeedSerializer(multiple_posts + multiple_tasted_records, many=True).data
     # print(json.dumps(response.data, indent=4))
 
-    response_data = sorted(response.data['records'], key=lambda x: x['created_at']) 
+    response_data = sorted(response.data['records'], key=lambda x: x['created_at'])
     serializers_data = sorted(serialized_posts, key=lambda x: x['created_at'])
     assert response_data == serializers_data
-    
+
 @pytest.mark.django_db
 def test_refresh_feed(api_client, following_user, multiple_posts, multiple_tasted_records):
     api_client.force_authenticate(user=following_user)
@@ -35,7 +35,7 @@ def test_refresh_feed(api_client, following_user, multiple_posts, multiple_taste
     serialized_posts = FeedSerializer(multiple_posts + multiple_tasted_records, many=True).data
     # print(json.dumps(response.data, indent=4))
 
-    response_data = sorted(response.data['records'], key=lambda x: x['created_at']) 
+    response_data = sorted(response.data['records'], key=lambda x: x['created_at'])
     serializers_data = sorted(serialized_posts, key=lambda x: x['created_at'])
     assert response_data == serializers_data
 
@@ -46,7 +46,7 @@ def test_refresh_feed(api_client, following_user, multiple_posts, multiple_taste
 
     serialized_posts = FeedSerializer(multiple_posts + multiple_tasted_records, many=True).data
 
-    response_data = sorted(response.data['records'], key=lambda x: x['created_at']) 
+    response_data = sorted(response.data['records'], key=lambda x: x['created_at'])
     serializers_data = sorted(serialized_posts, key=lambda x: x['created_at'])
     assert response_data == serializers_data
 

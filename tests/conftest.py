@@ -55,7 +55,7 @@ def bean():
         bev_type=True,
         roastery="Test Roastery",
         variety="Heirloom",
-    )   
+    )
 
 
 @pytest.fixture

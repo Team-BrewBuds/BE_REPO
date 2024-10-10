@@ -6,13 +6,26 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('records', '0001_initial'),
+        ("records", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='post',
-            name='subject',
-            field=models.CharField(choices=[('전체', 'all'), ('일반', 'normal'), ('카페', 'cafe'), ('원두', 'bean'), ('정보', 'info'), ('장비', 'gear'), ('질문', 'question'), ('고민', 'worry')], max_length=100, verbose_name='주제'),
+            model_name="post",
+            name="subject",
+            field=models.CharField(
+                choices=[
+                    ("전체", "all"),
+                    ("일반", "normal"),
+                    ("카페", "cafe"),
+                    ("원두", "bean"),
+                    ("정보", "info"),
+                    ("장비", "gear"),
+                    ("질문", "question"),
+                    ("고민", "worry"),
+                ],
+                max_length=100,
+                verbose_name="주제",
+            ),
         ),
     ]
