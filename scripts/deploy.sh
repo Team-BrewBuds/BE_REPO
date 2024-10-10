@@ -24,4 +24,4 @@ then
 fi
 
 echo "start docker-compose up: ubuntu"
-sudo docker-compose -f /home/ubuntu/srv/ubuntu/docker/docker-compose.prod.yaml up --build -d # 하이라이트 명령어
+sudo docker-compose -f /home/ubuntu/srv/ubuntu/docker-compose.prod.yaml up --build -d # 하이라이트 명령어
