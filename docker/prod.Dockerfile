@@ -56,7 +56,7 @@ COPY --from=builder /usr/src/app/poetry.lock ./poetry.lock
 RUN pip install --no-cache /wheels/*
 
 # copy entrypoint-prod.sh
-COPY ../scripts/entrypoint.prod.sh $APP_HOME
+COPY ./scripts/entrypoint.prod.sh $APP_HOME
 
 # copy project files
 COPY . $APP_HOME
