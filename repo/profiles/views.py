@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from allauth.socialaccount.providers.kakao import views as kakao_view
 from allauth.socialaccount.providers.naver import views as naver_view
+from allauth.socialaccount.providers.apple import views as apple_view
 
 from dj_rest_auth.registration.views import SocialLoginView
 
@@ -25,6 +26,10 @@ KAKAO_REDIRECT_URI = settings.KAKAO_REDIRECT_URI
 NAVER_CLIENT_ID = settings.NAVER_CLIENT_ID
 NAVER_CLIENT_SECRET = settings.NAVER_CLIENT_SECRET
 NAVER_REDIRECT_URI = settings.NAVER_REDIRECT_URI
+
+APPLE_CLIENT_ID = settings.APPLE_CLIENT_ID
+APPLE_CLIENT_SECRET = settings.APPLE_CLIENT_SECRET
+APPLE_REDIRECT_URI = settings.APPLE_REDIRECT_URI
 
 
 class KakaoCallbackView(APIView):
@@ -48,11 +53,7 @@ class KakaoCallbackView(APIView):
             headers={"Authorization": f"Bearer {kakao_access_token}"},
         )
 
-        # TODO: 회원가입 구현 시 수정
-        profile_data = profile_request.json()
-        kakao_oid = profile_data.get("id")
-
-        data = {"access_token": kakao_access_token, "kakao_oid": kakao_oid}
+        data = {"access_token": kakao_access_token}
         accept = requests.post(f"{BASE_BACKEND_URL}/profiles/login/kakao/finish/", data=data)
 
         accept_status = accept.status_code
@@ -97,6 +98,56 @@ class NaverCallbackView(APIView):
             return JsonResponse({"err_msg": "failed to signin"}, status=accept_status)
 
         return JsonResponse(accept_json)
+
+
+class AppleCallbackView(APIView):
+    """
+    Apple 로그인 후 사용자 정보를 처리하는 콜백 API
+    Args:
+        request: 클라이언트로부터 받은 요청 객체, authorization_code 포함.
+    Returns:
+        JSON 응답: Apple OAuth2를 통해 받아온 프로필 정보를 백엔드에 전달하고 처리된 결과 반환.
+        성공 시: Apple OAuth2를 통해 받은 access_token을 이용해 사용자 로그인 처리.
+        실패 시: 로그인 실패 메시지와 HTTP 상태 코드.
+
+    담당자: blakej2432
+    """
+    
+    def get(self, request):
+        authorization_code = request.data.get("code")
+
+        # Apple 서버로 access_token 요청
+        token_request = requests.post(
+            "https://appleid.apple.com/auth/token",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data={
+                "client_id": APPLE_CLIENT_ID,
+                "client_secret": APPLE_CLIENT_SECRET,
+                "code": authorization_code,
+                "grant_type": "authorization_code",
+                "redirect_uri": APPLE_REDIRECT_URI
+            },
+        )
+
+        if token_request.status_code != 200:
+            return JsonResponse({"err_msg": "failed to get access token from Apple"}, status=token_request.status_code)
+
+        token_response = token_request.json()
+        apple_access_token = token_response.get("access_token")
+
+        if not apple_access_token:
+            return JsonResponse({"err_msg": "Apple access token not found"}, status=400)
+
+        data = {"access_token": apple_access_token}
+        accept = requests.post(f"{BASE_BACKEND_URL}/profiles/login/apple/finish/", data=data)
+
+        accept_status = accept.status_code
+        accept_json = accept.json()
+
+        if accept_status != 200:
+            return JsonResponse({"err_msg": "failed to signin"}, status=accept_status)
+
+        return JsonResponse(accept_json)
     
 
 class KakaoLoginView(SocialLoginView):
@@ -125,6 +176,21 @@ class NaverLoginView(SocialLoginView):
     담당자: blakej2432
     """
     adapter_class = naver_view.NaverOAuth2Adapter
+    client_class = OAuth2Client
+    callback_url = NAVER_REDIRECT_URI
+
+
+class AppleLoginView(SocialLoginView):
+    """
+    Apple 소셜 로그인 후 사용자 정보를 CustomUserModel에 저장하는 API
+    Args:
+        request: 클라이언트의 로그인 요청.
+    Returns:
+        JSON 응답: Apple OAuth2 인증 후 사용자 로그인 결과(JWT 토큰 반환).
+
+    담당자: blakej2432
+    """
+    adapter_class = apple_view.AppleOAuth2Adapter
     client_class = OAuth2Client
     callback_url = NAVER_REDIRECT_URI
 
