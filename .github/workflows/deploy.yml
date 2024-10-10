@@ -16,12 +16,12 @@ jobs:
       uses: actions/checkout@master
 
     - name: Create env file
-      env: 
+      env:
         ENV_VARS: ${{ secrets.ENV_VARS }}
       run: |
         touch .env
         echo "$ENV_VARS" >> .env
-      
+
     - name: create remote directory
       uses: appleboy/ssh-action@master
       with:
