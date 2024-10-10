@@ -2,6 +2,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 
+from repo.common.bucket import photo_upload_to
 from repo.profiles.helpers import CoffeeLifeHelper, PreferredBeanTasteHelper
 # from profiles.managers import CustomUserManager
 from repo.profiles.managers import RelationshipManager
@@ -25,7 +26,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     birth = models.DateField(null=True, blank=True)
     email = models.EmailField(unique=True, null=True, blank=True)
     login_type = models.CharField(max_length=50, null=True, blank=True, choices=login_type_choices,)
-    profile_image = models.CharField(max_length=255, null=True, blank=True)
+    profile_image = models.ImageField(null=True, blank=True, upload_to=photo_upload_to)
     
     
     social_id = models.BigIntegerField(

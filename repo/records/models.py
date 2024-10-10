@@ -1,4 +1,6 @@
 from django.db import models
+
+from repo.common.bucket import photo_upload_to
 from repo.profiles.models import CustomUser
 from repo.beans.models import Bean, BeanTasteReview
 from repo.records.managers import NoteManagers, PostManagers
@@ -73,7 +75,7 @@ class Post(models.Model):
 class Photo(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 게시글")
     tasted_record = models.ForeignKey(TastedRecord, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 시음 기록")
-    photo_url = models.URLField(max_length=500, verbose_name="사진 URL")
+    photo_url = models.ImageField(upload_to=photo_upload_to, null=True, blank=True, verbose_name="사진")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="업로드 일자")
 
     def __str__(self):
