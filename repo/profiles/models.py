@@ -73,21 +73,28 @@ class UserDetail(models.Model):
         "cafe_work", "cafe_operation"
     ]
 
-    default_coffee_life = dict({
-        COFFEE_LIFE_CHOICES[0]: False,
-        COFFEE_LIFE_CHOICES[1]: False,
-        COFFEE_LIFE_CHOICES[2]: False,
-        COFFEE_LIFE_CHOICES[3]: False,
-        COFFEE_LIFE_CHOICES[4]: False,
-        COFFEE_LIFE_CHOICES[5]: False,
-    })
+    taste_choices = [
+        "body", "acidity",
+        "bitterness", "sweetness"
+    ]
 
-    default_taste = dict({
-        "body": 3,
-        "acidity": 3,
-        "bitterness": 3,
-        "sweetness": 3,
-    })
+    def default_coffee_life(COFFEE_LIFE_CHOICES):
+        return {
+            COFFEE_LIFE_CHOICES[0]: False,
+            COFFEE_LIFE_CHOICES[1]: False,
+            COFFEE_LIFE_CHOICES[2]: False,
+            COFFEE_LIFE_CHOICES[3]: False,
+            COFFEE_LIFE_CHOICES[4]: False,
+            COFFEE_LIFE_CHOICES[5]: False,
+        }
+
+    def default_taste(taste_choices):
+        return {
+            taste_choices[0]: 3,
+            taste_choices[1]: 3,
+            taste_choices[2]: 3,
+            taste_choices[3]: 3,
+        }
 
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="user_detail")
     introduction = models.TextField(null=True, blank=True, verbose_name="소개")
