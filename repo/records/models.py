@@ -42,7 +42,7 @@ class Post(models.Model):
     )
 
     author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
-    tasted_record = models.ForeignKey(TastedRecord, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 시음 기록")
+    tasted_records = models.ManyToManyField(TastedRecord, related_name="posts", null=True, blank=True, verbose_name="관련 시음 기록")
     title = models.CharField(max_length=200, verbose_name="제목")
     content = models.TextField(verbose_name="내용")
     subject = models.CharField(max_length=100, choices=SUBJECT_TYPE_CHOICES, verbose_name="주제")

@@ -25,9 +25,9 @@ class PostManagers(models.Manager):
 
         return posts
 
-    def get_top_subject_weekly_posts(self, subject, cnt):
+    def get_top_subject_weekly_posts(self, subject):
         # 전체 주제의 게시글 중 일주일 안에 조회수 상위 10개
-        posts = self.get_subject_weekly_posts(subject).order_by("-view_cnt")[:cnt]
+        posts = self.get_subject_weekly_posts(subject).order_by("-view_cnt")
         return posts
 
 

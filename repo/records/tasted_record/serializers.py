@@ -40,3 +40,10 @@ class TastedRecordDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = TastedRecord
         fields = "__all__"
+
+class TastedRecordInPostSerializer(serializers.ModelSerializer):
+    photos = PhotoSerializer(many=True, source="photo_set")
+
+    class Meta:
+        model = TastedRecord
+        fields = ['id', 'bean', 'content', 'photos']
