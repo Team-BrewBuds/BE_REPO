@@ -1,21 +1,19 @@
-import jwt
-import requests
 import random
 
+import jwt
+import requests
+from allauth.socialaccount.providers.kakao import views as kakao_view
+from allauth.socialaccount.providers.naver import views as naver_view
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
-from allauth.socialaccount.providers.oauth2.client import OAuth2Client
-
-from allauth.socialaccount.providers.kakao import views as kakao_view
-from allauth.socialaccount.providers.naver import views as naver_view
-
-from dj_rest_auth.registration.views import SocialLoginView
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from repo.profiles.serializers import UserRegisterSerializer, BudyRecommendSerializer
+
 from repo.profiles.models import CustomUser, Relationship, UserDetail
 from repo.profiles.serializers import BudyRecommendSerializer, UserRegisterSerializer
 
@@ -124,6 +122,7 @@ class AppleCallbackView(APIView):
 
         return JsonResponse(accept_json)
 
+
 class KakaoLoginView(SocialLoginView):
     """
     Kakao 소셜 로그인 후 장고 CustomUserModel에서 등록/확인 위한 API
@@ -175,26 +174,26 @@ class AppleLoginView(APIView):
 
         try:
             decoded_token = jwt.decode(apple_id_token, options={"verify_signature": False})
-            user_email = decoded_token.get('email')
+            user_email = decoded_token.get("email")
 
-            user, created = CustomUser.objects.get_or_create(
-                email=user_email,
-                defaults={'email': user_email}
-            )
+            user, created = CustomUser.objects.get_or_create(email=user_email, defaults={"email": user_email})
 
             # JWT 토큰 발급
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
 
             # 응답 데이터 반환
-            return Response({
-                'access_token': access_token,
-                'refresh_token': str(refresh),
-                'user': {
-                    'pk': user.pk,
-                    'email': user_email,
-                }
-            }, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    "access_token": access_token,
+                    "refresh_token": str(refresh),
+                    "user": {
+                        "pk": user.pk,
+                        "email": user_email,
+                    },
+                },
+                status=status.HTTP_200_OK,
+            )
 
         except jwt.DecodeError:
             return Response({"detail": "Invalid id_token."}, status=status.HTTP_400_BAD_REQUEST)
