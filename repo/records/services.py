@@ -28,8 +28,8 @@ def get_following_feed(user, page=1):
 
     following_Post = (
         Post.objects.filter(author__in=following_users, created_at__gte=one_hour_ago)
-        .select_related("author", "tasted_record")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .select_related("author")
+        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
@@ -63,8 +63,8 @@ def get_common_feed(user, page=1, last_id=None):
 
     following_Post = (
         Post.objects.filter(created_at__gte=one_hour_ago, id__gt=last_id)
-        .select_related("author", "tasted_record")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .select_related("author")
+        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
@@ -145,8 +145,8 @@ def get_post_feed(user, page=1):
 
     followed_posts = (
         Post.objects.filter(author__in=following_users)
-        .select_related("author", "tasted_record")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .select_related("author")
+        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
@@ -186,8 +186,8 @@ def get_post_feed2(user, page=1):
 def get_post_detail(post_id):
 
     post = (
-        Post.objects.select_related("author", "tasted_record")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        Post.objects.select_related("author")
+        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .get(pk=post_id)
     )
 
