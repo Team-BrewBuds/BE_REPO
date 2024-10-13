@@ -1,17 +1,18 @@
-from itertools import chain
 from datetime import timedelta
-from django.utils import timezone
-from django.shortcuts import get_object_or_404
+from itertools import chain
+
 from django.core.paginator import Paginator
 from django.db.models import Prefetch
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
-from repo.records.models import Photo, Post, TastedRecord, Comment
 from repo.profiles.models import Relationship
-
+from repo.records.models import Comment, Photo, Post, TastedRecord
 
 # TODO
 # - user 인자를 받아서 팔로우한 사용자의 시음 기록만 가져오기(추후 이것으로 변경)
 # - 차단한 사용자의 시음 기록은 가져오지 않기
+
 
 def get_following_feed(user, page=1):
 
@@ -19,21 +20,14 @@ def get_following_feed(user, page=1):
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
     following_Tasted_Record = (
-        TastedRecord.objects.filter(
-            author__in=following_users,
-            is_private=False,
-            created_at__gte=one_hour_ago
-        )
+        TastedRecord.objects.filter(author__in=following_users, is_private=False, created_at__gte=one_hour_ago)
         .select_related("author", "bean", "taste_review")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
     following_Post = (
-        Post.objects.filter(
-            author__in=following_users,
-            created_at__gte=one_hour_ago
-            )
+        Post.objects.filter(author__in=following_users, created_at__gte=one_hour_ago)
         .select_related("author", "tasted_record")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
@@ -55,26 +49,20 @@ def get_following_feed(user, page=1):
 
     return all_records, has_next
 
+
 def get_common_feed(user, page=1, last_id=None):
 
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
     following_Tasted_Record = (
-        TastedRecord.objects.filter(
-            is_private=False,
-            created_at__gte=one_hour_ago,
-            id__gt=last_id
-        )
+        TastedRecord.objects.filter(is_private=False, created_at__gte=one_hour_ago, id__gt=last_id)
         .select_related("author", "bean", "taste_review")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
     following_Post = (
-        Post.objects.filter(
-            created_at__gte=one_hour_ago,
-            id__gt=last_id
-            )
+        Post.objects.filter(created_at__gte=one_hour_ago, id__gt=last_id)
         .select_related("author", "tasted_record")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
@@ -94,7 +82,8 @@ def get_common_feed(user, page=1, last_id=None):
 
     has_next = page_obj_Tasted_Record.has_next() or page_obj_Post.has_next()
 
-    return all_records, has_next    
+    return all_records, has_next
+
 
 def get_tasted_record_feed(user, page=1):
     following_users = user.following.all()
@@ -193,17 +182,17 @@ def get_post_feed2(user, page=1):
 
     return page_obj.object_list, page_obj.has_next()
 
+
 def get_post_detail(post_id):
 
     post = (
         Post.objects.select_related("author", "tasted_record")
-        .prefetch_related(
-            Prefetch("photo_set", queryset=Photo.objects.only("photo_url"))
-        )
+        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .get(pk=post_id)
     )
 
     return post
+
 
 def get_post_or_tasted_record_detail(object_type, object_id):
     if object_type == "post":
@@ -212,6 +201,7 @@ def get_post_or_tasted_record_detail(object_type, object_id):
         obj = get_object_or_404(TastedRecord, pk=object_id)
 
     return obj
+
 
 def get_comment_list(object_type, object_id, page):
     obj = get_post_or_tasted_record_detail(object_type, object_id)
@@ -224,6 +214,7 @@ def get_comment_list(object_type, object_id, page):
         comment.replies_list = comment.replies.all().order_by("created_at")
 
     return page_obj.object_list, page_obj.has_next()
+
 
 def get_comment(comment_id):
     comment = Comment.objects.get(pk=comment_id)

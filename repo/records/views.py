@@ -3,13 +3,22 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.records.models import Post, TastedRecord, Comment, Note
-from repo.records.serializers import PageNumberSerializer, CommentSerializer, NoteSerializer, FeedSerializer
-from repo.records.services import get_following_feed, get_common_feed
-from repo.records.services import get_comment_list, get_post_or_tasted_record_detail, get_comment
-
-from repo.common.utils import update, delete
+from repo.common.utils import delete, update
 from repo.common.view_counter import is_viewed
+from repo.records.models import Comment, Note, Post, TastedRecord
+from repo.records.serializers import (
+    CommentSerializer,
+    FeedSerializer,
+    NoteSerializer,
+    PageNumberSerializer,
+)
+from repo.records.services import (
+    get_comment,
+    get_comment_list,
+    get_common_feed,
+    get_following_feed,
+    get_post_or_tasted_record_detail,
+)
 
 
 class FollowFeedAPIView(APIView):
@@ -20,7 +29,7 @@ class FollowFeedAPIView(APIView):
     Returns:
         - status: 200
 
-    주의: 
+    주의:
         - 팔로잉하는 사용자들의 기록 우선 노출 (팔로잉 O, 조회 X) (최신순)
 
     담당자: hwstar1204
@@ -53,7 +62,7 @@ class CommonFeedAPIView(APIView):
     Returns:
         - status: 200
 
-    주의: 
+    주의:
         - 일반 사용자들의 기록 노출  (팔로잉X, 조회 X) (최신순)
 
     담당자: hwstar1204
@@ -77,6 +86,7 @@ class CommonFeedAPIView(APIView):
         post_serializer = FeedSerializer(results, many=True)
         return Response({"records": post_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
 
+
 class RefreshFeedAPIView(APIView):
     """
     홈 [전체] - 사용자가 마지막으로 본 게시물 이후 데이터 반환하는 API
@@ -88,7 +98,7 @@ class RefreshFeedAPIView(APIView):
 
     담당자: hwstar1204
     """
-    
+
     def get(self, request):
         last_id = request.GET.get("last_id")
         page_serializer = PageNumberSerializer(data=request.GET)
@@ -107,8 +117,6 @@ class RefreshFeedAPIView(APIView):
 
         post_serializer = FeedSerializer(results, many=True)
         return Response({"records": post_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
-        
-
 
 
 class LikeApiView(APIView):
@@ -126,29 +134,26 @@ class LikeApiView(APIView):
     def post(self, request):
         user = request.user
         object_type = request.data.get("object_type")
-        object_id = request.data.get("object_id") 
+        object_id = request.data.get("object_id")
 
-        model_map = {
-            "post": Post,
-            "tasted_record": TastedRecord,
-            "comment": Comment
-        }
+        model_map = {"post": Post, "tasted_record": TastedRecord, "comment": Comment}
 
         if not object_id or not object_type:
             return Response({"error": "object_id and object_type are required"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         model_class = model_map.get(object_type.lower())
         if not model_class:
             return Response({"error": "invalid object_type"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         obj = get_object_or_404(model_class, pk=object_id)
-        
+
         if user in obj.like_cnt.all():
             obj.like_cnt.remove(user)
         else:
             obj.like_cnt.add(user)
 
         return Response(status=status.HTTP_200_OK)
+
 
 class NoteApiView(APIView):
     """
@@ -177,7 +182,6 @@ class NoteApiView(APIView):
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
     def post(self, request, object_type, object_id):
         user = request.user
         note = Note.custom_objects.create_note_for_object(user, object_type, object_id)
@@ -201,7 +205,7 @@ class NoteDetailApiView(APIView):
         note = get_object_or_404(Note, pk=id)
         note_serializer = NoteSerializer(note)
         return Response(note_serializer.data, status=status.HTTP_200_OK)
-    
+
     def delete(self, request, id):
         return delete(request, id, Note)
 
@@ -229,10 +233,10 @@ class CommentApiView(APIView):
             page = page_serializer.validated_data["page"]
         else:
             return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
         comments, has_next = get_comment_list(object_type, object_id, page)
         comment_serializer = CommentSerializer(comments, many=True)
-        
+
         return Response({"comments": comment_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
 
     def post(self, request, object_type, object_id):
@@ -258,13 +262,13 @@ class CommentApiView(APIView):
         obj = get_post_or_tasted_record_detail(object_type, object_id)
 
         parent_comment = get_comment(parent) if parent else None
-        
+
         comment_data = {
             "author": user,
             "content": content,
             "parent": parent_comment,
             "post": obj if object_type == "post" else None,
-            "tasted_record": obj if object_type == "tasted_record" else None
+            "tasted_record": obj if object_type == "tasted_record" else None,
         }
 
         Comment.objects.create(**comment_data)
@@ -290,7 +294,7 @@ class CommentDetailAPIView(APIView):
 
     def put(self, request, id):
         return update(request, id, Comment, CommentSerializer, False)
-    
+
     def patch(self, request, id):
         return update(request, id, Comment, CommentSerializer, True)
 
@@ -302,6 +306,5 @@ class CommentDetailAPIView(APIView):
             comment.content = "삭제된 댓글입니다."
             comment.save()
             return Response(status=status.HTTP_200_OK)
-    
+
         return delete(request, id, Comment)
-    

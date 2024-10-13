@@ -1,6 +1,7 @@
 from django.db import models
-from repo.profiles.models import CustomUser
+
 from repo.beans.models import Bean, BeanTasteReview
+from repo.profiles.models import CustomUser
 from repo.records.managers import NoteManagers, PostManagers
 
 
@@ -14,10 +15,10 @@ class TastedRecord(models.Model):
     is_private = models.BooleanField(default=False, verbose_name="비공개 여부")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
-    
+
     def is_user_liked(self, user):
         return user in self.like_cnt.all()
-    
+
     def __str__(self):
         return f"{self.author.nickname} - {self.bean.name}"
 
@@ -84,8 +85,9 @@ class Photo(models.Model):
         verbose_name = "사진"
         verbose_name_plural = "사진"
 
+
 class Comment(models.Model):
-    parent = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name='replies', verbose_name="상위 댓글")
+    parent = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="replies", verbose_name="상위 댓글")
     author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
     post = models.ForeignKey(Post, null=True, blank=True, on_delete=models.CASCADE, verbose_name="게시글")
     tasted_record = models.ForeignKey(TastedRecord, null=True, blank=True, on_delete=models.CASCADE, verbose_name="시음 기록")
@@ -96,11 +98,12 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"삭제된 댓글 ID: {self.id}" if self.is_deleted else f"{self.author.nickname} - {self.content[:20]}"
-    
+
     class Meta:
         db_table = "comment"
         verbose_name = "댓글"
         verbose_name_plural = "댓글"
+
 
 class Note(models.Model):
     author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
@@ -114,7 +117,7 @@ class Note(models.Model):
 
     def __str__(self):
         return f"Note: {self.id}"
-    
+
     class Meta:
         db_table = "note"
         verbose_name = "노트"

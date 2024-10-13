@@ -1,9 +1,9 @@
 from rest_framework import serializers
 
 from repo.beans.serializers import BeanSerializer, BeanTasteAndReviewSerializer
+from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import TastedRecord
 from repo.records.serializers import PhotoSerializer
-from repo.profiles.serializers import UserSimpleSerializer
 
 
 class TastedRecordFeedSerializer(serializers.ModelSerializer):
@@ -22,7 +22,7 @@ class TastedRecordFeedSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TastedRecord
-        fields = "__all__" 
+        fields = "__all__"
 
 
 class TastedRecordDetailSerializer(serializers.ModelSerializer):
@@ -36,7 +36,7 @@ class TastedRecordDetailSerializer(serializers.ModelSerializer):
 
     def get_is_user_liked(self, obj):
         return obj.is_user_liked(obj.author)
-    
+
     class Meta:
         model = TastedRecord
-        fields = "__all__" 
+        fields = "__all__"

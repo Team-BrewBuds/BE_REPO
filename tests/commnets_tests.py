@@ -98,12 +98,12 @@ def test_delete_parent_comment_does_not_delete_child(api_client, user, post, pos
     api_client.force_authenticate(user=user)
     post_comment.save()
     reply_comment = Comment.objects.create(content='Reply Comment', post=post, author=user, parent=post_comment)
-    
+
     url = reverse('comment-detail', kwargs={'id': post_comment.id})
 
     response = api_client.delete(url)
     assert response.status_code == status.HTTP_200_OK
-    
+
     reply_comment.refresh_from_db()
     assert Comment.objects.filter(id=reply_comment.id).exists()
 
@@ -112,13 +112,13 @@ def test_delete_parent_comment_soft_delete(api_client, user, post, post_comment)
     api_client.force_authenticate(user=user)
     post_comment.save()
     reply_comment = Comment.objects.create(content='Reply Comment', post=post, author=user, parent=post_comment)
-    
+
     url = reverse('comment-detail', kwargs={'id': post_comment.id})
 
     response = api_client.delete(url)
     assert response.status_code == status.HTTP_200_OK
 
-    post_comment.refresh_from_db()  
+    post_comment.refresh_from_db()
     assert post_comment.is_deleted == True
     assert post_comment.content == "삭제된 댓글입니다."
 

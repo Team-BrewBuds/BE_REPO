@@ -1,13 +1,14 @@
 import json
-from django.utils import timezone
 from datetime import datetime, timedelta
 
+from django.utils import timezone
 
 COOKIE_EXP_MIN = 30
 
+
 def update_view_count(request, instance, response, cookie_name, expiration_minutes=COOKIE_EXP_MIN):
     """
-    쿠키를 기반으로 조회수를 업데이트하는 헬퍼 함수 
+    쿠키를 기반으로 조회수를 업데이트하는 헬퍼 함수
     Args:
         request: request 객체
         instance: 조회수를 업데이트할 모델 객체
@@ -19,10 +20,10 @@ def update_view_count(request, instance, response, cookie_name, expiration_minut
     담당자: hwstar1204
     """
     update_needed = is_need_update(request, cookie_name, expiration_minutes)
-    
+
     if update_needed:
         instance.view_cnt += 1
-        instance.save(update_fields=['view_cnt'])
+        instance.save(update_fields=["view_cnt"])
 
         viewed_contents = request.COOKIES.get(cookie_name)
         if viewed_contents:
@@ -38,6 +39,7 @@ def update_view_count(request, instance, response, cookie_name, expiration_minut
         response.set_cookie(cookie_name, json.dumps(viewed_contents), max_age=expiration_minutes * 60)
 
     return instance, response
+
 
 def is_need_update(request, cookie_name, expiration_minutes=COOKIE_EXP_MIN):
     """
@@ -55,17 +57,17 @@ def is_need_update(request, cookie_name, expiration_minutes=COOKIE_EXP_MIN):
     if view_token:
         last_viewed_time = datetime.strptime(view_token, "%Y-%m-%d %H:%M:%S")  # 쿠키에 저장된 시간
         time_threshold = timezone.now() - timedelta(minutes=expiration_minutes)  # 만료 시간
-        
+
         if last_viewed_time < time_threshold:  # 마지막 조회 시간이 만료 시간 이전인지 확인
             return True
-        
+
     else:
         return True  # 조회수 토큰이 없으면 조회수 업데이트 필요
 
     return False
 
 
-def is_viewed(request, cookie_name, content_id): 
+def is_viewed(request, cookie_name, content_id):
     """
     쿠키에 저장된 조회한 게시글 목록에 포함되어 있는지 확인하는 헬퍼 함수
     Args:

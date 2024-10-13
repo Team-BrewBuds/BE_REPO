@@ -2,12 +2,15 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from repo.common.utils import create, delete, get_object, update
+from repo.common.view_counter import update_view_count
+from repo.records.models import TastedRecord
 from repo.records.serializers import PageNumberSerializer
 from repo.records.services import get_tasted_record_detail, get_tasted_record_feed2
-from repo.records.tasted_record.serializers import TastedRecordDetailSerializer, TastedRecordFeedSerializer
-from repo.records.models import TastedRecord
-from repo.common.utils import get_object, create, update, delete
-from repo.common.view_counter import update_view_count
+from repo.records.tasted_record.serializers import (
+    TastedRecordDetailSerializer,
+    TastedRecordFeedSerializer,
+)
 
 
 class TastedRecordFeedView(APIView):
@@ -56,7 +59,7 @@ class TastedRecordDetailApiView(APIView):
         _, response = get_object(pk, TastedRecord)
         if response:
             return response
-        
+
         tasted_record = get_tasted_record_detail(pk)
 
         instance, response = update_view_count(request, tasted_record, Response(), "tasted_record_viewed")
@@ -68,7 +71,7 @@ class TastedRecordDetailApiView(APIView):
 
     def post(self, request):
         return create(request, TastedRecordDetailSerializer)
-    
+
     def put(self, request, pk):
         return update(request, pk, TastedRecord, TastedRecordDetailSerializer, False)
 

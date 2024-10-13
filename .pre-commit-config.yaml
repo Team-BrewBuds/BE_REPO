@@ -7,28 +7,28 @@ repos:
       - id: trailing-whitespace
       - id: check-case-conflict
       - id: check-merge-conflict
+
   - repo: https://github.com/ambv/black
     rev: 24.8.0
     hooks:
     - id: black
       args: ['-l', '140', '-t', 'py312']
-
-  - repo: https://github.com/myint/autoflake
-    rev: v1.4
-    hooks:
-      - id: autoflake
-        args:
-          - --remove-all-unused-imports
-          - --remove-unused-variables
-          - --ignore-init-module-imports
-          - --in-place
-          - --recursive
+      exclude: |
+          (?x)(
+              ^migrations/|
+              ^tests/
+          )
 
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
       - id: isort
         args: ['--profile', 'black', '--filter-files', 'true']
+        exclude: |
+          (?x)(
+              ^migrations/|
+              ^tests/
+          )
 
 default_language_version:
   python: python3.12

@@ -1,8 +1,9 @@
 import importlib
+
 from rest_framework import serializers
 
-from repo.records.models import Post, TastedRecord, Photo, Comment, Note
 from repo.profiles.serializers import UserSimpleSerializer
+from repo.records.models import Comment, Note, Photo, Post, TastedRecord
 
 
 class PhotoSerializer(serializers.ModelSerializer):
@@ -18,21 +19,23 @@ class PageNumberSerializer(serializers.Serializer):
         if value < 1:
             raise serializers.ValidationError("Page number must be a positive integer.")
         return value
-    
+
+
 class FeedSerializer(serializers.ModelSerializer):
-    
+
     def to_representation(self, instance):
         # 순환 참조 피하기 위함
-        post_serializer_module = importlib.import_module('repo.records.posts.serializers')
-        tasted_record_serializer_module = importlib.import_module('repo.records.tasted_record.serializers')
-        PostFeedSerializer = getattr(post_serializer_module, 'PostFeedSerializer')
-        TastedRecordFeedSerializer = getattr(tasted_record_serializer_module, 'TastedRecordFeedSerializer')
+        post_serializer_module = importlib.import_module("repo.records.posts.serializers")
+        tasted_record_serializer_module = importlib.import_module("repo.records.tasted_record.serializers")
+        PostFeedSerializer = getattr(post_serializer_module, "PostFeedSerializer")
+        TastedRecordFeedSerializer = getattr(tasted_record_serializer_module, "TastedRecordFeedSerializer")
 
         if isinstance(instance, Post):
             return PostFeedSerializer(instance).data
         elif isinstance(instance, TastedRecord):
             return TastedRecordFeedSerializer(instance).data
         return super().to_representation(instance)
+
 
 class CommentSerializer(serializers.ModelSerializer):
     content = serializers.CharField(max_length=200)
@@ -42,14 +45,15 @@ class CommentSerializer(serializers.ModelSerializer):
     replies = serializers.SerializerMethodField()
 
     def get_replies(self, obj):
-        if hasattr(obj, 'replies_list'):
+        if hasattr(obj, "replies_list"):
             return CommentSerializer(obj.replies_list, many=True).data
-        
+
         return []
 
     class Meta:
         model = Comment
         fields = ["id", "content", "author", "like_cnt", "created_at", "replies"]
+
 
 class NoteSerializer(serializers.ModelSerializer):
     class Meta:
