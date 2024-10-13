@@ -108,7 +108,7 @@ def get_tasted_record_feed(user, page=1):
 
     all_records = list(chain(followed_records, additional_records))
 
-    paginator = Paginator(all_records, 10)
+    paginator = Paginator(all_records, 12)
     page_obj = paginator.get_page(page)
 
     return page_obj.object_list, page_obj.has_next()
@@ -122,7 +122,7 @@ def get_tasted_record_feed2(user, page=1):
         .order_by("-created_at")
     )
 
-    paginator = Paginator(records, 10)
+    paginator = Paginator(records, 12)
     page_obj = paginator.get_page(page)
 
     return page_obj.object_list, page_obj.has_next()
@@ -163,24 +163,22 @@ def get_post_feed(user, page=1):
 
     all_posts = list(chain(followed_posts, additional_posts))
 
-    paginator = Paginator(all_posts, 10)
+    paginator = Paginator(all_posts, 12)
     page_obj = paginator.get_page(page)
 
     return page_obj.object_list, page_obj.has_next()
 
 
-def get_post_feed2(user, page=1):
+def get_post_feed2(user, subject):
 
     posts = (
-        Post.objects.select_related("author", "tasted_record")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        Post.objects.filter(subject=subject, is_private=False)
+        .select_related("author")
+        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
-    paginator = Paginator(posts, 10)
-    page_obj = paginator.get_page(page)
-
-    return page_obj.object_list, page_obj.has_next()
+    return posts
 
 
 def get_post_detail(post_id):
