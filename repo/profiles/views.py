@@ -8,6 +8,7 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
 from django.http import JsonResponse
+from django.utils.timezone import now
 from django.shortcuts import get_object_or_404, redirect
 from rest_framework import status
 from rest_framework.response import Response
@@ -168,7 +169,6 @@ class AppleLoginView(APIView):
 
     def post(self, request):
         apple_id_token = request.data.get("id_token")
-
         if not apple_id_token:
             return Response({"detail": "id_token is required."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -177,7 +177,10 @@ class AppleLoginView(APIView):
             user_email = decoded_token.get("email")
 
             user, created = CustomUser.objects.get_or_create(email=user_email, defaults={"email": user_email})
-
+            
+            user.last_login = now()
+            user.save()
+            
             # JWT 토큰 발급
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
