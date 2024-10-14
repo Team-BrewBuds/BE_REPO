@@ -5,7 +5,7 @@ from django.db import models
 from repo.profiles.helpers import CoffeeLifeHelper, PreferredBeanTasteHelper
 
 # from profiles.managers import CustomUserManager
-from repo.profiles.managers import RelationshipManager
+from repo.profiles.managers import RelationshipManager, CustomUserManager
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -45,7 +45,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
     # TODO: 현재 카카오에서 이메일을 받고있는 형태가 아니라서 manager 사용 보류
-    # objects = CustomUserManager()
+    objects = CustomUserManager()
+    
+    def natural_key(self):
+        return (self.email,)
 
     def save(self, *args, **kwargs):
 
