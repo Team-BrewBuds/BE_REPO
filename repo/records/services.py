@@ -6,6 +6,7 @@ from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
+from repo.common.view_counter import is_viewed
 from repo.profiles.models import Relationship
 from repo.records.models import Comment, Photo, Post, TastedRecord
 

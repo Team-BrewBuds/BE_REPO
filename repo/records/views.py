@@ -12,6 +12,7 @@ from repo.records.serializers import (
     NoteSerializer,
     PageNumberSerializer,
 )
+from repo.common.serializers import PageNumberSerializer
 from repo.records.services import (
     get_comment,
     get_comment_list,
