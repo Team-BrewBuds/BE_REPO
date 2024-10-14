@@ -32,15 +32,15 @@ def get_following_feed(request, user):
     following_users = Relationship.custom_objects.following(user.id).values_list("to_user", flat=True)
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
-    following_tasted_record = (  # author__in=following_users,
-        TastedRecord.objects.filter(is_private=False, created_at__gte=one_hour_ago)
+    following_tasted_record = (
+        TastedRecord.objects.filter(author__in=following_users, is_private=False, created_at__gte=one_hour_ago)
         .select_related("author", "bean", "taste_review")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-id")
     )
 
-    following_post = (  # author__in=following_users,
-        Post.objects.filter(created_at__gte=one_hour_ago)
+    following_post = (
+        Post.objects.filter(author__in=following_users, created_at__gte=one_hour_ago)
         .select_related("author")
         .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-id")

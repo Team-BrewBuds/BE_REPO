@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -22,101 +23,61 @@ from repo.records.services import (
 )
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
-
-class FollowFeedAPIView(APIView):
+class FeedAPIView(APIView):
     @extend_schema(
-        parameters=[PageNumberSerializer],
+        parameters=[
+            PageNumberSerializer,
+            OpenApiParameter(
+                name="feed_type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="feed type",
+                enum=["following", "common", "refresh"],
+            ),
+        ],
         responses=[TastedRecordListSerializer, PostListSerializer],
-        summary="홈 [전체] - 팔로잉 피드",
+        summary="홈 [전체] 피드",
         description="""
+            following:
             홈 [전체] 사용자가 팔로잉한 유저들의 1시간 이내 작성한 시음기록과 게시글을 랜덤순으로 가져오는 함수
             30분이내 조회한 기록, 프라이빗한 시음기록은 제외
             
-            담당자 : hwstar1204
-        """,
-        tags=["Feed"],
-    )
-    def get(self, request):
-        page_serializer = PageNumberSerializer(data=request.GET)
-        if not page_serializer.is_valid():
-            return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        page = page_serializer.validated_data["page"]
-        user = request.user
-
-        combined_data = get_following_feed(request, user)
-
-        paginator = Paginator(combined_data, 12)
-        page_obj = paginator.get_page(page)
-
-        serialized_data = get_serialized_data(page_obj)
-
-        return Response({
-            "results": serialized_data,
-            "has_next": page_obj.has_next(),
-            "current_page": page_obj.number,
-        }, status=status.HTTP_200_OK)
-
-
-class CommonFeedAPIView(APIView):
-    @extend_schema(
-        parameters=[PageNumberSerializer],
-        responses=[TastedRecordListSerializer, PostListSerializer],
-        summary="홈 [전체] - 일반 피드",
-        description="""
+            common:
             홈 [전체] 일반 시음기록과 게시글을 최신순으로 가져오는 함수
             30분이내 조회한 기록, 프라이빗한 시음기록은 제외
             
-            담당자 : hwstar1204
-        """,
-        tags=["Feed"],
-    )
-    def get(self, request):
-        page_serializer = PageNumberSerializer(data=request.GET)
-        if not page_serializer.is_valid():
-            return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        page = page_serializer.validated_data["page"]
-        user = request.user
-
-        combined_data = get_common_feed(request, user)
-
-        paginator = Paginator(combined_data, 12)
-        page_obj = paginator.get_page(page)
-
-        serialized_data = get_serialized_data(page_obj)
-
-        return Response({
-            "results": serialized_data,
-            "has_next": page_obj.has_next(),
-            "current_page": page_obj.number,
-        }, status=status.HTTP_200_OK)
-
-
-class RefreshFeedAPIView(APIView):
-    @extend_schema(
-        parameters=[PageNumberSerializer],
-        responses=[TastedRecordListSerializer, PostListSerializer],
-        summary="홈 [전체] 새로고침 피드",
-        description="""
+            refresh:
             홈 [전체] 시음기록과 게시글을 랜덤순으로 반환하는 API
             프라이빗한 시음기록은 제외
             
+            response:
+            TastedRecordListSerializer or PostListSerializer
+            (아래 Schemas 참조)
+        
             담당자 : hwstar1204
         """,
         tags=["Feed"],
     )
-
     def get(self, request):
+        feed_type = request.query_params.get("feed_type")
+        if feed_type not in ["following", "common", "refresh"]:
+            return Response({"error": "invalid feed type"}, status=status.HTTP_400_BAD_REQUEST)
+
         page_serializer = PageNumberSerializer(data=request.GET)
         if not page_serializer.is_valid():
             return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        user = request.user
         page = page_serializer.validated_data["page"]
 
-        combined_data = get_refresh_feed()
+        if feed_type == "following":
+            data = get_following_feed(request, user)
+        elif feed_type == "common":
+            data = get_common_feed(request, user)
+        else:  # refresh
+            data = get_refresh_feed()
 
-        paginator = Paginator(combined_data, 12)
+        paginator = Paginator(data, 12)
         page_obj = paginator.get_page(page)
 
         serialized_data = get_serialized_data(page_obj)
