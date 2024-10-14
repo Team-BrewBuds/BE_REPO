@@ -1,16 +1,16 @@
 from django.shortcuts import get_object_or_404
+from django.core.paginator import Paginator
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from repo.common.utils import delete, update
-from repo.common.view_counter import is_viewed
 from repo.records.models import Comment, Note, Post, TastedRecord
+from repo.records.posts.serializers import PostListSerializer
 from repo.records.serializers import (
     CommentSerializer,
-    FeedSerializer,
     NoteSerializer,
-    PageNumberSerializer,
 )
 from repo.common.serializers import PageNumberSerializer
 from repo.records.services import (
@@ -18,106 +18,114 @@ from repo.records.services import (
     get_comment_list,
     get_common_feed,
     get_following_feed,
-    get_post_or_tasted_record_detail,
+    get_post_or_tasted_record_detail, get_refresh_feed, get_serialized_data,
 )
+from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
 class FollowFeedAPIView(APIView):
-    """
-    홈 [전체] - 팔로워들의 게시글+시음기록 리스트를 반환하는 API
-    Args:
-        - page : 조회할 페이지 번호
-    Returns:
-        - status: 200
-
-    주의:
-        - 팔로잉하는 사용자들의 기록 우선 노출 (팔로잉 O, 조회 X) (최신순)
-
-    담당자: hwstar1204
-    """
-
+    @extend_schema(
+        parameters=[PageNumberSerializer],
+        responses=[TastedRecordListSerializer, PostListSerializer],
+        summary="홈 [전체] - 팔로잉 피드",
+        description="""
+            홈 [전체] 사용자가 팔로잉한 유저들의 1시간 이내 작성한 시음기록과 게시글을 랜덤순으로 가져오는 함수
+            30분이내 조회한 기록, 프라이빗한 시음기록은 제외
+            
+            담당자 : hwstar1204
+        """,
+        tags=["Feed"],
+    )
     def get(self, request):
         page_serializer = PageNumberSerializer(data=request.GET)
-        if page_serializer.is_valid():
-            page = page_serializer.validated_data["page"]
-        else:
+        if not page_serializer.is_valid():
             return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        page = page_serializer.validated_data["page"]
         user = request.user
-        feed_items, has_next = get_following_feed(user, page)
 
-        results = []
-        for item in feed_items:
-            if not is_viewed(request, cookie_name="records_viewed", content_id=id):
-                results.append(item)
+        combined_data = get_following_feed(request, user)
 
-        post_serializer = FeedSerializer(results, many=True)
-        return Response({"records": post_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
+        paginator = Paginator(combined_data, 12)
+        page_obj = paginator.get_page(page)
+
+        serialized_data = get_serialized_data(page_obj)
+
+        return Response({
+            "results": serialized_data,
+            "has_next": page_obj.has_next(),
+            "current_page": page_obj.number,
+        }, status=status.HTTP_200_OK)
 
 
 class CommonFeedAPIView(APIView):
-    """
-    홈 [전체] - 일반 게시글+시음기록 리스트를 반환하는 API
-    Args:
-        - page : 조회할 페이지 번호
-    Returns:
-        - status: 200
-
-    주의:
-        - 일반 사용자들의 기록 노출  (팔로잉X, 조회 X) (최신순)
-
-    담당자: hwstar1204
-    """
-
+    @extend_schema(
+        parameters=[PageNumberSerializer],
+        responses=[TastedRecordListSerializer, PostListSerializer],
+        summary="홈 [전체] - 일반 피드",
+        description="""
+            홈 [전체] 일반 시음기록과 게시글을 최신순으로 가져오는 함수
+            30분이내 조회한 기록, 프라이빗한 시음기록은 제외
+            
+            담당자 : hwstar1204
+        """,
+        tags=["Feed"],
+    )
     def get(self, request):
         page_serializer = PageNumberSerializer(data=request.GET)
-        if page_serializer.is_valid():
-            page = page_serializer.validated_data["page"]
-        else:
+        if not page_serializer.is_valid():
             return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        page = page_serializer.validated_data["page"]
         user = request.user
-        feed_items, has_next = get_common_feed(user, page)
 
-        results = []
-        for item in feed_items:
-            if not is_viewed(request, cookie_name="records_viewed", content_id=id):
-                results.append(item)
+        combined_data = get_common_feed(request, user)
 
-        post_serializer = FeedSerializer(results, many=True)
-        return Response({"records": post_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
+        paginator = Paginator(combined_data, 12)
+        page_obj = paginator.get_page(page)
+
+        serialized_data = get_serialized_data(page_obj)
+
+        return Response({
+            "results": serialized_data,
+            "has_next": page_obj.has_next(),
+            "current_page": page_obj.number,
+        }, status=status.HTTP_200_OK)
 
 
 class RefreshFeedAPIView(APIView):
-    """
-    홈 [전체] - 사용자가 마지막으로 본 게시물 이후 데이터 반환하는 API
-    Args:
-        - last_id : 사용자가 마지막으로 본 게시물의 ID
-        - page : 조회할 페이지 번호
-    Returns:
-        - status: 200
-
-    담당자: hwstar1204
-    """
+    @extend_schema(
+        parameters=[PageNumberSerializer],
+        responses=[TastedRecordListSerializer, PostListSerializer],
+        summary="홈 [전체] 새로고침 피드",
+        description="""
+            홈 [전체] 시음기록과 게시글을 랜덤순으로 반환하는 API
+            프라이빗한 시음기록은 제외
+            
+            담당자 : hwstar1204
+        """,
+        tags=["Feed"],
+    )
 
     def get(self, request):
-        last_id = request.GET.get("last_id")
         page_serializer = PageNumberSerializer(data=request.GET)
-        if page_serializer.is_valid():
-            page = page_serializer.validated_data["page"]
-        else:
+        if not page_serializer.is_valid():
             return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        user = request.user
-        feed_items, has_next = get_common_feed(user, page, last_id)
+        page = page_serializer.validated_data["page"]
 
-        results = []
-        for item in feed_items:
-            if not is_viewed(request, cookie_name="records_viewed", content_id=id):
-                results.append(item)
+        combined_data = get_refresh_feed()
 
-        post_serializer = FeedSerializer(results, many=True)
-        return Response({"records": post_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
+        paginator = Paginator(combined_data, 12)
+        page_obj = paginator.get_page(page)
+
+        serialized_data = get_serialized_data(page_obj)
+
+        return Response({
+            "results": serialized_data,
+            "has_next": page_obj.has_next(),
+            "current_page": page_obj.number,
+        }, status=status.HTTP_200_OK)
 
 
 class LikeApiView(APIView):

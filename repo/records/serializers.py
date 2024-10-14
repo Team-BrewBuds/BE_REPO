@@ -1,39 +1,17 @@
-import importlib
-
 from rest_framework import serializers
 
+from repo.records.posts.serializers import PostListSerializer
+from repo.records.tasted_record.serializers import TastedRecordListSerializer
 from repo.profiles.serializers import UserSimpleSerializer
-from repo.records.models import Comment, Note, Photo, Post, TastedRecord
-
-
-class PhotoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Photo
-        fields = ["photo_url"]
-
-
-class PageNumberSerializer(serializers.Serializer):
-    page = serializers.IntegerField(min_value=1, default=1)
-
-    def validate_page(self, value):
-        if value < 1:
-            raise serializers.ValidationError("Page number must be a positive integer.")
-        return value
+from repo.records.models import Comment, Note, Post, TastedRecord
 
 
 class FeedSerializer(serializers.ModelSerializer):
-
     def to_representation(self, instance):
-        # 순환 참조 피하기 위함
-        post_serializer_module = importlib.import_module("repo.records.posts.serializers")
-        tasted_record_serializer_module = importlib.import_module("repo.records.tasted_record.serializers")
-        PostFeedSerializer = getattr(post_serializer_module, "PostFeedSerializer")
-        TastedRecordFeedSerializer = getattr(tasted_record_serializer_module, "TastedRecordFeedSerializer")
-
         if isinstance(instance, Post):
-            return PostFeedSerializer(instance).data
+            return PostListSerializer(instance).data
         elif isinstance(instance, TastedRecord):
-            return TastedRecordFeedSerializer(instance).data
+            return TastedRecordListSerializer(instance).data
         return super().to_representation(instance)
 
 
