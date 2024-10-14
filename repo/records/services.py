@@ -108,33 +108,27 @@ def get_tasted_record_feed(user, page=1):
 
     all_records = list(chain(followed_records, additional_records))
 
-    paginator = Paginator(all_records, 12)
-    page_obj = paginator.get_page(page)
-
-    return page_obj.object_list, page_obj.has_next()
+    return all_records
 
 
-def get_tasted_record_feed2(user, page=1):
-    records = (
+def get_tasted_record_feed2(user):
+    tasted_records = (
         TastedRecord.objects.filter(is_private=False)
         .select_related("author", "bean", "taste_review")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
-    paginator = Paginator(records, 12)
-    page_obj = paginator.get_page(page)
-
-    return page_obj.object_list, page_obj.has_next()
+    return tasted_records
 
 
-def get_tasted_record_detail(record_id):
+def get_tasted_record_detail(pk):
     record = (
         TastedRecord.objects.select_related("author", "bean", "taste_review")
         .prefetch_related(
             Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
         )
-        .get(pk=record_id)
+        .get(pk=pk)
     )
 
     return record
