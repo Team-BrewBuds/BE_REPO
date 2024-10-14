@@ -40,14 +40,14 @@ class RelationshipManager(models.Manager):
             return relationship.first(), True
         return None, False
 
-    def following(self, user):  # 팔로우한 사용자
-        return self.filter(from_user=user, relationship_type="follow")
+    def following(self, user_id):  # 팔로우한 사용자
+        return self.filter(from_user=user_id, relationship_type="follow")
 
-    def followers(self, user):  # 나를 팔로우한 사용자
-        return self.filter(to_user=user, relationship_type="follow")
+    def followers(self, user_id):  # 나를 팔로우한 사용자
+        return self.filter(to_user=user_id, relationship_type="follow")
 
-    def blocking(self, user):  # 차단한 사용자
-        return self.filter(from_user=user, relationship_type="block")
+    def blocking(self, user_id):  # 차단한 사용자
+        return self.filter(from_user=user_id, relationship_type="block")
 
-    def blocked(self, user):  # 나를 차단한 사용자
-        return self.filter(to_user=user, relationship_type="block")
+    def blocked(self, user_id):  # 나를 차단한 사용자
+        return self.filter(to_user=user_id, relationship_type="block")

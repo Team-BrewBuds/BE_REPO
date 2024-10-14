@@ -14,7 +14,7 @@ from repo.common.utils import delete, get_object
 from repo.common.view_counter import update_view_count
 from repo.records.models import TastedRecord, Photo
 from repo.records.serializers import PageNumberSerializer
-from repo.records.services import get_tasted_record_detail, get_tasted_record_feed2
+from repo.records.services import get_tasted_record_detail, get_tasted_record_feed
 from repo.records.tasted_record.serializers import (
     TastedRecordDetailSerializer,
     TastedRecordListSerializer, TastedRecordCreateUpdateSerializer,
@@ -30,7 +30,8 @@ from repo.records.tasted_record.service import update_tasted_record
         responses=TastedRecordListSerializer,
         summary="홈 시음기록 리스트 조회",
         description="""
-            홈 피드의 시음기록 list를 최신순으로 가져옵니다. (이후 팔로워 기능 추가)
+            홈 피드의 시음기록 list를 최신순으로 가져옵니다.
+            순서: 팔로잉, 최신순
             담당자 : hwstar1204
         """,
         tags=["tasted_records"],
@@ -48,7 +49,7 @@ from repo.records.tasted_record.service import update_tasted_record
 )
 class TastedRecordListCreateAPIView(APIView):
     """
-    홈 피드의 시음기록 list를 최신순으로 가져옵니다. (이후 팔로워 기능 추가)
+    홈 피드의 시음기록 list를 최신순으로 가져옵니다.
     Returns:
         시음기록: id, 시음 내용, 사진, 조회수, 좋아요, 생성일, 사진
         프로필: id, 닉네임, 프로필 사진
@@ -63,7 +64,7 @@ class TastedRecordListCreateAPIView(APIView):
     """
 
     def get(self, request, *args, **kwargs):
-        tasted_records = get_tasted_record_feed2(request.user)
+        tasted_records = get_tasted_record_feed(request.user)
 
         paginator = PageNumberPagination()
         paginator.page_size = 12
