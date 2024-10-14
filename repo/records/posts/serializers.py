@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import Post, TastedRecord
-from repo.records.serializers import PhotoSerializer
+from repo.common.serializers import PhotoSerializer
 from repo.records.tasted_record.serializers import TastedRecordListSerializer,TastedRecordInPostSerializer
 
 

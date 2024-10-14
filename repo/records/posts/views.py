@@ -11,7 +11,7 @@ from repo.common.utils import get_object, delete
 from repo.common.view_counter import update_view_count
 from repo.records.models import Photo
 from repo.records.posts.serializers import *
-from repo.records.serializers import PageNumberSerializer
+from repo.common.serializers import PageNumberSerializer
 from repo.records.services import get_post_detail, get_post_feed2
 
 

@@ -4,7 +4,7 @@ from repo.beans.models import Bean, BeanTasteReview
 from repo.beans.serializers import BeanSerializer, BeanTasteReviewSerializer
 from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import TastedRecord
-from repo.records.serializers import PhotoSerializer
+from repo.common.serializers import PhotoSerializer
 
 
 class TastedRecordListSerializer(serializers.ModelSerializer):

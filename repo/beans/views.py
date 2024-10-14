@@ -5,7 +5,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from repo.beans.models import Bean
 from repo.beans.serializers import BeanSerializer
-from repo.records.serializers import PageNumberSerializer
+from repo.common.serializers import PageNumberSerializer
 
 
 @extend_schema(

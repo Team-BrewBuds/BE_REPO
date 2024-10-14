@@ -1,3 +1,4 @@
+import random
 from datetime import timedelta
 from itertools import chain
 
@@ -6,83 +7,128 @@ from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
+from repo.common.view_counter import is_viewed
 from repo.profiles.models import Relationship
 from repo.records.models import Comment, Photo, Post, TastedRecord
-
-# TODO
-# - user 인자를 받아서 팔로우한 사용자의 시음 기록만 가져오기(추후 이것으로 변경)
-# - 차단한 사용자의 시음 기록은 가져오지 않기
+from repo.records.posts.serializers import PostListSerializer
+from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
-def get_following_feed(user, page=1):
+def get_serialized_data(page_obj):
+    """
+    페이지 객체를 받아 시리얼라이즈된 데이터를 반환하는 함수
+    게시글 리스트 or 시음기록 리스트
+    """
+    return [
+        TastedRecordListSerializer(item).data if isinstance(item, TastedRecord) else PostListSerializer(item).data
+        for item in page_obj.object_list
+    ]
 
+def get_following_feed(request, user):
+    """
+    사용자가 팔로잉한 유저들의 1시간 이내 작성한 시음기록과 게시글을 랜덤순으로 가져오는 함수
+    30분이내 조회한 기록, 프라이빗한 시음기록은 제외
+    """
     following_users = Relationship.custom_objects.following(user.id).values_list("to_user", flat=True)
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
-    following_Tasted_Record = (
+    following_tasted_record = (
         TastedRecord.objects.filter(author__in=following_users, is_private=False, created_at__gte=one_hour_ago)
         .select_related("author", "bean", "taste_review")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-created_at")
+        .order_by("-id")
     )
 
-    following_Post = (
+    following_post = (
         Post.objects.filter(author__in=following_users, created_at__gte=one_hour_ago)
         .select_related("author")
         .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-created_at")
+        .order_by("-id")
     )
 
-    # 각각 페이징 처리
-    paginator_Tasted_Record = Paginator(following_Tasted_Record, 5)
-    paginator_Post = Paginator(following_Post, 5)
+    # 30분 이내 조회한 시음 기록 제외
+    not_viewed_tasted_record = [
+        record for record in following_tasted_record
+        if not is_viewed(request, cookie_name="tasted_record_viewed", content_id=record.id)
+    ]
 
-    # 페이지 가져오기
-    page_obj_Tasted_Record = paginator_Tasted_Record.get_page(page)
-    page_obj_Post = paginator_Post.get_page(page)
+    # 30분 이내 조회한 게시글 제외
+    not_viewed_post = [
+        post for post in following_post
+        if not is_viewed(request, cookie_name="post_viewed", content_id=post.id)
+    ]
 
-    # 페이지 결합
-    all_records = list(chain(page_obj_Tasted_Record.object_list, page_obj_Post.object_list))
-    all_records = sorted(all_records, key=lambda x: x.created_at, reverse=True)
+    # 두 쿼리셋 결합
+    combined_data = list(chain(not_viewed_tasted_record, not_viewed_post))
+    random.shuffle(combined_data)
 
-    has_next = page_obj_Tasted_Record.has_next() or page_obj_Post.has_next()
-
-    return all_records, has_next
+    return combined_data
 
 
-def get_common_feed(user, page=1, last_id=None):
+def get_common_feed(request, user):
+    """
+    일반 시음기록과 게시글을 최신순으로 가져오는 함수
+    30분이내 조회한 기록, 프라이빗한 시음기록은 제외
+    팔로잉한 유저 기록 제외
+    """
+    following_users = Relationship.custom_objects.following(user.id).values_list("to_user", flat=True)
 
-    one_hour_ago = timezone.now() - timedelta(hours=1)
-
-    following_Tasted_Record = (
-        TastedRecord.objects.filter(is_private=False, created_at__gte=one_hour_ago, id__gt=last_id)
+    common_tasted_record = (
+        TastedRecord.objects.filter(is_private=False)
+        .exclude(author__in=following_users)
         .select_related("author", "bean", "taste_review")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
-    following_Post = (
-        Post.objects.filter(created_at__gte=one_hour_ago, id__gt=last_id)
+    common_post = (
+        Post.objects
+        .exclude(author__in=following_users)
         .select_related("author")
         .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
-    # 각각 페이징 처리
-    paginator_Tasted_Record = Paginator(following_Tasted_Record, 5)
-    paginator_Post = Paginator(following_Post, 5)
+    not_viewed_tasted_record = [
+        record for record in common_tasted_record
+        if not is_viewed(request, cookie_name="tasted_record_viewed", content_id=record.id)
+    ]
 
-    # 페이지 가져오기
-    page_obj_Tasted_Record = paginator_Tasted_Record.get_page(page)
-    page_obj_Post = paginator_Post.get_page(page)
+    not_viewed_post = [
+        post for post in common_post
+        if not is_viewed(request, cookie_name="post_viewed", content_id=post.id)
+    ]
 
-    # 페이지 결합
-    all_records = list(chain(page_obj_Tasted_Record.object_list, page_obj_Post.object_list))
-    all_records = sorted(all_records, key=lambda x: x.created_at, reverse=True)
+    combined_data = sorted(
+        chain(not_viewed_tasted_record, not_viewed_post), key=lambda x: x.created_at, reverse=True
+    )
 
-    has_next = page_obj_Tasted_Record.has_next() or page_obj_Post.has_next()
+    return combined_data
 
-    return all_records, has_next
+def get_refresh_feed():
+    """
+    시음기록과 게시글을 랜덤순으로 가져오는 함수
+    프라이빗한 시음기록은 제외
+    """
+
+    tasted_records = (
+        TastedRecord.objects.filter(is_private=False)
+        .select_related("author", "bean", "taste_review")
+        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .order_by("?")
+    )
+
+    posts = (
+        Post.objects
+        .select_related("author")
+        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .order_by("?")
+    )
+
+    combined_data = list(chain(tasted_records, posts))
+    random.shuffle(combined_data)
+
+    return combined_data
 
 
 def get_tasted_record_feed(user):
@@ -146,8 +192,7 @@ def get_post_feed(user, page=1):
 
     if not following_users.exists() or followed_posts.count() < 10:
         additional_posts = (
-            Post.objects.filter(is_private=False)
-            .exclude(author__in=following_users)
+            Post.objects.exclude(author__in=following_users)
             .select_related("author", "taste_and_review")
             .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
             .order_by("-created_at")

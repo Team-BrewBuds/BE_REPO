@@ -13,7 +13,7 @@ from repo.beans.models import Bean, BeanTasteReview
 from repo.common.utils import delete, get_object
 from repo.common.view_counter import update_view_count
 from repo.records.models import TastedRecord, Photo
-from repo.records.serializers import PageNumberSerializer
+from repo.common.serializers import PageNumberSerializer
 from repo.records.services import get_tasted_record_detail, get_tasted_record_feed
 from repo.records.tasted_record.serializers import (
     TastedRecordDetailSerializer,
