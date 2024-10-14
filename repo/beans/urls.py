@@ -1,7 +1,8 @@
 from django.urls import path
 
-from repo.beans import views
+from repo.beans.views import *
 
 urlpatterns = [
-    path("test/", views.test),  # 초기 테스트용 url (이후 삭제 해주세요)
+    path('', BeanNameListView.as_view(), name='bean_list'),
+    path('search/', BeanNameSearchView.as_view(), name='bean_search'),
 ]
