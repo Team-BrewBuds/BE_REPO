@@ -16,7 +16,7 @@ from repo.records.models import Comment, Photo, Post, TastedRecord
 
 def get_following_feed(user, page=1):
 
-    following_users = Relationship.custom_objects.following(user).values_list("to_user", flat=True)
+    following_users = Relationship.custom_objects.following(user.id).values_list("to_user", flat=True)
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
     following_Tasted_Record = (
@@ -85,8 +85,8 @@ def get_common_feed(user, page=1, last_id=None):
     return all_records, has_next
 
 
-def get_tasted_record_feed(user, page=1):
-    following_users = user.following.all()
+def get_tasted_record_feed(user):
+    following_users = Relationship.custom_objects.following(user.id).values_list("to_user", flat=True)
 
     followed_records = (
         TastedRecord.objects.filter(author__in=following_users, is_private=False)
@@ -108,40 +108,34 @@ def get_tasted_record_feed(user, page=1):
 
     all_records = list(chain(followed_records, additional_records))
 
-    paginator = Paginator(all_records, 12)
-    page_obj = paginator.get_page(page)
-
-    return page_obj.object_list, page_obj.has_next()
+    return all_records
 
 
-def get_tasted_record_feed2(user, page=1):
-    records = (
+def get_tasted_record_feed2():
+    tasted_records = (
         TastedRecord.objects.filter(is_private=False)
         .select_related("author", "bean", "taste_review")
         .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
-    paginator = Paginator(records, 12)
-    page_obj = paginator.get_page(page)
-
-    return page_obj.object_list, page_obj.has_next()
+    return tasted_records
 
 
-def get_tasted_record_detail(record_id):
+def get_tasted_record_detail(pk):
     record = (
         TastedRecord.objects.select_related("author", "bean", "taste_review")
         .prefetch_related(
             Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
         )
-        .get(pk=record_id)
+        .get(pk=pk)
     )
 
     return record
 
 
 def get_post_feed(user, page=1):
-    following_users = user.following.all()
+    following_users = Relationship.custom_objects.following(user.id).values_list("to_user", flat=True)
 
     followed_posts = (
         Post.objects.filter(author__in=following_users)
