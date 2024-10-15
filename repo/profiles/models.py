@@ -24,7 +24,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     nickname = models.CharField(max_length=50, unique=True, null=True, blank=True, verbose_name="닉네임")
     gender = models.CharField(max_length=10, null=True, blank=True)
-    birth = models.DateField(null=True, blank=True)
+    birth = models.IntegerField(null=True, blank=True, verbose_name="출생 연도")
     email = models.EmailField(unique=True, null=True, blank=True)
     login_type = models.CharField(
         max_length=50,
@@ -52,7 +52,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.email} - {self.nickname}"
+        return f"{self.email}"
 
     class Meta:
         db_table = "user"
@@ -74,32 +74,16 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 class UserDetail(models.Model):
 
     COFFEE_LIFE_CHOICES = ["cafe_tour", " coffee_extraction", "coffee_study", "cafe_alba", "cafe_work", "cafe_operation"]
+    TASTE_CHOICES = ["body", "acidity", "bitterness", "sweetness"]
 
-    taste_choices = ["body", "acidity", "bitterness", "sweetness"]
-
-    def default_coffee_life(COFFEE_LIFE_CHOICES):
-        return {
-            COFFEE_LIFE_CHOICES[0]: False,
-            COFFEE_LIFE_CHOICES[1]: False,
-            COFFEE_LIFE_CHOICES[2]: False,
-            COFFEE_LIFE_CHOICES[3]: False,
-            COFFEE_LIFE_CHOICES[4]: False,
-            COFFEE_LIFE_CHOICES[5]: False,
-        }
-
-    def default_taste(taste_choices):
-        return {
-            taste_choices[0]: 3,
-            taste_choices[1]: 3,
-            taste_choices[2]: 3,
-            taste_choices[3]: 3,
-        }
+    default_coffee_life_value = {choice: False for choice in COFFEE_LIFE_CHOICES}
+    default_taste_value = {choice: 3 for choice in TASTE_CHOICES}
 
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="user_detail")
     introduction = models.TextField(null=True, blank=True, verbose_name="소개")
     profile_link = models.URLField(max_length=200, null=True, blank=True, verbose_name="프로필 링크")
-    coffee_life = models.JSONField(default=default_coffee_life, verbose_name="커피 생활")
-    preferred_bean_taste = models.JSONField(default=default_taste, verbose_name="선호하는 원두 맛")
+    coffee_life = models.JSONField(default=default_coffee_life_value, verbose_name="커피 생활")
+    preferred_bean_taste = models.JSONField(default=default_taste_value, verbose_name="선호하는 원두 맛")
     is_certificated = models.BooleanField(default=False, verbose_name="인증 여부")
 
     def get_coffee_life_helper(self):

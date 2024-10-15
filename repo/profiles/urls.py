@@ -10,7 +10,7 @@ urlpatterns = [
     path("login/naver/finish/", views.NaverLoginView.as_view(), name="naver_login_todjango"),
     path("login/oauth/apple/", views.AppleCallbackView.as_view(), name="apple_callback"),
     path("login/apple/finish/", views.AppleLoginView.as_view(), name="apple_login_todjango"),
-    path("user/complete-registration/", views.RegistrationView.as_view(), name="complete_registration"),
+    path("signup/", views.SignupView.as_view(), name="signup"),
     path("follow/", views.FollowAPIView.as_view(), name="follow"),
     path("recommend/", views.BudyRecommendAPIView.as_view(), name="budy-recommend"),
 ]
