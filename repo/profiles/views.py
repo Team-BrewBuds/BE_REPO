@@ -9,6 +9,7 @@ from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -292,7 +293,6 @@ class FollowAPIView(APIView):
             return Response({"error": "not following"}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"success": "delete follow success"}, status=status.HTTP_200_OK)
 
-
 class BudyRecommendAPIView(APIView):
     """
     유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환
@@ -307,7 +307,12 @@ class BudyRecommendAPIView(APIView):
 
     담당자: hwtar1204
     """
-
+    @extend_schema(
+        summary="버디 추천",
+        description="유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환 (10명 랜덤순)",
+        responses={200: BudyRecommendSerializer},
+        tags=["recommend"],
+    )
     def get(self, request):
         user = request.user
 
