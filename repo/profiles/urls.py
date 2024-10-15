@@ -12,7 +12,7 @@ urlpatterns = [
     path("login/oauth/apple/", views.AppleCallbackView.as_view(), name="naver_callback"),
     path("login/apple/finish/", views.AppleLoginView.as_view(), name="naver_login_todjango"),
     path("user/complete-registration/", views.RegistrationView.as_view(), name="complete_registration"),
-    path("follow/", views.FollowAPIView.as_view(), name="follow"),
+    path("follow/<int:id>/", views.FollowAPIView.as_view(), name="follow"),
     path("recommend/", views.BudyRecommendAPIView.as_view(), name="budy-recommend"),
 
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
