@@ -14,15 +14,17 @@ from repo.records.posts.serializers import PostListSerializer
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
-def get_serialized_data(page_obj):
+def get_serialized_data(request, page_obj):
     """
     페이지 객체를 받아 시리얼라이즈된 데이터를 반환하는 함수
     게시글 리스트 or 시음기록 리스트
     """
-    return [
-        TastedRecordListSerializer(item).data if isinstance(item, TastedRecord) else PostListSerializer(item).data
-        for item in page_obj.object_list
-    ]
+    obj_list = []
+    for item in page_obj.object_list:
+        serializer = TastedRecordListSerializer if isinstance(item, TastedRecord) else PostListSerializer
+        obj_list.append(serializer(item, context={"request": request}).data)
+
+    return obj_list
 
 def get_following_feed(request, user):
     """

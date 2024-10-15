@@ -72,7 +72,7 @@ class PostListCreateAPIView(APIView):
         paginator.page_size = 12
         paginated_posts = paginator.paginate_queryset(posts, request)
 
-        serializer = PostListSerializer(paginated_posts, many=True)
+        serializer = PostListSerializer(paginated_posts, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):

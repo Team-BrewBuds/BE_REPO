@@ -19,7 +19,10 @@ class TastedRecordListSerializer(serializers.ModelSerializer):
     is_user_liked = serializers.SerializerMethodField()
 
     def get_is_user_liked(self, obj):
-        return obj.is_user_liked(obj.author)
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return obj.like_cnt.filter(id=user.id).exists()
+        return False
 
     class Meta:
         model = TastedRecord
@@ -36,7 +39,10 @@ class TastedRecordDetailSerializer(serializers.ModelSerializer):
     is_user_liked = serializers.SerializerMethodField()
 
     def get_is_user_liked(self, obj):
-        return obj.is_user_liked(obj.author)
+        user = self.context['request'].user
+        if user.is_authenticated:
+            return obj.like_cnt.filter(id=user.id).exists()
+        return False
 
     class Meta:
         model = TastedRecord

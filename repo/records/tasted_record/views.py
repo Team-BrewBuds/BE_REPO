@@ -70,7 +70,7 @@ class TastedRecordListCreateAPIView(APIView):
         paginator.page_size = 12
         paginated_tasted_records = paginator.paginate_queryset(tasted_records, request)
 
-        serializer = TastedRecordListSerializer(paginated_tasted_records, many=True)
+        serializer = TastedRecordListSerializer(paginated_tasted_records, many=True,  context={"request": request})
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
@@ -169,7 +169,7 @@ class TastedRecordDetailApiView(APIView):
 
         instance, response = update_view_count(request, tasted_record, Response(), "tasted_record_viewed")
 
-        serializer = TastedRecordDetailSerializer(instance)
+        serializer = TastedRecordDetailSerializer(instance, context={"request": request})
         response.data = serializer.data
         response.status = status.HTTP_200_OK
         return response

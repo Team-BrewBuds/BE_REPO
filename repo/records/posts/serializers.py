@@ -11,10 +11,14 @@ class PostListSerializer(serializers.ModelSerializer):
     author = UserSimpleSerializer(read_only=True)
     photos = PhotoSerializer(many=True, source="photo_set")
     tasted_record = TastedRecordListSerializer("tasted_record", read_only=True)
+    like_cnt = serializers.IntegerField(source="like_cnt.count")
     is_user_liked = serializers.SerializerMethodField()
 
     def get_is_user_liked(self, obj):
-        return obj.is_user_liked(obj.author)
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.like_cnt.filter(id=request.user.id).exists()
+        return False
 
     class Meta:
         model = Post
@@ -54,7 +58,10 @@ class PostDetailSerializer(serializers.ModelSerializer):
     is_user_liked = serializers.SerializerMethodField()
 
     def get_is_user_liked(self, obj):
-        return obj.is_user_liked(obj.author)
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.like_cnt.filter(id=request.user.id).exists()
+        return False
 
     class Meta:
         model = Post

@@ -32,6 +32,9 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ["id", "content", "author", "like_cnt", "created_at", "replies"]
 
+class LikeSerializer(serializers.Serializer):
+    object_type = serializers.ChoiceField(choices=["post", "tasted_record", "comment"])
+    object_id = serializers.IntegerField()
 
 class NoteSerializer(serializers.ModelSerializer):
     class Meta:

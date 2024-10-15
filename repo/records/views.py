@@ -11,7 +11,7 @@ from repo.records.models import Comment, Note, Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
 from repo.records.serializers import (
     CommentSerializer,
-    NoteSerializer,
+    NoteSerializer, LikeSerializer,
 )
 from repo.common.serializers import PageNumberSerializer
 from repo.records.services import (
@@ -80,7 +80,7 @@ class FeedAPIView(APIView):
         paginator = Paginator(data, 12)
         page_obj = paginator.get_page(page)
 
-        serialized_data = get_serialized_data(page_obj)
+        serialized_data = get_serialized_data(request, page_obj)
 
         return Response({
             "results": serialized_data,
@@ -90,39 +90,46 @@ class FeedAPIView(APIView):
 
 
 class LikeApiView(APIView):
-    """
-    게시글 및 시음기록에 좋아요를 추가하거나 취소하는 API
-    Args:
-        - object_type : "post" or "TastedRecord" or "comment"
-        - object_id : 좋아요를 처리할 객체의 ID
-    Returns:
-        - status: 200
-
-    담당자: hwstar1204
-    """
-
+    @extend_schema(
+        request=LikeSerializer,
+        responses=[status.HTTP_201_CREATED, status.HTTP_200_OK],
+        summary="좋아요 추가/취소 API",
+        description="""
+            object_type : "post" or "tasted_record" or "comment"
+            object_id : 좋아요를 처리할 객체의 ID
+            
+            response:
+                201: 좋아요 추가, 200: 좋아요 취소
+            
+            담당자 : hwstar1204
+        """,
+        tags=["Like"],
+    )
     def post(self, request):
-        user = request.user
-        object_type = request.data.get("object_type")
-        object_id = request.data.get("object_id")
+        user_id = request.user.id
+        serializer = LikeSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        object_type = serializer.validated_data["object_type"]
+        object_id = serializer.validated_data["object_id"]
 
         model_map = {"post": Post, "tasted_record": TastedRecord, "comment": Comment}
-
-        if not object_id or not object_type:
-            return Response({"error": "object_id and object_type are required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        model_class = model_map.get(object_type.lower())
-        if not model_class:
-            return Response({"error": "invalid object_type"}, status=status.HTTP_400_BAD_REQUEST)
+        model_class = model_map.get(object_type)
 
         obj = get_object_or_404(model_class, pk=object_id)
 
-        if user in obj.like_cnt.all():
-            obj.like_cnt.remove(user)
+        if user_id in obj.like_cnt.values_list('id', flat=True):
+            obj.like_cnt.remove(user_id)
+            status_code = status.HTTP_200_OK
         else:
-            obj.like_cnt.add(user)
+            obj.like_cnt.add(user_id)
+            status_code = status.HTTP_201_CREATED
 
-        return Response(status=status.HTTP_200_OK)
+        return Response(status=status_code)
+
+
+
 
 
 class NoteApiView(APIView):
