@@ -1,19 +1,22 @@
 import random
 
+import jwt
 import requests
-from allauth.socialaccount.providers.apple import views as apple_view
 from allauth.socialaccount.providers.kakao import views as kakao_view
 from allauth.socialaccount.providers.naver import views as naver_view
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
+from django.utils.timezone import now
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from repo.profiles.models import CustomUser, Relationship, UserDetail
 from repo.profiles.serializers import BudyRecommendSerializer, UserRegisterSerializer
@@ -27,10 +30,6 @@ KAKAO_REDIRECT_URI = settings.KAKAO_REDIRECT_URI
 NAVER_CLIENT_ID = settings.NAVER_CLIENT_ID
 NAVER_CLIENT_SECRET = settings.NAVER_CLIENT_SECRET
 NAVER_REDIRECT_URI = settings.NAVER_REDIRECT_URI
-
-APPLE_CLIENT_ID = settings.APPLE_CLIENT_ID
-APPLE_CLIENT_SECRET = settings.APPLE_CLIENT_SECRET
-APPLE_REDIRECT_URI = settings.APPLE_REDIRECT_URI
 
 
 class KakaoCallbackView(APIView):
@@ -105,41 +104,18 @@ class AppleCallbackView(APIView):
     """
     Apple 로그인 후 사용자 정보를 처리하는 콜백 API
     Args:
-        request: 클라이언트로부터 받은 요청 객체, authorization_code 포함.
+        request: 클라이언트로부터 받은 요청 객체, id_token을 포함함.
     Returns:
-        JSON 응답: Apple OAuth2를 통해 받아온 프로필 정보를 백엔드에 전달하고 처리된 결과 반환.
-        성공 시: Apple OAuth2를 통해 받은 access_token을 이용해 사용자 로그인 처리.
+        JSON 응답: Apple 로그인 인증 결과 및 사용자 정보.
+        성공 시: Apple OAuth2를 통해 받아온 프로필 정보를 백엔드에 전달하고 처리된 결과 반환.
         실패 시: 로그인 실패 메시지와 HTTP 상태 코드.
 
     담당자: blakej2432
     """
 
     def get(self, request):
-        authorization_code = request.data.get("code")
-
-        # Apple 서버로 access_token 요청
-        token_request = requests.post(
-            "https://appleid.apple.com/auth/token",
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            data={
-                "client_id": APPLE_CLIENT_ID,
-                "client_secret": APPLE_CLIENT_SECRET,
-                "code": authorization_code,
-                "grant_type": "authorization_code",
-                "redirect_uri": APPLE_REDIRECT_URI,
-            },
-        )
-
-        if token_request.status_code != 200:
-            return JsonResponse({"err_msg": "failed to get access token from Apple"}, status=token_request.status_code)
-
-        token_response = token_request.json()
-        apple_access_token = token_response.get("access_token")
-
-        if not apple_access_token:
-            return JsonResponse({"err_msg": "Apple access token not found"}, status=400)
-
-        data = {"access_token": apple_access_token}
+        apple_id_token = request.data.get("id_token")
+        data = {"id_token": apple_id_token}
         accept = requests.post(f"{BASE_BACKEND_URL}/profiles/login/apple/finish/", data=data)
 
         accept_status = accept.status_code
@@ -183,20 +159,50 @@ class NaverLoginView(SocialLoginView):
     callback_url = NAVER_REDIRECT_URI
 
 
-class AppleLoginView(SocialLoginView):
+class AppleLoginView(APIView):
     """
-    Apple 소셜 로그인 후 사용자 정보를 CustomUserModel에 저장하는 API
+    Apple 소셜 로그인 후 프론트엔드에서 받은 id_token을 처리하는 API
     Args:
         request: 클라이언트의 로그인 요청.
     Returns:
-        JSON 응답: Apple OAuth2 인증 후 사용자 로그인 결과(JWT 토큰 반환).
+        JSON 응답: apple id_token 복호화 후 사용자 로그인 결과(JWT 토큰 반환).
 
     담당자: blakej2432
     """
 
-    adapter_class = apple_view.AppleOAuth2Adapter
-    client_class = OAuth2Client
-    callback_url = NAVER_REDIRECT_URI
+    def post(self, request):
+        apple_id_token = request.data.get("id_token")
+        if not apple_id_token:
+            return Response({"detail": "id_token is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            decoded_token = jwt.decode(apple_id_token, options={"verify_signature": False})
+            user_email = decoded_token.get("email")
+
+            user, created = CustomUser.objects.get_or_create(email=user_email, defaults={"email": user_email})
+            
+            user.last_login = now()
+            user.save()
+            
+            # JWT 토큰 발급
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+
+            # 응답 데이터 반환
+            return Response(
+                {
+                    "access_token": access_token,
+                    "refresh_token": str(refresh),
+                    "user": {
+                        "pk": user.pk,
+                        "email": user_email,
+                    },
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except jwt.DecodeError:
+            return Response({"detail": "Invalid id_token."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # TODO: 회원가입 구현
