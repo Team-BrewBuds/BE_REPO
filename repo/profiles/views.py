@@ -8,8 +8,9 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
-from django.shortcuts import get_object_or_404, redirect
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -177,10 +178,10 @@ class AppleLoginView(APIView):
             user_email = decoded_token.get("email")
 
             user, created = CustomUser.objects.get_or_create(email=user_email, defaults={"email": user_email})
-            
+
             user.last_login = now()
             user.save()
-            
+
             # JWT 토큰 발급
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
@@ -256,46 +257,48 @@ class RegistrationView(APIView):
 #         return self.request.user
 
 
+@extend_schema_view(
+    post=extend_schema(
+        responses=status.HTTP_201_CREATED,
+        summary="팔로우",
+        description="""
+            특정 사용자를 팔로우합니다.
+            이미 팔로우 중인 경우 409 CONFLICT
+
+            담당자 : hwstar1204
+        """,
+        tags=["follow"],
+    ),
+    delete=extend_schema(
+        responses=status.HTTP_200_OK,
+        summary="팔로우 취소",
+        description="""
+            특정 사용자의 언팔로우합니다.
+            팔로우 중이 아닌 경우 404 NOT FOUND
+
+            담당자 : hwstar1204
+        """,
+        tags=["follow"],
+    ),
+)
 class FollowAPIView(APIView):
-    """
-    팔로우, 팔로우 취소 API
-    Args:
-        (post) follow_user_id: 팔로우할 사용자의 id
-        (delete) following_user_id: 팔로우 취소할 사용자의 id
-    Returns:
-        팔로우 성공 시: HTTP 201 Created
-        팔로우 취소 성공 시: HTTP 200 OK
-        실패 시: HTTP 400 Bad Request or 404 Not Found
-
-    담당자: hwstar1204
-    """
-
-    def post(self, request):
+    def post(self, request, id):
         user = request.user
-        follow_user_id = request.data.get("follow_user_id")
-        if not follow_user_id:
-            return Response({"error": "follow_user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        follow_user = get_object_or_404(CustomUser, id=id)
 
-        follow_user = get_object_or_404(CustomUser, id=follow_user_id)
-
-        relationship, created = Relationship.custom_objects.follow(user, follow_user)
+        relationship, created = Relationship.objects.follow(user, follow_user)
         if not created:
-            return Response({"error": "already following"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "already following"}, status=status.HTTP_409_CONFLICT)
+        return Response({"success": "follow"}, status=status.HTTP_201_CREATED)
 
-        return Response({"success": "create follow success"}, status=status.HTTP_201_CREATED)
-
-    def delete(self, request):
+    def delete(self, request, id):
         user = request.user
-        following_user_id = request.data.get("following_user_id")
-        if not following_user_id:
-            return Response({"error": "following_user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        following_user = get_object_or_404(CustomUser, id=id)
 
-        following_user = get_object_or_404(CustomUser, id=following_user_id)
-
-        relationship, deleted = Relationship.custom_objects.unfollow(user, following_user)
+        relationship, deleted = Relationship.objects.unfollow(user, following_user)
         if not deleted:
-            return Response({"error": "not following"}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"success": "delete follow success"}, status=status.HTTP_200_OK)
+            return Response({"error": "not following"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
 
 
 class BudyRecommendAPIView(APIView):
@@ -313,6 +316,12 @@ class BudyRecommendAPIView(APIView):
     담당자: hwtar1204
     """
 
+    @extend_schema(
+        summary="버디 추천",
+        description="유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환 (10명 랜덤순)",
+        responses={200: BudyRecommendSerializer},
+        tags=["recommend"],
+    )
     def get(self, request):
         user = request.user
 
@@ -338,7 +347,7 @@ class BudyRecommendAPIView(APIView):
 
         recommend_user_list = []
         for user in user_list:
-            recommend_user_list.append({"user": user, "follower_cnt": Relationship.custom_objects.followers(user).count()})
+            recommend_user_list.append({"user": user, "follower_cnt": Relationship.objects.followers(user).count()})
 
         serializer = BudyRecommendSerializer(recommend_user_list, many=True)
         category = random_true_category if true_categories else random_category

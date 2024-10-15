@@ -9,7 +9,7 @@ class BeanSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class BeanTasteAndReviewSerializer(serializers.ModelSerializer):
+class BeanTasteReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = BeanTasteReview
         fields = "__all__"
