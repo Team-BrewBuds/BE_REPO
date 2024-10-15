@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view, OpenApiResponse
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
@@ -211,11 +212,38 @@ class NoteDetailApiView(APIView):
         return Response({"detail": "note not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        parameters=[PageNumberSerializer],
+        responses=CommentSerializer,
+        summary="댓글 리스트 조회",
+        description="""
+            object_type : "post" 또는 "tasted_record"
+            object_id : 댓글을 처리할 객체의 ID
+        """,
+        tags=["Comment"],
+    ),
+    post=extend_schema(
+        request=CommentSerializer,
+        responses={
+            200: OpenApiResponse(description="Comment created"),
+            400: OpenApiResponse(description="Invalid data"),
+        },
+        summary="댓글 생성 (대댓글 포함)",
+        description="""
+            object_type : "post" 또는 "tasted_record"
+            object_id : 댓글을 처리할 객체의 ID
+            content : 댓글 내용
+            parent_id : 대댓글인 경우 부모 댓글의 ID (optional)
+        """,
+        tags=["Comment"],
+    ),
+)
 class CommentApiView(APIView):
     """
     게시글 및 시음기록에 댓글 생성, 리스트 조회 API
     Args:
-        - object_type : "post" 또는 "TastedRecord"
+        - object_type : "post" 또는 "tasted_record"
         - object_id : 댓글을 처리할 객체의 ID
         - content : 댓글 내용
     Returns:
@@ -229,16 +257,14 @@ class CommentApiView(APIView):
     """
 
     def get(self, request, object_type, object_id):
-        page_serializer = PageNumberSerializer(data=request.GET)
-        if page_serializer.is_valid():
-            page = page_serializer.validated_data["page"]
-        else:
-            return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        comments = get_comment_list(object_type, object_id)
 
-        comments, has_next = get_comment_list(object_type, object_id, page)
-        comment_serializer = CommentSerializer(comments, many=True)
+        paginator = PageNumberPagination()
+        paginator.page_size = 12
+        page_obj = paginator.paginate_queryset(comments, request)
 
-        return Response({"comments": comment_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
+        serializer = CommentSerializer(page_obj, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, object_type, object_id):
         """
@@ -276,18 +302,55 @@ class CommentApiView(APIView):
 
         return Response(status=status.HTTP_200_OK)
 
-
+@extend_schema_view(
+    get=extend_schema(
+        responses=CommentSerializer,
+        summary="댓글 상세 조회",
+        description="""
+            id : 댓글 ID
+        """,
+        tags=["Comment"],
+    ),
+    put=extend_schema(
+        request=CommentSerializer,
+        responses={
+            200: OpenApiResponse(description="Comment updated"),
+            404: OpenApiResponse(description="Comment not found"),
+        },
+        summary="댓글 수정",
+        description="""
+            id : 댓글 ID  
+            content : 수정할 댓글 내용
+        """,
+        tags=["Comment"],
+    ),
+    patch=extend_schema(
+        request=CommentSerializer,
+        responses={
+            200: OpenApiResponse(description="Comment updated"),
+            404: OpenApiResponse(description="Comment not found"),
+        },
+        summary="댓글 수정",
+        description="""
+            id : 댓글 ID
+            content : 수정할 댓글 내용
+        """,
+        tags=["Comment"],
+    ),
+    delete=extend_schema(
+        responses={
+            200: OpenApiResponse(description="Comment deleted"),
+            404: OpenApiResponse(description="Comment not found"),
+        },
+        summary="댓글 삭제",
+        description="""
+            id : 댓글 ID 
+            soft delete : 부모 댓글이 없는 경우 소프트 삭제 
+        """,
+        tags=["Comment"],
+    ),
+)
 class CommentDetailAPIView(APIView):
-    """
-    댓글 상세정보 조회, 수정, 삭제 API
-    Args:
-        - id : 댓글 ID
-    Returns:
-        - status: 200
-
-    담당자: hwstar1204
-    """
-
     def get(self, request, id):
         comment = get_comment(id)
         comment_serializer = CommentSerializer(comment)

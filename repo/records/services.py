@@ -244,17 +244,14 @@ def get_post_or_tasted_record_detail(object_type, object_id):
     return obj
 
 
-def get_comment_list(object_type, object_id, page):
+def get_comment_list(object_type, object_id):
     obj = get_post_or_tasted_record_detail(object_type, object_id)
 
     comments = obj.comment_set.filter(parent=None).order_by("created_at")
-    paginator = Paginator(comments, 10)
-    page_obj = paginator.get_page(page)
-
-    for comment in page_obj.object_list:
+    for comment in comments:
         comment.replies_list = comment.replies.all().order_by("created_at")
 
-    return page_obj.object_list, page_obj.has_next()
+    return comments
 
 
 def get_comment(comment_id):

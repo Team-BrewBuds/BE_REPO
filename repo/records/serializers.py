@@ -17,10 +17,19 @@ class FeedSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     content = serializers.CharField(max_length=200)
+    parent = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(), required=False)
     author = UserSimpleSerializer(read_only=True)
-    like_cnt = serializers.IntegerField(source="like_cnt.count")
+    like_cnt = serializers.IntegerField(source="like_cnt.count", read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
     replies = serializers.SerializerMethodField()
+    is_user_liked = serializers.SerializerMethodField()
+
+    def get_is_user_liked(self, obj):
+        request = self.context.get("request")
+        if request:
+            user = request.user
+            return obj.like_cnt.filter(id=user.id).exists()
+        return False
 
     def get_replies(self, obj):
         if hasattr(obj, "replies_list"):
@@ -30,7 +39,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ["id", "content", "author", "like_cnt", "created_at", "replies"]
+        fields = ["id", "content", "parent", "author", "like_cnt", "created_at", "replies", "is_user_liked"]
 
 class LikeSerializer(serializers.Serializer):
     object_type = serializers.ChoiceField(choices=["post", "tasted_record", "comment"])

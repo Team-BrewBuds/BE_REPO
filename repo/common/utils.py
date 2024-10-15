@@ -66,7 +66,7 @@ def update(request: Request, pk: int, model: Type[Model], serializer_class: Type
     if response:
         return response
 
-    data_serializer = serializer_class(data, data=request.data, partial=partial)
+    data_serializer = serializer_class(data, data=request.data, context={"request": request}, partial=partial)
     if data_serializer.is_valid():
         data_serializer.save()
         return Response(data_serializer.data, status=status.HTTP_200_OK)
