@@ -112,8 +112,8 @@ class Note(models.Model):
     bean = models.ForeignKey(Bean, null=True, blank=True, on_delete=models.CASCADE, verbose_name="원두")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
 
-    objects = models.Manager()  # The default manager
-    custom_objects = NoteManagers()
+    # objects = models.Manager()  # The default manager
+    objects = NoteManagers()
 
     def __str__(self):
         return f"Note: {self.id}"

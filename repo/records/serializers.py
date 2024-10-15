@@ -37,6 +37,9 @@ class LikeSerializer(serializers.Serializer):
     object_id = serializers.IntegerField()
 
 class NoteSerializer(serializers.ModelSerializer):
+    object_type = serializers.ChoiceField(choices=["post", "tasted_record"])
+    object_id = serializers.IntegerField()
+
     class Meta:
         model = Note
-        fields = "__all__"
+        fields = ["object_type", "object_id"]

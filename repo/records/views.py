@@ -1,18 +1,16 @@
 from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, OpenApiParameter
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view, OpenApiResponse
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import status
 
 from repo.common.utils import delete, update
 from repo.records.models import Comment, Note, Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
-from repo.records.serializers import (
-    CommentSerializer,
-    NoteSerializer, LikeSerializer,
-)
+from repo.records.serializers import CommentSerializer, NoteSerializer, LikeSerializer
+from repo.records.tasted_record.serializers import TastedRecordListSerializer
 from repo.common.serializers import PageNumberSerializer
 from repo.records.services import (
     get_comment,
@@ -21,7 +19,7 @@ from repo.records.services import (
     get_following_feed,
     get_post_or_tasted_record_detail, get_refresh_feed, get_serialized_data,
 )
-from repo.records.tasted_record.serializers import TastedRecordListSerializer
+
 
 class FeedAPIView(APIView):
     @extend_schema(
@@ -129,62 +127,88 @@ class LikeApiView(APIView):
         return Response(status=status_code)
 
 
-
-
-
+@extend_schema_view(
+    # get=extend_schema(
+    #     responses=NoteListSerializer,
+    #     summary="노트 리스트 조회",
+    #     description="""
+    #         object_type : "post" 또는 "TastedRecord"
+    #         object_id : 노트를 처리할 객체의 ID
+    #
+    #         담당자: hwstar1204
+    #     """,
+    #     tags=["Note"],
+    # ),
+    post=extend_schema(
+        request=NoteSerializer,
+        responses={
+            200: OpenApiResponse(description="Note already exists"),
+            201: OpenApiResponse(description="Note created"),
+        },
+        summary="노트 생성",
+        description="""
+            object_type : "post" 또는 "tasted_record"
+            object_id : 노트를 처리할 객체의 ID
+            
+            담당자: hwstar1204
+        """,
+        tags=["Note"],
+    ),
+)
 class NoteApiView(APIView):
-    """
-    게시글, 시음기록, 원두 노트 생성, 조회 API
-    Args:
-        - object_type : "post" 또는 "TastedRecord" 또는 "bean"
-        - object_id : 노트를 처리할 객체의 ID
-    Returns:
-    - status: 200
+    # def get(self, request):
+    #     user = request.user
+    #
+    #     # notes = Note.objects.get_notes_for_user_and_object(user, object_type)
+    #     model_map = {"post": Post, "tasted_record": TastedRecord}
+    #
+    #     model = model_map.get(object_type)  # **{object_type: model}
+    #     notes = Note.objects.filter(author=user.id).order_by("-id")
+    #     serializer = NoteListSerializer(notes, many=True)
+    #
+    #     return Response(serializer.data, status=status.HTTP_200_OK)
 
-    담당자: hwstar1204
-    """
+    def post(self, request):
+        serializer = NoteSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def dispatch(self, request, *args, **kwargs):
-        id = kwargs.get("object_id")
-        type = kwargs.get("object_type")
-
-        if not id or not type:
-            return Response({"error": "object_id and object_type are required"}, status=status.HTTP_400_BAD_REQUEST)
-        return super().dispatch(request, *args, **kwargs)
-
-    def get(self, request, object_type, object_id):
         user = request.user
-        notes = Note.custom_objects.get_notes_for_user_and_object(user, object_type, object_id)
-        serializer = NoteSerializer(notes, many=True)
+        object_type = serializer.validated_data["object_type"]
+        object_id = serializer.validated_data["object_id"]
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        existing_note = Note.objects.existing_note(user, object_type, object_id)
+        if existing_note:
+            return Response({"detail": "note already exists"}, status=status.HTTP_200_OK)
 
-    def post(self, request, object_type, object_id):
-        user = request.user
-        note = Note.custom_objects.create_note_for_object(user, object_type, object_id)
-        serializer = NoteSerializer(note)
+        Note.objects.create_note_for_object(user, object_type, object_id)
+        return Response({"detail": "note created"}, status=status.HTTP_201_CREATED)
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+@extend_schema_view(
+    delete=extend_schema(
+        responses={
+            200: OpenApiResponse(description="Note deleted"),
+            404: OpenApiResponse(description="Note not found"),
+        },
+        summary="노트 삭제",
+        description="""
+                object_type : "post" 또는 "tasted_record"
+                object_id : 노트를 처리할 객체의 ID
 
-
+                담당자: hwstar1204
+            """,
+        tags=["Note"],
+    ),
+)
 class NoteDetailApiView(APIView):
-    """
-    노트 상세정보 조회, 삭제 API
-    Args:
-        - id : 노트 ID
-    Returns:
-        - status: 200
+    def delete(self, request, object_type, object_id):
+        user = request.user
 
-    담당자: hwstar1204
-    """
-
-    def get(self, request, id):
-        note = get_object_or_404(Note, pk=id)
-        note_serializer = NoteSerializer(note)
-        return Response(note_serializer.data, status=status.HTTP_200_OK)
-
-    def delete(self, request, id):
-        return delete(request, id, Note)
+        existing_note = Note.objects.existing_note(user, object_type, object_id)
+        if existing_note:
+            existing_note.delete()
+            return Response({"detail": "note deleted"}, status=status.HTTP_200_OK)
+        return Response({"detail": "note not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 class CommentApiView(APIView):
