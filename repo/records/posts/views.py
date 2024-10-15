@@ -12,7 +12,7 @@ from repo.common.view_counter import update_view_count
 from repo.records.models import Photo
 from repo.records.posts.serializers import *
 from repo.common.serializers import PageNumberSerializer
-from repo.records.services import get_post_detail, get_post_feed2
+from repo.records.services import get_post_detail, get_post_feed
 
 
 @extend_schema_view(
@@ -66,7 +66,7 @@ class PostListCreateAPIView(APIView):
 
         subject_value = subject_mapping.get(subject, "all")
 
-        posts = get_post_feed2(request.user, subject_value)
+        posts = get_post_feed(request.user, subject_value)
 
         paginator = PageNumberPagination()
         paginator.page_size = 12
@@ -131,7 +131,7 @@ class PostListCreateAPIView(APIView):
         tags=["posts"],
     ),
     delete=extend_schema(
-        responses=PostDetailSerializer,
+        responses=status.HTTP_204_NO_CONTENT,
         summary="게시글 삭제",
         description="""
             게시글을 삭제합니다.
@@ -157,7 +157,7 @@ class PostDetailApiView(APIView):
         post = get_post_detail(pk)
         instance, response = update_view_count(request, post, Response(), "post_viewed")
 
-        serializer = PostDetailSerializer(instance)
+        serializer = PostDetailSerializer(instance, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request, pk):

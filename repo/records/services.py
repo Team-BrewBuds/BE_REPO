@@ -1,9 +1,8 @@
 import random
-from datetime import timedelta
 from itertools import chain
-
+from datetime import timedelta
+from django.db.models import Q, Prefetch
 from django.core.paginator import Paginator
-from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -181,44 +180,47 @@ def get_tasted_record_detail(pk):
 
     return record
 
+def get_post_feed(user, subject):
+    """사용자가 팔로우한 유저와 추가 게시글을 가져오는 함수"""
 
-def get_post_feed(user, page=1):
+    # 팔로우한 유저들의 ID 가져오기
     following_users = Relationship.custom_objects.following(user.id).values_list("to_user", flat=True)
 
-    followed_posts = (
-        Post.objects.filter(author__in=following_users)
+    # 기본 필터 조건 (subject에 따른 필터 처리)
+    post_filter = Q(author__in=following_users)
+    if subject != "all":
+        post_filter &= Q(subject=subject)
+
+    # 팔로우한 유저들의 게시글 가져오기
+    following_posts = (
+        Post.objects.filter(post_filter)
         .select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .prefetch_related(
+            "tasted_records",
+            Prefetch("photo_set", queryset=Photo.objects.only("photo_url"))
+        )
         .order_by("-created_at")
     )
 
-    if not following_users.exists() or followed_posts.count() < 10:
+    # 팔로우한 유저가 없거나 게시글이 10개 미만일 경우 추가 게시글 가져오기
+    if not following_users.exists() or following_posts.count() < 10:
+        additional_filter = ~Q(author__in=following_users)  # 팔로우한 유저 제외
+        if subject != "all":
+            additional_filter &= Q(subject=subject)
+
         additional_posts = (
-            Post.objects.exclude(author__in=following_users)
-            .select_related("author", "taste_and_review")
-            .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+            Post.objects.filter(additional_filter)
+            .select_related("author")
+            .prefetch_related(
+                "tasted_records",
+                Prefetch("photo_set", queryset=Photo.objects.only("photo_url"))
+            )
             .order_by("-created_at")
         )
     else:
-        additional_posts = TastedRecord.objects.none()
+        additional_posts = []
 
-    all_posts = list(chain(followed_posts, additional_posts))
-
-    paginator = Paginator(all_posts, 12)
-    page_obj = paginator.get_page(page)
-
-    return page_obj.object_list, page_obj.has_next()
-
-
-def get_post_feed2(user, subject):
-
-    posts = (
-        Post.objects.filter(subject=subject, is_private=False)
-        .select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-created_at")
-    )
-
+    posts = list(chain(following_posts, additional_posts))
     return posts
 
 

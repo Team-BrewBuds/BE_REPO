@@ -3,14 +3,14 @@ from rest_framework import serializers
 from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import Post, TastedRecord
 from repo.common.serializers import PhotoSerializer
-from repo.records.tasted_record.serializers import TastedRecordListSerializer,TastedRecordInPostSerializer
+from repo.records.tasted_record.serializers import TastedRecordInPostSerializer
 
 
 class PostListSerializer(serializers.ModelSerializer):
     """ 게시글 리스트 조회용"""
     author = UserSimpleSerializer(read_only=True)
-    photos = PhotoSerializer(many=True, source="photo_set")
-    tasted_record = TastedRecordListSerializer("tasted_record", read_only=True)
+    photos = PhotoSerializer(many=True, source="photo_set", read_only=True)
+    tasted_records = TastedRecordInPostSerializer("tasted_records", many=True, read_only=True)
     like_cnt = serializers.IntegerField(source="like_cnt.count")
     is_user_liked = serializers.SerializerMethodField()
 
