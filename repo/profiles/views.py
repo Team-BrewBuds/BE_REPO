@@ -8,11 +8,9 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view
-
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -180,10 +178,10 @@ class AppleLoginView(APIView):
             user_email = decoded_token.get("email")
 
             user, created = CustomUser.objects.get_or_create(email=user_email, defaults={"email": user_email})
-            
+
             user.last_login = now()
             user.save()
-            
+
             # JWT 토큰 발급
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
@@ -258,6 +256,7 @@ class RegistrationView(APIView):
 #         # 현재 로그인한 유저 정보를 반환
 #         return self.request.user
 
+
 @extend_schema_view(
     post=extend_schema(
         responses=status.HTTP_201_CREATED,
@@ -265,7 +264,7 @@ class RegistrationView(APIView):
         description="""
             특정 사용자를 팔로우합니다.
             이미 팔로우 중인 경우 409 CONFLICT
-            
+
             담당자 : hwstar1204
         """,
         tags=["follow"],
@@ -276,7 +275,7 @@ class RegistrationView(APIView):
         description="""
             특정 사용자의 언팔로우합니다.
             팔로우 중이 아닌 경우 404 NOT FOUND
-            
+
             담당자 : hwstar1204
         """,
         tags=["follow"],
@@ -301,6 +300,7 @@ class FollowAPIView(APIView):
             return Response({"error": "not following"}, status=status.HTTP_404_NOT_FOUND)
         return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
 
+
 class BudyRecommendAPIView(APIView):
     """
     유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환
@@ -315,6 +315,7 @@ class BudyRecommendAPIView(APIView):
 
     담당자: hwtar1204
     """
+
     @extend_schema(
         summary="버디 추천",
         description="유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환 (10명 랜덤순)",

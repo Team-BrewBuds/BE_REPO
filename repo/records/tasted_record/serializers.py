@@ -2,9 +2,9 @@ from rest_framework import serializers
 
 from repo.beans.models import Bean, BeanTasteReview
 from repo.beans.serializers import BeanSerializer, BeanTasteReviewSerializer
+from repo.common.serializers import PhotoSerializer
 from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import TastedRecord
-from repo.common.serializers import PhotoSerializer
 
 
 class TastedRecordListSerializer(serializers.ModelSerializer):
@@ -18,15 +18,29 @@ class TastedRecordListSerializer(serializers.ModelSerializer):
     is_user_liked = serializers.SerializerMethodField()
 
     def get_is_user_liked(self, obj):
-        user = self.context['request'].user
+        user = self.context["request"].user
         if user.is_authenticated:
             return obj.like_cnt.filter(id=user.id).exists()
         return False
 
     class Meta:
         model = TastedRecord
-        fields = ['id', 'author', 'bean_name', 'bean_type', 'star_rating', 'flavor', 'content',
-                  'view_cnt', 'like_cnt','is_private', 'created_at', 'tag', 'photos', 'is_user_liked']
+        fields = [
+            "id",
+            "author",
+            "bean_name",
+            "bean_type",
+            "star_rating",
+            "flavor",
+            "content",
+            "view_cnt",
+            "like_cnt",
+            "is_private",
+            "created_at",
+            "tag",
+            "photos",
+            "is_user_liked",
+        ]
 
 
 class TastedRecordDetailSerializer(serializers.ModelSerializer):
@@ -39,7 +53,7 @@ class TastedRecordDetailSerializer(serializers.ModelSerializer):
     is_user_liked = serializers.SerializerMethodField()
 
     def get_is_user_liked(self, obj):
-        user = self.context['request'].user
+        user = self.context["request"].user
         if user.is_authenticated:
             return obj.like_cnt.filter(id=user.id).exists()
         return False
@@ -47,6 +61,7 @@ class TastedRecordDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = TastedRecord
         fields = "__all__"
+
 
 class TastedRecordCreateUpdateSerializer(serializers.ModelSerializer):
     bean = BeanSerializer("bean")
@@ -67,4 +82,4 @@ class TastedRecordInPostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TastedRecord
-        fields = ['id', 'content', 'bean_name', 'bean_type', 'star_rating', 'flavor', 'photos']
+        fields = ["id", "content", "bean_name", "bean_type", "star_rating", "flavor", "photos"]

@@ -1,7 +1,7 @@
 from drf_spectacular.types import OpenApiTypes
-from rest_framework.views import APIView
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.pagination import PageNumberPagination
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from rest_framework.views import APIView
 
 from repo.beans.models import Bean
 from repo.beans.serializers import BeanSerializer
@@ -15,7 +15,7 @@ from repo.common.serializers import PageNumberSerializer
     description="""
         모든 원두 리스트 가져오는 API
         - page_size = 20
-        
+
         담당자 : hwstar1204
     """,
     tags=["beans"],
@@ -44,7 +44,7 @@ class BeanNameListView(APIView):
         - name 파라미터가 있으면 해당 원두명을 포함하는 원두 리스트를 가져온다.
         - name 파라미터가 없으면 모든 원두 리스트를 가져온다.
         - page_size = 20
-        
+
         담당자 : hwstar1204
     """,
     tags=["beans"],

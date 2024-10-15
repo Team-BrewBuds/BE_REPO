@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('records', '0004_alter_tastedrecord_like_cnt'),
+        ("records", "0004_alter_tastedrecord_like_cnt"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='post',
-            name='tasted_records',
-            field=models.ManyToManyField(related_name='posts', to='records.tastedrecord', verbose_name='관련 시음 기록'),
+            model_name="post",
+            name="tasted_records",
+            field=models.ManyToManyField(related_name="posts", to="records.tastedrecord", verbose_name="관련 시음 기록"),
         ),
     ]

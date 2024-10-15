@@ -1,9 +1,9 @@
 from rest_framework import serializers
 
-from repo.records.posts.serializers import PostListSerializer
-from repo.records.tasted_record.serializers import TastedRecordListSerializer
 from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import Comment, Note, Post, TastedRecord
+from repo.records.posts.serializers import PostListSerializer
+from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
 class FeedSerializer(serializers.ModelSerializer):
@@ -41,9 +41,11 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ["id", "content", "parent", "author", "like_cnt", "created_at", "replies", "is_user_liked"]
 
+
 class LikeSerializer(serializers.Serializer):
     object_type = serializers.ChoiceField(choices=["post", "tasted_record", "comment"])
     object_id = serializers.IntegerField()
+
 
 class NoteSerializer(serializers.ModelSerializer):
     object_type = serializers.ChoiceField(choices=["post", "tasted_record"])

@@ -1,25 +1,32 @@
-from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator
+from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view, OpenApiResponse
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
+from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import status
 
+from repo.common.serializers import PageNumberSerializer
 from repo.common.utils import delete, update
 from repo.records.models import Comment, Note, Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
-from repo.records.serializers import CommentSerializer, NoteSerializer, LikeSerializer
-from repo.records.tasted_record.serializers import TastedRecordListSerializer
-from repo.common.serializers import PageNumberSerializer
+from repo.records.serializers import CommentSerializer, LikeSerializer, NoteSerializer
 from repo.records.services import (
     get_comment,
     get_comment_list,
     get_common_feed,
     get_following_feed,
-    get_post_or_tasted_record_detail, get_refresh_feed, get_serialized_data,
+    get_post_or_tasted_record_detail,
+    get_refresh_feed,
+    get_serialized_data,
 )
+from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
 class FeedAPIView(APIView):
@@ -40,19 +47,19 @@ class FeedAPIView(APIView):
             following:
             홈 [전체] 사용자가 팔로잉한 유저들의 1시간 이내 작성한 시음기록과 게시글을 랜덤순으로 가져오는 함수
             30분이내 조회한 기록, 프라이빗한 시음기록은 제외
-            
+
             common:
             홈 [전체] 일반 시음기록과 게시글을 최신순으로 가져오는 함수
             30분이내 조회한 기록, 프라이빗한 시음기록은 제외
-            
+
             refresh:
             홈 [전체] 시음기록과 게시글을 랜덤순으로 반환하는 API
             프라이빗한 시음기록은 제외
-            
+
             response:
             TastedRecordListSerializer or PostListSerializer
             (아래 Schemas 참조)
-        
+
             담당자 : hwstar1204
         """,
         tags=["Feed"],
@@ -81,11 +88,14 @@ class FeedAPIView(APIView):
 
         serialized_data = get_serialized_data(request, page_obj)
 
-        return Response({
-            "results": serialized_data,
-            "has_next": page_obj.has_next(),
-            "current_page": page_obj.number,
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "results": serialized_data,
+                "has_next": page_obj.has_next(),
+                "current_page": page_obj.number,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class LikeApiView(APIView):
@@ -96,10 +106,10 @@ class LikeApiView(APIView):
         description="""
             object_type : "post" or "tasted_record" or "comment"
             object_id : 좋아요를 처리할 객체의 ID
-            
+
             response:
                 201: 좋아요 추가, 200: 좋아요 취소
-            
+
             담당자 : hwstar1204
         """,
         tags=["Like"],
@@ -118,7 +128,7 @@ class LikeApiView(APIView):
 
         obj = get_object_or_404(model_class, pk=object_id)
 
-        if user_id in obj.like_cnt.values_list('id', flat=True):
+        if user_id in obj.like_cnt.values_list("id", flat=True):
             obj.like_cnt.remove(user_id)
             status_code = status.HTTP_200_OK
         else:
@@ -150,7 +160,7 @@ class LikeApiView(APIView):
         description="""
             object_type : "post" 또는 "tasted_record"
             object_id : 노트를 처리할 객체의 ID
-            
+
             담당자: hwstar1204
         """,
         tags=["Note"],
@@ -184,6 +194,7 @@ class NoteApiView(APIView):
 
         Note.objects.create_note_for_object(user, object_type, object_id)
         return Response({"detail": "note created"}, status=status.HTTP_201_CREATED)
+
 
 @extend_schema_view(
     delete=extend_schema(
@@ -302,6 +313,7 @@ class CommentApiView(APIView):
 
         return Response(status=status.HTTP_200_OK)
 
+
 @extend_schema_view(
     get=extend_schema(
         responses=CommentSerializer,
@@ -319,7 +331,7 @@ class CommentApiView(APIView):
         },
         summary="댓글 수정",
         description="""
-            id : 댓글 ID  
+            id : 댓글 ID
             content : 수정할 댓글 내용
         """,
         tags=["Comment"],
@@ -344,8 +356,8 @@ class CommentApiView(APIView):
         },
         summary="댓글 삭제",
         description="""
-            id : 댓글 ID 
-            soft delete : 부모 댓글이 없는 경우 소프트 삭제 
+            id : 댓글 ID
+            soft delete : 부모 댓글이 없는 경우 소프트 삭제
         """,
         tags=["Comment"],
     ),

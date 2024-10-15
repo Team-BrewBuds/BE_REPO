@@ -36,6 +36,7 @@ class NoteManagers(models.Manager):
 
     def create_note_for_object(self, user, object_type, object_id):
         from repo.records.models import Note
+
         model = self._get_model(object_type)
         obj = get_object_or_404(model, pk=object_id)
 
@@ -45,10 +46,9 @@ class NoteManagers(models.Manager):
 
     def existing_note(self, user, object_type, object_id):
         from repo.records.models import Note
+
         model = self._get_model(object_type)
-        existing_note = Note.objects.filter(
-            author=user, **{f"{object_type}__id": object_id}
-        ).first()
+        existing_note = Note.objects.filter(author=user, **{f"{object_type}__id": object_id}).first()
 
         return existing_note
 

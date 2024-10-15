@@ -1,8 +1,9 @@
 import random
-from itertools import chain
 from datetime import timedelta
-from django.db.models import Q, Prefetch
+from itertools import chain
+
 from django.core.paginator import Paginator
+from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -24,6 +25,7 @@ def get_serialized_data(request, page_obj):
         obj_list.append(serializer(item, context={"request": request}).data)
 
     return obj_list
+
 
 def get_following_feed(request, user):
     """
@@ -49,15 +51,11 @@ def get_following_feed(request, user):
 
     # 30분 이내 조회한 시음 기록 제외
     not_viewed_tasted_record = [
-        record for record in following_tasted_record
-        if not is_viewed(request, cookie_name="tasted_record_viewed", content_id=record.id)
+        record for record in following_tasted_record if not is_viewed(request, cookie_name="tasted_record_viewed", content_id=record.id)
     ]
 
     # 30분 이내 조회한 게시글 제외
-    not_viewed_post = [
-        post for post in following_post
-        if not is_viewed(request, cookie_name="post_viewed", content_id=post.id)
-    ]
+    not_viewed_post = [post for post in following_post if not is_viewed(request, cookie_name="post_viewed", content_id=post.id)]
 
     # 두 쿼리셋 결합
     combined_data = list(chain(not_viewed_tasted_record, not_viewed_post))
@@ -83,28 +81,22 @@ def get_common_feed(request, user):
     )
 
     common_post = (
-        Post.objects
-        .exclude(author__in=following_users)
+        Post.objects.exclude(author__in=following_users)
         .select_related("author")
         .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
     not_viewed_tasted_record = [
-        record for record in common_tasted_record
-        if not is_viewed(request, cookie_name="tasted_record_viewed", content_id=record.id)
+        record for record in common_tasted_record if not is_viewed(request, cookie_name="tasted_record_viewed", content_id=record.id)
     ]
 
-    not_viewed_post = [
-        post for post in common_post
-        if not is_viewed(request, cookie_name="post_viewed", content_id=post.id)
-    ]
+    not_viewed_post = [post for post in common_post if not is_viewed(request, cookie_name="post_viewed", content_id=post.id)]
 
-    combined_data = sorted(
-        chain(not_viewed_tasted_record, not_viewed_post), key=lambda x: x.created_at, reverse=True
-    )
+    combined_data = sorted(chain(not_viewed_tasted_record, not_viewed_post), key=lambda x: x.created_at, reverse=True)
 
     return combined_data
+
 
 def get_refresh_feed():
     """
@@ -120,8 +112,7 @@ def get_refresh_feed():
     )
 
     posts = (
-        Post.objects
-        .select_related("author")
+        Post.objects.select_related("author")
         .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("?")
     )
@@ -180,6 +171,7 @@ def get_tasted_record_detail(pk):
 
     return record
 
+
 def get_post_feed(user, subject):
     """사용자가 팔로우한 유저와 추가 게시글을 가져오는 함수"""
 
@@ -195,10 +187,7 @@ def get_post_feed(user, subject):
     following_posts = (
         Post.objects.filter(post_filter)
         .select_related("author")
-        .prefetch_related(
-            "tasted_records",
-            Prefetch("photo_set", queryset=Photo.objects.only("photo_url"))
-        )
+        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .order_by("-created_at")
     )
 
@@ -211,10 +200,7 @@ def get_post_feed(user, subject):
         additional_posts = (
             Post.objects.filter(additional_filter)
             .select_related("author")
-            .prefetch_related(
-                "tasted_records",
-                Prefetch("photo_set", queryset=Photo.objects.only("photo_url"))
-            )
+            .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
             .order_by("-created_at")
         )
     else:

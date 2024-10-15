@@ -39,6 +39,7 @@ def update_view_count(request, instance, response, cookie_name, expiration_minut
 
     return instance, response
 
+
 def is_viewed(request, cookie_name, content_id):
     """
     쿠키에 저장된 조회한 게시글 목록에 포함되어 있는지 확인하는 헬퍼 함수

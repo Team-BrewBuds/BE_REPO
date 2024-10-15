@@ -14,7 +14,6 @@ urlpatterns = [
     path("user/complete-registration/", views.RegistrationView.as_view(), name="complete_registration"),
     path("follow/<int:id>/", views.FollowAPIView.as_view(), name="follow"),
     path("recommend/", views.BudyRecommendAPIView.as_view(), name="budy-recommend"),
-
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 ]

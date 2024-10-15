@@ -1,17 +1,22 @@
+from django.core.files.storage import default_storage
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.pagination import PageNumberPagination
-from django.core.files.storage import default_storage
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample
 
-from repo.common.utils import get_object, delete
+from repo.common.serializers import PageNumberSerializer
+from repo.common.utils import delete, get_object
 from repo.common.view_counter import update_view_count
 from repo.records.models import Photo
 from repo.records.posts.serializers import *
-from repo.common.serializers import PageNumberSerializer
 from repo.records.services import get_post_detail, get_post_feed
 
 
@@ -31,8 +36,9 @@ from repo.records.services import get_post_detail, get_post_feed
                         summary=f"{choice[0]} 카테고리 게시글 조회",
                         description=f"홈 게시글에서 {choice[0]} 카테고리를 조회합니다.",
                         value=choice[0],
-                    ) for choice in Post.SUBJECT_TYPE_CHOICES
-                ]
+                    )
+                    for choice in Post.SUBJECT_TYPE_CHOICES
+                ],
             ),
         ],
         responses=PostListSerializer,
@@ -52,7 +58,7 @@ from repo.records.services import get_post_detail, get_post_feed
             담당자: hwstar1204
         """,
         tags=["posts"],
-    )
+    ),
 )
 class PostListCreateAPIView(APIView):
     """게시글 리스트 조회, 생성 API"""
@@ -80,18 +86,18 @@ class PostListCreateAPIView(APIView):
         if serializer.is_valid():
             post = Post.objects.create(
                 author=request.user,
-                title=serializer.validated_data['title'],
-                content=serializer.validated_data['content'],
-                subject=serializer.validated_data['subject'],
-                tag=serializer.validated_data['tag'],
+                title=serializer.validated_data["title"],
+                content=serializer.validated_data["content"],
+                subject=serializer.validated_data["subject"],
+                tag=serializer.validated_data["tag"],
             )
 
-            tasted_record_ids = request.data.get('tasted_records', [])
+            tasted_record_ids = request.data.get("tasted_records", [])
             tasted_records = TastedRecord.objects.filter(id__in=tasted_record_ids)
 
             post.tasted_records.set(tasted_records)
 
-            photos = request.FILES.getlist('photos')
+            photos = request.FILES.getlist("photos")
             if photos:
                 for photo in photos:
                     path = default_storage.save(f"post/{post.id}/{photo.name}", photo)
@@ -99,6 +105,7 @@ class PostListCreateAPIView(APIView):
 
             return Response(PostCreateUpdateSerializer(post).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @extend_schema_view(
     get=extend_schema(
@@ -138,7 +145,7 @@ class PostListCreateAPIView(APIView):
             담당자: hwstar1204
         """,
         tags=["posts"],
-    )
+    ),
 )
 class PostDetailApiView(APIView):
     """
@@ -183,17 +190,18 @@ class PostDetailApiView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def _update_tasted_records(self, request, post):
-        if 'tasted_records' in request.data:
-            tasted_record_ids = request.data.get('tasted_records', [])
+        if "tasted_records" in request.data:
+            tasted_record_ids = request.data.get("tasted_records", [])
             tasted_records = TastedRecord.objects.filter(id__in=tasted_record_ids)
             post.tasted_records.set(tasted_records)
 
     def _update_photos(self, request, post):
-        if 'photos' in request.FILES:
-            photos = request.FILES.getlist('photos')
+        if "photos" in request.FILES:
+            photos = request.FILES.getlist("photos")
             for photo in photos:
                 path = default_storage.save(f"post/{post.id}/{photo.name}", photo)
                 Photo.objects.create(post=post, photo_url=path)
+
     def delete(self, request, pk):
         return delete(request, pk, Post)
 
@@ -232,8 +240,9 @@ class TopSubjectPostsAPIView(APIView):
                         summary=f"{choice[0]} 카테고리 인기 게시글 조회",
                         description=f"홈의 인기 게시글에서 {choice[0]} 카테고리를 조회합니다.",
                         value=choice[0],
-                    ) for choice in Post.SUBJECT_TYPE_CHOICES
-                ]
+                    )
+                    for choice in Post.SUBJECT_TYPE_CHOICES
+                ],
             ),
         ],
     )

@@ -7,14 +7,14 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('records', '0003_remove_post_tasted_record_post_tasted_records'),
+        ("records", "0003_remove_post_tasted_record_post_tasted_records"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='tastedrecord',
-            name='like_cnt',
-            field=models.ManyToManyField(default=0, related_name='like_tasted_records', to=settings.AUTH_USER_MODEL),
+            model_name="tastedrecord",
+            name="like_cnt",
+            field=models.ManyToManyField(default=0, related_name="like_tasted_records", to=settings.AUTH_USER_MODEL),
         ),
     ]

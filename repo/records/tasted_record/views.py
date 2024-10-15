@@ -1,23 +1,24 @@
 import uuid
 
+from django.core.files.storage import default_storage
 from django.db import transaction
-from drf_spectacular.utils import extend_schema_view, extend_schema
+from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.pagination import PageNumberPagination
-from django.shortcuts import get_object_or_404
-from django.core.files.storage import default_storage
 
 from repo.beans.models import Bean, BeanTasteReview
+from repo.common.serializers import PageNumberSerializer
 from repo.common.utils import delete, get_object
 from repo.common.view_counter import update_view_count
-from repo.records.models import TastedRecord, Photo
-from repo.common.serializers import PageNumberSerializer
+from repo.records.models import Photo, TastedRecord
 from repo.records.services import get_tasted_record_detail, get_tasted_record_feed
 from repo.records.tasted_record.serializers import (
+    TastedRecordCreateUpdateSerializer,
     TastedRecordDetailSerializer,
-    TastedRecordListSerializer, TastedRecordCreateUpdateSerializer,
+    TastedRecordListSerializer,
 )
 from repo.records.tasted_record.service import update_tasted_record
 
@@ -45,7 +46,7 @@ from repo.records.tasted_record.service import update_tasted_record
             담당자 : hwstar1204
         """,
         tags=["tasted_records"],
-    )
+    ),
 )
 class TastedRecordListCreateAPIView(APIView):
     """
@@ -70,7 +71,7 @@ class TastedRecordListCreateAPIView(APIView):
         paginator.page_size = 12
         paginated_tasted_records = paginator.paginate_queryset(tasted_records, request)
 
-        serializer = TastedRecordListSerializer(paginated_tasted_records, many=True,  context={"request": request})
+        serializer = TastedRecordListSerializer(paginated_tasted_records, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
@@ -78,25 +79,25 @@ class TastedRecordListCreateAPIView(APIView):
 
         if serializer.is_valid():
             with transaction.atomic():
-                bean_data = serializer.validated_data['bean']
+                bean_data = serializer.validated_data["bean"]
                 bean, created = Bean.objects.get_or_create(**bean_data)
                 if created:
                     bean.is_user_created = True
                     bean.save()
 
-                taste_review_data = serializer.validated_data['taste_review']
+                taste_review_data = serializer.validated_data["taste_review"]
                 taste_review = BeanTasteReview.objects.create(**taste_review_data)
 
                 tasted_record = TastedRecord.objects.create(
                     author=request.user,
                     bean=bean,
                     taste_review=taste_review,
-                    content=serializer.validated_data['content'],
+                    content=serializer.validated_data["content"],
                 )
 
-                photos = request.data.get('photos', [])
+                photos = request.data.get("photos", [])
                 for photo in photos:
-                    extension = photo.name.split('.')[-1]
+                    extension = photo.name.split(".")[-1]
                     unique_filename = f"{uuid.uuid4()}.{extension}"
 
                     path = default_storage.save(f"tasted_record/{tasted_record.id}/{unique_filename}", photo)
@@ -106,6 +107,7 @@ class TastedRecordListCreateAPIView(APIView):
             response_serializer = TastedRecordCreateUpdateSerializer(tasted_record)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @extend_schema_view(
     get=extend_schema(
@@ -145,7 +147,7 @@ class TastedRecordListCreateAPIView(APIView):
             담당자 : hwstar1204
         """,
         tags=["tasted_records"],
-    )
+    ),
 )
 class TastedRecordDetailApiView(APIView):
     """
@@ -188,7 +190,7 @@ class TastedRecordDetailApiView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         validated_data = serializer.validated_data
-        photos = request.FILES.getlist('photos', [])
+        photos = request.FILES.getlist("photos", [])
 
         instance = update_tasted_record(instance, validated_data, photos)
 
