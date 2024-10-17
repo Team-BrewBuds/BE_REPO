@@ -11,8 +11,14 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
-from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -20,10 +26,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from repo.profiles.models import CustomUser, Relationship, UserDetail
 from repo.profiles.serializers import (
     BudyRecommendSerializer,
+    UserFollowListSerializer,
     UserProfileSerializer,
     UserRegisterSerializer,
     UserUpdateSerializer,
 )
+from repo.profiles.services import get_follower_list, get_following_list
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -365,6 +373,73 @@ class OtherProfileAPIView(APIView):
 
 
 @extend_schema_view(
+    get=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="type",
+                type=str,
+                enum=["following", "follower"],
+            ),
+        ],
+        responses={
+            200: UserFollowListSerializer,
+            400: OpenApiResponse(description="Bad Request"),
+            404: OpenApiResponse(description="Not Found"),
+        },
+        summary="자신의 팔로잉/팔로워 프로필 조회",
+        description="""
+            사용자의 팔로잉/팔로워 리스트를 조회합니다.
+            type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
+
+            담당자 : hwstar1204
+        """,
+        tags=["follow"],
+    )
+)
+class FollowListAPIView(APIView):
+    def get(self, request):
+        page = request.query_params.get("page", 1)
+        follow_type = request.query_params.get("type")  # 쿼리 파라미터로 type을 받음
+        user = request.user
+
+        if follow_type == "following":
+            data = get_following_list(user, True)
+        elif follow_type == "follower":
+            data = get_follower_list(user)
+        else:
+            return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 12
+        page_obj = paginator.paginate_queryset(data, request)
+
+        serializer = UserFollowListSerializer(page_obj, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="type",
+                type=str,
+                enum=["following", "follower"],
+            ),
+        ],
+        responses={
+            200: UserFollowListSerializer,
+            400: OpenApiResponse(description="Bad Request"),
+            404: OpenApiResponse(description="Not Found"),
+        },
+        summary="사용자의 팔로잉/팔로워 리스트 조회",
+        description="""
+            특정 사용자의 팔로잉/팔로워 리스트를 조회합니다.
+            id 파라미터로 사용자의 id를 받고,type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
+
+            담당자 : hwstar1204
+        """,
+        tags=["follow"],
+    ),
     post=extend_schema(
         responses=status.HTTP_201_CREATED,
         summary="팔로우",
@@ -388,7 +463,25 @@ class OtherProfileAPIView(APIView):
         tags=["follow"],
     ),
 )
-class FollowAPIView(APIView):
+class FollowListCreateDeleteAPIView(APIView):
+    def get(self, request, id):
+        follow_type = request.query_params.get("type")
+        user = get_object_or_404(CustomUser, id=id)
+
+        if follow_type == "following":
+            data = get_following_list(user, False)
+        elif follow_type == "follower":
+            data = get_follower_list(user)
+        else:
+            return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 12
+        page_obj = paginator.paginate_queryset(data, request)
+
+        serializer = UserFollowListSerializer(page_obj, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
     def post(self, request, id):
         user = request.user
         follow_user = get_object_or_404(CustomUser, id=id)
