@@ -47,6 +47,13 @@ class UserProfileSerializer(UserSimpleSerializer):
         fields = UserSimpleSerializer.Meta.fields + ["coffee_life", "following_cnt", "follower_cnt", "post_cnt", "is_user_following"]
 
 
+class UserFollowListSerializer(UserSimpleSerializer):
+    is_following = serializers.BooleanField()
+
+    class Meta(UserSimpleSerializer.Meta):
+        fields = UserSimpleSerializer.Meta.fields + ["is_following"]
+
+
 class UserDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserDetail
