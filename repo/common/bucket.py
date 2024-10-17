@@ -28,17 +28,22 @@ def photo_upload_to(instance, filename):
     from repo.profiles.models import CustomUser
 
     ext = filename.split('.')[-1]  # 파일 확장자
+    unique_id = uuid.uuid4()
 
     if isinstance(instance, CustomUser):
-        return f'profile/{instance.id}/{uuid.uuid4()}.{ext}'
+        return f'profile/{unique_id}/.{ext}'
 
-    # 게시글 이미지
-    if instance.post:
-        return f'post/{instance.post.user.id}/{instance.post.id}/{uuid.uuid4()}.{ext}'
+    # Post 이미지
+    elif instance.post:
+        author_id = instance.post.author.id
+        post_id = instance.post.id
+        return f'post/{author_id}/{post_id}/{unique_id}.{ext}'
 
-    # 시음 기록 이미지
-    if instance.tasted_record:
-        return f'tasted_record/{instance.tasted_record.user.id}/{instance.tasted_record.id}/{uuid.uuid4()}.{ext}'
+    # TastedRecord 이미지
+    elif instance.tasted_record:
+        author_id = instance.tasted_record.author.id
+        tasted_record_id = instance.tasted_record.id
+        return f'tasted_record/{author_id}/{tasted_record_id}/{unique_id}.{ext}'
 
     # 기본 경로 (이외 다른 경우)
     return f'others/{uuid.uuid4()}.{ext}'
