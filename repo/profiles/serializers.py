@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from repo.profiles.models import CustomUser, Relationship
+from repo.profiles.models import CustomUser, Relationship, UserDetail
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -45,6 +45,20 @@ class UserProfileSerializer(UserSimpleSerializer):
 
     class Meta(UserSimpleSerializer.Meta):
         fields = UserSimpleSerializer.Meta.fields + ["coffee_life", "following_cnt", "follower_cnt", "post_cnt", "is_user_following"]
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserDetail
+        fields = ["introduction", "profile_link", "coffee_life", "preferred_bean_taste", "is_certificated"]
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    user_detail = UserDetailSerializer(required=False)
+
+    class Meta:
+        model = CustomUser
+        fields = ["nickname", "profile_image", "user_detail"]
 
 
 class BudyRecommendSerializer(serializers.ModelSerializer):
