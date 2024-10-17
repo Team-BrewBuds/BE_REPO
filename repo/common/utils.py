@@ -1,15 +1,13 @@
+from typing import Optional, Tuple, Type
+
 from django.db.models import Model
-from typing import Type, Tuple, Optional
 from rest_framework import status
-from rest_framework.response import Response
 from rest_framework.request import Request
+from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 
 
-def get_object(
-        pk: int,
-        model: Type[Model]
-    ) -> Tuple[Optional[Model], Optional[Response]]:
+def get_object(pk: int, model: Type[Model]) -> Tuple[Optional[Model], Optional[Response]]:
     """
     주어진 기본 키(pk)와 모델을 사용하여 객체를 검색
     Args:
@@ -24,13 +22,14 @@ def get_object(
     """
 
     if not pk:
-        return None, Response({'error': 'PK is required'}, status=status.HTTP_400_BAD_REQUEST)
-    
+        return None, Response({"error": "PK is required"}, status=status.HTTP_400_BAD_REQUEST)
+
     data = model.objects.filter(pk=pk).first()
     if not data:
-        return None, Response({'error': 'Data not found'}, status=status.HTTP_404_NOT_FOUND)
-    
+        return None, Response({"error": "Data not found"}, status=status.HTTP_404_NOT_FOUND)
+
     return data, None
+
 
 def create(request: Request, serializer_class: Type[Serializer]) -> Response:
     """
@@ -48,13 +47,8 @@ def create(request: Request, serializer_class: Type[Serializer]) -> Response:
         return Response(data_serializer.data, status=status.HTTP_201_CREATED)
     return Response(data_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-def update(
-        request: Request,
-        pk: int,
-        model: Type[Model],
-        serializer_class: Type[Serializer],
-        partial: bool = False
-    ) -> Response:
+
+def update(request: Request, pk: int, model: Type[Model], serializer_class: Type[Serializer], partial: bool = False) -> Response:
     """
     주어진 primary key와 모델을 사용하여 객체를 업데이트
     Args:
@@ -71,12 +65,13 @@ def update(
     data, response = get_object(pk, model)
     if response:
         return response
-    
-    data_serializer = serializer_class(data, data=request.data, partial=partial)
+
+    data_serializer = serializer_class(data, data=request.data, context={"request": request}, partial=partial)
     if data_serializer.is_valid():
         data_serializer.save()
         return Response(data_serializer.data, status=status.HTTP_200_OK)
     return Response(data_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 def delete(request: Request, pk: int, model: Type[Model]) -> Response:
     """
@@ -89,10 +84,10 @@ def delete(request: Request, pk: int, model: Type[Model]) -> Response:
         Response: 삭제 결과에 따라 HTTP 응답을 반환
     작성자 : hwstar1204
     """
-    
+
     data, response = get_object(pk, model)
     if response:
         return response
-    
+
     data.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)

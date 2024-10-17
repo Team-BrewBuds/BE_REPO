@@ -1,57 +1,56 @@
-import importlib
 from rest_framework import serializers
 
-from repo.records.models import Post, TastedRecord, Photo, Comment, Note
 from repo.profiles.serializers import UserSimpleSerializer
+from repo.records.models import Comment, Note, Post, TastedRecord
+from repo.records.posts.serializers import PostListSerializer
+from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
-class PhotoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Photo
-        fields = ["photo_url"]
-
-
-class PageNumberSerializer(serializers.Serializer):
-    page = serializers.IntegerField(min_value=1, default=1)
-
-    def validate_page(self, value):
-        if value < 1:
-            raise serializers.ValidationError("Page number must be a positive integer.")
-        return value
-    
 class FeedSerializer(serializers.ModelSerializer):
-    
     def to_representation(self, instance):
-        # 순환 참조 피하기 위함
-        post_serializer_module = importlib.import_module('repo.records.posts.serializers')
-        tasted_record_serializer_module = importlib.import_module('repo.records.tasted_record.serializers')
-        PostFeedSerializer = getattr(post_serializer_module, 'PostFeedSerializer')
-        TastedRecordFeedSerializer = getattr(tasted_record_serializer_module, 'TastedRecordFeedSerializer')
-
         if isinstance(instance, Post):
-            return PostFeedSerializer(instance).data
+            return PostListSerializer(instance).data
         elif isinstance(instance, TastedRecord):
-            return TastedRecordFeedSerializer(instance).data
+            return TastedRecordListSerializer(instance).data
         return super().to_representation(instance)
+
 
 class CommentSerializer(serializers.ModelSerializer):
     content = serializers.CharField(max_length=200)
+    parent = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(), required=False)
     author = UserSimpleSerializer(read_only=True)
-    like_cnt = serializers.IntegerField(source="like_cnt.count")
+    like_cnt = serializers.IntegerField(source="like_cnt.count", read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
     replies = serializers.SerializerMethodField()
+    is_user_liked = serializers.SerializerMethodField()
+
+    def get_is_user_liked(self, obj):
+        request = self.context.get("request")
+        if request:
+            user = request.user
+            return obj.like_cnt.filter(id=user.id).exists()
+        return False
 
     def get_replies(self, obj):
-        if hasattr(obj, 'replies_list'):
+        if hasattr(obj, "replies_list"):
             return CommentSerializer(obj.replies_list, many=True).data
-        
+
         return []
 
     class Meta:
         model = Comment
-        fields = ["id", "content", "author", "like_cnt", "created_at", "replies"]
+        fields = ["id", "content", "parent", "author", "like_cnt", "created_at", "replies", "is_user_liked"]
+
+
+class LikeSerializer(serializers.Serializer):
+    object_type = serializers.ChoiceField(choices=["post", "tasted_record", "comment"])
+    object_id = serializers.IntegerField()
+
 
 class NoteSerializer(serializers.ModelSerializer):
+    object_type = serializers.ChoiceField(choices=["post", "tasted_record"])
+    object_id = serializers.IntegerField()
+
     class Meta:
         model = Note
-        fields = "__all__"
+        fields = ["object_type", "object_id"]

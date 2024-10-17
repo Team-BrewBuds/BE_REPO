@@ -1,216 +1,260 @@
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.records.models import Post, TastedRecord, Comment, Note
-from repo.records.serializers import PageNumberSerializer, CommentSerializer, NoteSerializer, FeedSerializer
-from repo.records.services import get_following_feed, get_common_feed
-from repo.records.services import get_comment_list, get_post_or_tasted_record_detail, get_comment
+from repo.common.serializers import PageNumberSerializer
+from repo.common.utils import delete, update
+from repo.records.models import Comment, Note, Post, TastedRecord
+from repo.records.posts.serializers import PostListSerializer
+from repo.records.serializers import CommentSerializer, LikeSerializer, NoteSerializer
+from repo.records.services import (
+    get_comment,
+    get_comment_list,
+    get_common_feed,
+    get_following_feed,
+    get_post_or_tasted_record_detail,
+    get_refresh_feed,
+    get_serialized_data,
+)
+from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
-from repo.common.utils import update, delete
-from repo.common.view_counter import is_viewed
 
+class FeedAPIView(APIView):
+    @extend_schema(
+        parameters=[
+            PageNumberSerializer,
+            OpenApiParameter(
+                name="feed_type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="feed type",
+                enum=["following", "common", "refresh"],
+            ),
+        ],
+        responses=[TastedRecordListSerializer, PostListSerializer],
+        summary="홈 [전체] 피드",
+        description="""
+            following:
+            홈 [전체] 사용자가 팔로잉한 유저들의 1시간 이내 작성한 시음기록과 게시글을 랜덤순으로 가져오는 함수
+            30분이내 조회한 기록, 프라이빗한 시음기록은 제외
 
-class FollowFeedAPIView(APIView):
-    """
-    홈 [전체] - 팔로워들의 게시글+시음기록 리스트를 반환하는 API
-    Args:
-        - page : 조회할 페이지 번호
-    Returns:
-        - status: 200
+            common:
+            홈 [전체] 일반 시음기록과 게시글을 최신순으로 가져오는 함수
+            30분이내 조회한 기록, 프라이빗한 시음기록은 제외
 
-    주의: 
-        - 팔로잉하는 사용자들의 기록 우선 노출 (팔로잉 O, 조회 X) (최신순)
+            refresh:
+            홈 [전체] 시음기록과 게시글을 랜덤순으로 반환하는 API
+            프라이빗한 시음기록은 제외
 
-    담당자: hwstar1204
-    """
+            response:
+            TastedRecordListSerializer or PostListSerializer
+            (아래 Schemas 참조)
 
+            담당자 : hwstar1204
+        """,
+        tags=["Feed"],
+    )
     def get(self, request):
+        feed_type = request.query_params.get("feed_type")
+        if feed_type not in ["following", "common", "refresh"]:
+            return Response({"error": "invalid feed type"}, status=status.HTTP_400_BAD_REQUEST)
+
         page_serializer = PageNumberSerializer(data=request.GET)
-        if page_serializer.is_valid():
-            page = page_serializer.validated_data["page"]
-        else:
+        if not page_serializer.is_valid():
             return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         user = request.user
-        feed_items, has_next = get_following_feed(user, page)
+        page = page_serializer.validated_data["page"]
 
-        results = []
-        for item in feed_items:
-            if not is_viewed(request, cookie_name="records_viewed", content_id=id):
-                results.append(item)
+        if feed_type == "following":
+            data = get_following_feed(request, user)
+        elif feed_type == "common":
+            data = get_common_feed(request, user)
+        else:  # refresh
+            data = get_refresh_feed()
 
-        post_serializer = FeedSerializer(results, many=True)
-        return Response({"records": post_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
+        paginator = Paginator(data, 12)
+        page_obj = paginator.get_page(page)
 
+        serialized_data = get_serialized_data(request, page_obj)
 
-class CommonFeedAPIView(APIView):
-    """
-    홈 [전체] - 일반 게시글+시음기록 리스트를 반환하는 API
-    Args:
-        - page : 조회할 페이지 번호
-    Returns:
-        - status: 200
-
-    주의: 
-        - 일반 사용자들의 기록 노출  (팔로잉X, 조회 X) (최신순)
-
-    담당자: hwstar1204
-    """
-
-    def get(self, request):
-        page_serializer = PageNumberSerializer(data=request.GET)
-        if page_serializer.is_valid():
-            page = page_serializer.validated_data["page"]
-        else:
-            return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        user = request.user
-        feed_items, has_next = get_common_feed(user, page)
-
-        results = []
-        for item in feed_items:
-            if not is_viewed(request, cookie_name="records_viewed", content_id=id):
-                results.append(item)
-
-        post_serializer = FeedSerializer(results, many=True)
-        return Response({"records": post_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
-
-class RefreshFeedAPIView(APIView):
-    """
-    홈 [전체] - 사용자가 마지막으로 본 게시물 이후 데이터 반환하는 API
-    Args:
-        - last_id : 사용자가 마지막으로 본 게시물의 ID
-        - page : 조회할 페이지 번호
-    Returns:
-        - status: 200
-
-    담당자: hwstar1204
-    """
-    
-    def get(self, request):
-        last_id = request.GET.get("last_id")
-        page_serializer = PageNumberSerializer(data=request.GET)
-        if page_serializer.is_valid():
-            page = page_serializer.validated_data["page"]
-        else:
-            return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        user = request.user
-        feed_items, has_next = get_common_feed(user, page, last_id)
-
-        results = []
-        for item in feed_items:
-            if not is_viewed(request, cookie_name="records_viewed", content_id=id):
-                results.append(item)
-
-        post_serializer = FeedSerializer(results, many=True)
-        return Response({"records": post_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
-        
-
+        return Response(
+            {
+                "results": serialized_data,
+                "has_next": page_obj.has_next(),
+                "current_page": page_obj.number,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class LikeApiView(APIView):
-    """
-    게시글 및 시음기록에 좋아요를 추가하거나 취소하는 API
-    Args:
-        - object_type : "post" or "TastedRecord" or "comment"
-        - object_id : 좋아요를 처리할 객체의 ID
-    Returns:
-        - status: 200
+    @extend_schema(
+        request=LikeSerializer,
+        responses=[status.HTTP_201_CREATED, status.HTTP_200_OK],
+        summary="좋아요 추가/취소 API",
+        description="""
+            object_type : "post" or "tasted_record" or "comment"
+            object_id : 좋아요를 처리할 객체의 ID
 
-    담당자: hwstar1204
-    """
+            response:
+                201: 좋아요 추가, 200: 좋아요 취소
+
+            담당자 : hwstar1204
+        """,
+        tags=["Like"],
+    )
+    def post(self, request):
+        user_id = request.user.id
+        serializer = LikeSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        object_type = serializer.validated_data["object_type"]
+        object_id = serializer.validated_data["object_id"]
+
+        model_map = {"post": Post, "tasted_record": TastedRecord, "comment": Comment}
+        model_class = model_map.get(object_type)
+
+        obj = get_object_or_404(model_class, pk=object_id)
+
+        if user_id in obj.like_cnt.values_list("id", flat=True):
+            obj.like_cnt.remove(user_id)
+            status_code = status.HTTP_200_OK
+        else:
+            obj.like_cnt.add(user_id)
+            status_code = status.HTTP_201_CREATED
+
+        return Response(status=status_code)
+
+
+@extend_schema_view(
+    # get=extend_schema(
+    #     responses=NoteListSerializer,
+    #     summary="노트 리스트 조회",
+    #     description="""
+    #         object_type : "post" 또는 "TastedRecord"
+    #         object_id : 노트를 처리할 객체의 ID
+    #
+    #         담당자: hwstar1204
+    #     """,
+    #     tags=["Note"],
+    # ),
+    post=extend_schema(
+        request=NoteSerializer,
+        responses={
+            200: OpenApiResponse(description="Note already exists"),
+            201: OpenApiResponse(description="Note created"),
+        },
+        summary="노트 생성",
+        description="""
+            object_type : "post" 또는 "tasted_record"
+            object_id : 노트를 처리할 객체의 ID
+
+            담당자: hwstar1204
+        """,
+        tags=["Note"],
+    ),
+)
+class NoteApiView(APIView):
+    # def get(self, request):
+    #     user = request.user
+    #
+    #     # notes = Note.objects.get_notes_for_user_and_object(user, object_type)
+    #     model_map = {"post": Post, "tasted_record": TastedRecord}
+    #
+    #     model = model_map.get(object_type)  # **{object_type: model}
+    #     notes = Note.objects.filter(author=user.id).order_by("-id")
+    #     serializer = NoteListSerializer(notes, many=True)
+    #
+    #     return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
+        serializer = NoteSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
         user = request.user
-        object_type = request.data.get("object_type")
-        object_id = request.data.get("object_id") 
+        object_type = serializer.validated_data["object_type"]
+        object_id = serializer.validated_data["object_id"]
 
-        model_map = {
-            "post": Post,
-            "tasted_record": TastedRecord,
-            "comment": Comment
-        }
+        existing_note = Note.objects.existing_note(user, object_type, object_id)
+        if existing_note:
+            return Response({"detail": "note already exists"}, status=status.HTTP_200_OK)
 
-        if not object_id or not object_type:
-            return Response({"error": "object_id and object_type are required"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        model_class = model_map.get(object_type.lower())
-        if not model_class:
-            return Response({"error": "invalid object_type"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        obj = get_object_or_404(model_class, pk=object_id)
-        
-        if user in obj.like_cnt.all():
-            obj.like_cnt.remove(user)
-        else:
-            obj.like_cnt.add(user)
-
-        return Response(status=status.HTTP_200_OK)
-
-class NoteApiView(APIView):
-    """
-    게시글, 시음기록, 원두 노트 생성, 조회 API
-    Args:
-        - object_type : "post" 또는 "TastedRecord" 또는 "bean"
-        - object_id : 노트를 처리할 객체의 ID
-    Returns:
-    - status: 200
-
-    담당자: hwstar1204
-    """
-
-    def dispatch(self, request, *args, **kwargs):
-        id = kwargs.get("object_id")
-        type = kwargs.get("object_type")
-
-        if not id or not type:
-            return Response({"error": "object_id and object_type are required"}, status=status.HTTP_400_BAD_REQUEST)
-        return super().dispatch(request, *args, **kwargs)
-
-    def get(self, request, object_type, object_id):
-        user = request.user
-        notes = Note.custom_objects.get_notes_for_user_and_object(user, object_type, object_id)
-        serializer = NoteSerializer(notes, many=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        Note.objects.create_note_for_object(user, object_type, object_id)
+        return Response({"detail": "note created"}, status=status.HTTP_201_CREATED)
 
 
-    def post(self, request, object_type, object_id):
-        user = request.user
-        note = Note.custom_objects.create_note_for_object(user, object_type, object_id)
-        serializer = NoteSerializer(note)
+@extend_schema_view(
+    delete=extend_schema(
+        responses={
+            200: OpenApiResponse(description="Note deleted"),
+            404: OpenApiResponse(description="Note not found"),
+        },
+        summary="노트 삭제",
+        description="""
+                object_type : "post" 또는 "tasted_record"
+                object_id : 노트를 처리할 객체의 ID
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
+                담당자: hwstar1204
+            """,
+        tags=["Note"],
+    ),
+)
 class NoteDetailApiView(APIView):
-    """
-    노트 상세정보 조회, 삭제 API
-    Args:
-        - id : 노트 ID
-    Returns:
-        - status: 200
+    def delete(self, request, object_type, object_id):
+        user = request.user
 
-    담당자: hwstar1204
-    """
-
-    def get(self, request, id):
-        note = get_object_or_404(Note, pk=id)
-        note_serializer = NoteSerializer(note)
-        return Response(note_serializer.data, status=status.HTTP_200_OK)
-    
-    def delete(self, request, id):
-        return delete(request, id, Note)
+        existing_note = Note.objects.existing_note(user, object_type, object_id)
+        if existing_note:
+            existing_note.delete()
+            return Response({"detail": "note deleted"}, status=status.HTTP_200_OK)
+        return Response({"detail": "note not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        parameters=[PageNumberSerializer],
+        responses=CommentSerializer,
+        summary="댓글 리스트 조회",
+        description="""
+            object_type : "post" 또는 "tasted_record"
+            object_id : 댓글을 처리할 객체의 ID
+        """,
+        tags=["Comment"],
+    ),
+    post=extend_schema(
+        request=CommentSerializer,
+        responses={
+            200: OpenApiResponse(description="Comment created"),
+            400: OpenApiResponse(description="Invalid data"),
+        },
+        summary="댓글 생성 (대댓글 포함)",
+        description="""
+            object_type : "post" 또는 "tasted_record"
+            object_id : 댓글을 처리할 객체의 ID
+            content : 댓글 내용
+            parent_id : 대댓글인 경우 부모 댓글의 ID (optional)
+        """,
+        tags=["Comment"],
+    ),
+)
 class CommentApiView(APIView):
     """
     게시글 및 시음기록에 댓글 생성, 리스트 조회 API
     Args:
-        - object_type : "post" 또는 "TastedRecord"
+        - object_type : "post" 또는 "tasted_record"
         - object_id : 댓글을 처리할 객체의 ID
         - content : 댓글 내용
     Returns:
@@ -224,16 +268,14 @@ class CommentApiView(APIView):
     """
 
     def get(self, request, object_type, object_id):
-        page_serializer = PageNumberSerializer(data=request.GET)
-        if page_serializer.is_valid():
-            page = page_serializer.validated_data["page"]
-        else:
-            return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        comments, has_next = get_comment_list(object_type, object_id, page)
-        comment_serializer = CommentSerializer(comments, many=True)
-        
-        return Response({"comments": comment_serializer.data, "has_next": has_next}, status=status.HTTP_200_OK)
+        comments = get_comment_list(object_type, object_id)
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 12
+        page_obj = paginator.paginate_queryset(comments, request)
+
+        serializer = CommentSerializer(page_obj, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, object_type, object_id):
         """
@@ -258,13 +300,13 @@ class CommentApiView(APIView):
         obj = get_post_or_tasted_record_detail(object_type, object_id)
 
         parent_comment = get_comment(parent) if parent else None
-        
+
         comment_data = {
             "author": user,
             "content": content,
             "parent": parent_comment,
             "post": obj if object_type == "post" else None,
-            "tasted_record": obj if object_type == "tasted_record" else None
+            "tasted_record": obj if object_type == "tasted_record" else None,
         }
 
         Comment.objects.create(**comment_data)
@@ -272,17 +314,55 @@ class CommentApiView(APIView):
         return Response(status=status.HTTP_200_OK)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        responses=CommentSerializer,
+        summary="댓글 상세 조회",
+        description="""
+            id : 댓글 ID
+        """,
+        tags=["Comment"],
+    ),
+    put=extend_schema(
+        request=CommentSerializer,
+        responses={
+            200: OpenApiResponse(description="Comment updated"),
+            404: OpenApiResponse(description="Comment not found"),
+        },
+        summary="댓글 수정",
+        description="""
+            id : 댓글 ID
+            content : 수정할 댓글 내용
+        """,
+        tags=["Comment"],
+    ),
+    patch=extend_schema(
+        request=CommentSerializer,
+        responses={
+            200: OpenApiResponse(description="Comment updated"),
+            404: OpenApiResponse(description="Comment not found"),
+        },
+        summary="댓글 수정",
+        description="""
+            id : 댓글 ID
+            content : 수정할 댓글 내용
+        """,
+        tags=["Comment"],
+    ),
+    delete=extend_schema(
+        responses={
+            200: OpenApiResponse(description="Comment deleted"),
+            404: OpenApiResponse(description="Comment not found"),
+        },
+        summary="댓글 삭제",
+        description="""
+            id : 댓글 ID
+            soft delete : 부모 댓글이 없는 경우 소프트 삭제
+        """,
+        tags=["Comment"],
+    ),
+)
 class CommentDetailAPIView(APIView):
-    """
-    댓글 상세정보 조회, 수정, 삭제 API
-    Args:
-        - id : 댓글 ID
-    Returns:
-        - status: 200
-
-    담당자: hwstar1204
-    """
-
     def get(self, request, id):
         comment = get_comment(id)
         comment_serializer = CommentSerializer(comment)
@@ -290,7 +370,7 @@ class CommentDetailAPIView(APIView):
 
     def put(self, request, id):
         return update(request, id, Comment, CommentSerializer, False)
-    
+
     def patch(self, request, id):
         return update(request, id, Comment, CommentSerializer, True)
 
@@ -302,6 +382,5 @@ class CommentDetailAPIView(APIView):
             comment.content = "삭제된 댓글입니다."
             comment.save()
             return Response(status=status.HTTP_200_OK)
-    
+
         return delete(request, id, Comment)
-    
