@@ -7,10 +7,11 @@ from allauth.socialaccount.providers.naver import views as naver_view
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -21,6 +22,7 @@ from repo.profiles.serializers import (
     BudyRecommendSerializer,
     UserProfileSerializer,
     UserRegisterSerializer,
+    UserUpdateSerializer,
 )
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
@@ -273,6 +275,22 @@ class RegistrationView(APIView):
         """,
         tags=["profile"],
     ),
+    patch=extend_schema(
+        request=UserUpdateSerializer,
+        responses={
+            200: UserProfileSerializer,
+            400: OpenApiResponse(description="Bad Request"),
+            401: OpenApiResponse(description="Unauthorized"),
+        },
+        summary="자기 프로필 수정",
+        description="""
+            현재 로그인한 사용자의 프로필을 수정합니다.
+
+            닉네임, 프로필 이미지, 소개, 프로필 링크, 커피 생활 방식, 선호하는 커피 맛, 자격증 여부를 수정합니다.
+            담당자 : hwstar1204
+        """,
+        tags=["profile"],
+    ),
 )
 class MyProfileAPIView(APIView):
     def get(self, request):
@@ -288,6 +306,30 @@ class MyProfileAPIView(APIView):
 
         serializer = UserProfileSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @transaction.atomic
+    def patch(self, request):
+        user = request.user
+        if not user.is_authenticated:
+            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            fields = ["nickname", "profile_image"]
+            for field in fields:
+                setattr(user, field, serializer.validated_data.get(field, getattr(user, field)))
+            user.save()
+
+            user_detail_data = serializer.validated_data.get("user_detail", None)
+            if user_detail_data:
+                user_detail, created = UserDetail.objects.get_or_create(user=user)
+                fields = ["introduction", "profile_link", "coffee_life", "preferred_bean_taste", "is_certificated"]
+                for field in fields:
+                    setattr(user_detail, field, user_detail_data.get(field, getattr(user_detail, field)))
+                user_detail.save()
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @extend_schema_view(
