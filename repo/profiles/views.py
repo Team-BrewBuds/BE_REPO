@@ -17,7 +17,11 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from repo.profiles.models import CustomUser, Relationship, UserDetail
-from repo.profiles.serializers import BudyRecommendSerializer, UserRegisterSerializer
+from repo.profiles.serializers import (
+    BudyRecommendSerializer,
+    UserProfileSerializer,
+    UserRegisterSerializer,
+)
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -255,6 +259,67 @@ class RegistrationView(APIView):
 #     def get_object(self):
 #         # 현재 로그인한 유저 정보를 반환
 #         return self.request.user
+
+
+@extend_schema_view(
+    get=extend_schema(
+        responses=UserProfileSerializer,
+        summary="자기 프로필 조회",
+        description="""
+            현재 로그인한 사용자의 프로필을 조회합니다.
+
+            닉네임, 프로필 이미지, 커피 생활 방식, 팔로워 수, 팔로잉 수, 게시글 수를 반환합니다.
+            담당자 : hwstar1204
+        """,
+        tags=["profile"],
+    ),
+)
+class MyProfileAPIView(APIView):
+    def get(self, request):
+        user = request.user
+        data = {
+            "nickname": user.nickname,
+            "profile_image": user.profile_image,
+            "coffee_life": user.user_detail.coffee_life,
+            "follower_cnt": Relationship.objects.followers(user).count(),
+            "following_cnt": Relationship.objects.following(user).count(),
+            "post_cnt": user.post_set.count(),
+        }
+
+        serializer = UserProfileSerializer(data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        responses=UserProfileSerializer,
+        summary="상대 프로필 조회",
+        description="""
+            특정 사용자의 프로필을 조회합니다.
+
+            닉네임, 프로필 이미지, 커피 생활 방식, 팔로워 수, 팔로잉 수, 게시글 수를 반환합니다.
+            요청한 사용자가 팔로우 중인지 여부도 반환합니다.
+            담당자 : hwstar1204
+        """,
+        tags=["profile"],
+    ),
+)
+class OtherProfileAPIView(APIView):
+    def get(self, request, id):
+        request_user = request.user
+        user = CustomUser.objects.get_user_and_user_detail(id=id)
+        data = {
+            "nickname": user.nickname,
+            "profile_image": user.profile_image,
+            "coffee_life": user.user_detail.coffee_life,
+            "follower_cnt": Relationship.objects.followers(user).count(),
+            "following_cnt": Relationship.objects.following(user).count(),
+            "post_cnt": user.post_set.count(),
+            "is_user_following": Relationship.objects.check_relationship(request_user, user, "follow"),
+        }
+
+        serializer = UserProfileSerializer(data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @extend_schema_view(
