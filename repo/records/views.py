@@ -9,12 +9,13 @@ from drf_spectacular.utils import (
 )
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.common.serializers import PageNumberSerializer
+from repo.common.serializers import PageNumberSerializer, PhotoSerializer
 from repo.common.utils import delete, update
-from repo.records.models import Comment, Note, Post, TastedRecord
+from repo.records.models import Comment, Note, Photo, Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
 from repo.records.serializers import CommentSerializer, LikeSerializer, NoteSerializer
 from repo.records.services import (
@@ -384,3 +385,102 @@ class CommentDetailAPIView(APIView):
             return Response(status=status.HTTP_200_OK)
 
         return delete(request, id, Comment)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "photo_url": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "binary",
+                        },
+                        "description": "이미지 파일 리스트",
+                    }
+                },
+                "required": ["photo_url"],
+            }
+        },
+        responses={
+            201: OpenApiResponse(
+                response={
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "integer", "example": 123},
+                            "photo_url": {"type": "string", "example": "https://s3.amazonaws.com/bucket_name/uploads"
+                                                                       "/photo1.jpg"},
+                        },
+                    },
+                },
+                description="이미지 업로드 성공",
+            ),
+            400: OpenApiResponse(description="잘못된 데이터 형식 또는 유효성 검증 실패"),
+        },
+        summary="이미지 업로드 API",
+        description="여러 개의 이미지를 업로드하는 API. 업로드된 이미지는 고유 ID와 S3 URL로 반환됩니다.",
+        tags=["Image"],
+    ),
+    delete=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="photo_id",
+                description="삭제할 사진의 ID 목록 (쿼리 파라미터로 여러 개의 photo_id 전달)",
+                required=True,
+                type={"type": "array", "items": {"type": "integer"}},
+            )
+        ],
+        responses={
+            204: OpenApiResponse(description="성공적으로 삭제됨"),
+            400: OpenApiResponse(description="잘못된 요청 (photo_id 누락 또는 잘못된 형식)"),
+            404: OpenApiResponse(description="해당 ID의 사진을 찾을 수 없음"),
+            500: OpenApiResponse(description="서버 에러"),
+        },
+        summary="이미지 삭제 API",
+        description="여러 개의 이미지를 삭제하는 API. 삭제할 이미지의 ID를 쿼리 파라미터로 전달하면 해당 이미지가 삭제됩니다.",
+        tags=["Image"],
+    ),
+)
+class ImageApiView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        files = request.FILES.getlist("photo_url")
+        if not files:
+            return Response({"error": "photo_url is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = PhotoSerializer(data=[{"photo_url": file} for file in files], many=True)
+        if serializer.is_valid():
+            photos = serializer.save()
+            for photo in photos:
+                photo.save()
+
+            data = [{"id": photo.id, "photo_url": photo.photo_url.url} for photo in photos]
+
+            return Response(data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        photo_ids = request.query_params.getlist("photo_id")
+        if not photo_ids:
+            return Response({"error": "photo_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        photos = Photo.objects.filter(id__in=photo_ids)
+        if not photos.exists():
+            return Response({"error": "photo not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        delete_cnt = 0
+        try:
+            for photo in photos:
+                photo.delete()
+                delete_cnt += 1
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(f"{delete_cnt} photos deleted successfully", status=status.HTTP_204_NO_CONTENT)
+

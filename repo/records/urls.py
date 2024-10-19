@@ -11,4 +11,5 @@ urlpatterns = [
     path("comment/<str:object_type>/<int:object_id>", views.CommentApiView.as_view(), name="comment-list"),
     path("note/", views.NoteApiView.as_view(), name="note-list"),
     path("note/<str:object_type>/<int:object_id>/", views.NoteDetailApiView.as_view(), name="note-detail"),
+    path("image/", views.ImageApiView.as_view(), name="image-upload"),  # 이미지 업로드 테스트용
 ]

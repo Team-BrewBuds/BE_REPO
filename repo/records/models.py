@@ -1,7 +1,8 @@
+from django.conf import settings
 from django.db import models
 
-from repo.common.bucket import photo_upload_to
 from repo.beans.models import Bean, BeanTasteReview
+from repo.common.bucket import delete_photo_from_s3, photo_upload_to
 from repo.profiles.models import CustomUser
 from repo.records.managers import NoteManagers, PostManagers
 
@@ -58,7 +59,7 @@ class Post(models.Model):
         return user in self.like_cnt.all()
 
     def is_saved(self, user):
-        return user.note_set.filter(post=self).exists()
+        return user.not_set.filter(post=self).exists()
 
     def comment_cnt(self):
         return self.comment_set.count()
@@ -78,8 +79,15 @@ class Photo(models.Model):
     photo_url = models.ImageField(upload_to=photo_upload_to, null=True, blank=True, verbose_name="사진")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="업로드 일자")
 
+    def delete(self, *args, **kwargs):
+        if settings.STORAGES["default"]["BACKEND"] == "repo.common.bucket.AwsMediaStorage":
+            delete_photo_from_s3(self.photo_url)  # S3에서 삭제
+        else:
+            self.photo_url.delete(save=False)  # 로컬에서 삭제
+        super().delete(*args, **kwargs)
+
     def __str__(self):
-        return f"Photo: {self.post.id}" if self.post else f"Photo: {self.tasted_record.id}"
+        return f"Photo: {self.id}"
 
     class Meta:
         db_table = "photo"
