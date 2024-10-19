@@ -54,6 +54,8 @@ THIRD_PARTY_APPS = [
     "allauth.socialaccount.providers.naver",
     # swagger
     "drf_spectacular",
+    # s3
+    "storages",
 ]
 
 INSTALLED_APPS = [
@@ -107,6 +109,15 @@ KAKAO_REDIRECT_URI = env.str("KAKAO_REDIRECT_URI")
 NAVER_CLIENT_ID = env.str("NAVER_CLIENT_ID")
 NAVER_CLIENT_SECRET = env.str("NAVER_CLIENT_SECRET")
 NAVER_REDIRECT_URI = env.str("NAVER_REDIRECT_URI")
+
+
+# CORS settings
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False
+BASE_BACKEND_URL = env.str("DJANGO_BASE_BACKEND_URL", default="http://localhost:8000")
+BASE_FRONTEND_URL = env.str("DJANGO_BASE_FRONTEND_URL", default="http://localhost:3000")
+CORS_ORIGIN_WHITELIST = env.list("DJANGO_CORS_ORIGIN_WHITELIST", default=[BASE_FRONTEND_URL])
+CSRF_TRUSTED_ORIGINS = [BASE_FRONTEND_URL]
 
 
 AUTHENTICATION_BACKENDS = [
@@ -179,15 +190,6 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
-
-# CORS settings
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False
-BASE_BACKEND_URL = env.str("DJANGO_BASE_BACKEND_URL", default="http://localhost:8000")
-BASE_FRONTEND_URL = env.str("DJANGO_BASE_FRONTEND_URL", default="http://localhost:3000")
-CORS_ORIGIN_WHITELIST = env.list("DJANGO_CORS_ORIGIN_WHITELIST", default=[BASE_FRONTEND_URL])
-CSRF_TRUSTED_ORIGINS = [BASE_FRONTEND_URL]
-
 
 ROOT_URLCONF = "config.urls"
 

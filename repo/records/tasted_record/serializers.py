@@ -1,10 +1,9 @@
 from rest_framework import serializers
 
-from repo.beans.models import Bean, BeanTasteReview
 from repo.beans.serializers import BeanSerializer, BeanTasteReviewSerializer
 from repo.common.serializers import PhotoSerializer
 from repo.profiles.serializers import UserSimpleSerializer
-from repo.records.models import TastedRecord
+from repo.records.models import TastedRecord, Photo
 
 
 class TastedRecordListSerializer(serializers.ModelSerializer):
@@ -26,20 +25,9 @@ class TastedRecordListSerializer(serializers.ModelSerializer):
     class Meta:
         model = TastedRecord
         fields = [
-            "id",
-            "author",
-            "bean_name",
-            "bean_type",
-            "star_rating",
-            "flavor",
-            "content",
-            "view_cnt",
-            "like_cnt",
-            "is_private",
-            "created_at",
-            "tag",
-            "photos",
-            "is_user_liked",
+            "id", "author", "bean_name", "bean_type", "star_rating", "flavor",
+            "content", "view_cnt", "like_cnt", "is_private", "created_at",
+            "tag", "photos", "is_user_liked",
         ]
 
 
@@ -66,11 +54,15 @@ class TastedRecordDetailSerializer(serializers.ModelSerializer):
 class TastedRecordCreateUpdateSerializer(serializers.ModelSerializer):
     bean = BeanSerializer("bean")
     taste_review = BeanTasteReviewSerializer("taste_review")
-    photos = PhotoSerializer(many=True, required=False)
+    photos = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Photo.objects.all(),
+        required=False,
+    )
 
     class Meta:
         model = TastedRecord
-        fields = ["author", "content", "bean", "taste_review", "photos"]
+        fields = ["content", "is_private", "tag", "bean", "taste_review", "photos"]
 
 
 class TastedRecordInPostSerializer(serializers.ModelSerializer):

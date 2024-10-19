@@ -1,9 +1,6 @@
-import uuid
-
-from django.core.files.storage import default_storage
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -13,7 +10,7 @@ from repo.beans.models import Bean, BeanTasteReview
 from repo.common.serializers import PageNumberSerializer
 from repo.common.utils import delete, get_object
 from repo.common.view_counter import update_view_count
-from repo.records.models import Photo, TastedRecord
+from repo.records.models import TastedRecord
 from repo.records.services import get_tasted_record_detail, get_tasted_record_feed
 from repo.records.tasted_record.serializers import (
     TastedRecordCreateUpdateSerializer,
@@ -25,10 +22,8 @@ from repo.records.tasted_record.service import update_tasted_record
 
 @extend_schema_view(
     get=extend_schema(
-        parameters=[
-            PageNumberSerializer,
-        ],
-        responses=TastedRecordListSerializer,
+        parameters=[PageNumberSerializer],
+        responses={200: TastedRecordListSerializer},
         summary="홈 시음기록 리스트 조회",
         description="""
             홈 피드의 시음기록 list를 최신순으로 가져옵니다.
@@ -39,7 +34,10 @@ from repo.records.tasted_record.service import update_tasted_record
     ),
     post=extend_schema(
         request=TastedRecordCreateUpdateSerializer,
-        responses=TastedRecordDetailSerializer,
+        responses={
+            201: TastedRecordDetailSerializer,
+            400: OpenApiResponse(description="Bad Request (taste_review.star type: float)"),
+        },
         summary="시음기록 생성",
         description="""
             단일 시음기록을 생성합니다.
@@ -76,7 +74,6 @@ class TastedRecordListCreateAPIView(APIView):
 
     def post(self, request):
         serializer = TastedRecordCreateUpdateSerializer(data=request.data)
-
         if serializer.is_valid():
             with transaction.atomic():
                 bean_data = serializer.validated_data["bean"]
@@ -95,14 +92,8 @@ class TastedRecordListCreateAPIView(APIView):
                     content=serializer.validated_data["content"],
                 )
 
-                photos = request.data.get("photos", [])
-                for photo in photos:
-                    extension = photo.name.split(".")[-1]
-                    unique_filename = f"{uuid.uuid4()}.{extension}"
-
-                    path = default_storage.save(f"tasted_record/{tasted_record.id}/{unique_filename}", photo)
-
-                    Photo.objects.create(tasted_record=tasted_record, photo_url=path)
+                photos = serializer.validated_data.get("photos", [])
+                tasted_record.photo_set.set(photos)
 
             response_serializer = TastedRecordCreateUpdateSerializer(tasted_record)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
@@ -111,7 +102,7 @@ class TastedRecordListCreateAPIView(APIView):
 
 @extend_schema_view(
     get=extend_schema(
-        responses=TastedRecordDetailSerializer,
+        responses={200: TastedRecordDetailSerializer},
         summary="시음기록 상세 조회",
         description="""
             시음기록의 상세 정보를 가져옵니다.
@@ -121,26 +112,32 @@ class TastedRecordListCreateAPIView(APIView):
     ),
     put=extend_schema(
         request=TastedRecordCreateUpdateSerializer,
-        responses=TastedRecordCreateUpdateSerializer,
+        responses={
+            200: TastedRecordDetailSerializer,
+            400: OpenApiResponse(description="Bad Request"),
+        },
         summary="시음기록 수정",
         description="""
-            시음기록의 정보를 수정합니다.
+            시음기록의 정보를 수정합니다. (전체 수정)
             담당자 : hwstar1204
         """,
         tags=["tasted_records"],
     ),
     patch=extend_schema(
         request=TastedRecordCreateUpdateSerializer,
-        responses=TastedRecordCreateUpdateSerializer,
+        responses={
+            200: TastedRecordDetailSerializer,
+            400: OpenApiResponse(description="Bad Request"),
+        },
         summary="시음기록 수정",
         description="""
-            시음기록의 정보를 수정합니다.
+            시음기록의 정보를 수정합니다. (일부 수정)
             담당자 : hwstar1204
         """,
         tags=["tasted_records"],
     ),
     delete=extend_schema(
-        responses=status.HTTP_204_NO_CONTENT,
+        responses={204: OpenApiResponse(description="No Content")},
         summary="시음기록 삭제",
         description="""
             시음기록을 삭제합니다.
@@ -186,16 +183,15 @@ class TastedRecordDetailApiView(APIView):
 
     def _handle_update(self, request, instance, partial):
         serializer = TastedRecordCreateUpdateSerializer(instance, data=request.data, partial=partial)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if serializer.is_valid():
 
-        validated_data = serializer.validated_data
-        photos = request.FILES.getlist("photos", [])
+            validated_data = serializer.validated_data
 
-        instance = update_tasted_record(instance, validated_data, photos)
+            instance = update_tasted_record(instance, validated_data)
 
-        response_serializer = TastedRecordCreateUpdateSerializer(instance)
-        return Response(response_serializer.data, status=status.HTTP_200_OK)
+            response_serializer = TastedRecordCreateUpdateSerializer(instance)
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         return delete(request, pk, TastedRecord)

@@ -27,12 +27,7 @@ def update_taste_review(instance, taste_review_data):
 
 
 def update_photos(instance, photos):
-    """기존 사진을 삭제하고 새로운 사진을 저장"""
-    if photos:
-        instance.photo_set.all().delete()  # 기존 사진 삭제
-        for photo in photos:
-            path = default_storage.save(f"taste_record/{instance.id}/{photo.name}", photo)
-            Photo.objects.create(tasted_record=instance, photo_url=path)
+    instance.photo_set.set(photos)
 
 
 def update_other_fields(instance, validated_data):
@@ -43,10 +38,11 @@ def update_other_fields(instance, validated_data):
 
 
 @transaction.atomic
-def update_tasted_record(instance, validated_data, photos):
+def update_tasted_record(instance, validated_data):
     """TastedRecord 객체를 트랜잭션으로 업데이트"""
     update_bean(instance, validated_data.pop("bean", None))
     update_taste_review(instance, validated_data.pop("taste_review", None))
-    update_photos(instance, photos)
+    update_photos(instance, validated_data.pop("photos", []))
     update_other_fields(instance, validated_data)
+    instance.save()
     return instance
