@@ -52,7 +52,11 @@ from repo.records.services import get_post_detail, get_post_feed
     ),
     post=extend_schema(
         request=PostCreateUpdateSerializer,
-        responses=PostCreateUpdateSerializer,
+        responses={
+            201: PostCreateUpdateSerializer,
+            400: OpenApiResponse(description="Bad Request")
+
+        },
         summary="게시글 생성",
         description="""
             단일 게시글을 생성합니다. (사진과 시음기록은 함께 등록할 수 없습니다.)
@@ -143,7 +147,7 @@ class PostListCreateAPIView(APIView):
         tags=["posts"],
     ),
     delete=extend_schema(
-        responses=status.HTTP_204_NO_CONTENT,
+        responses={204: OpenApiResponse(description="No Content")},
         summary="게시글 삭제",
         description="""
             게시글을 삭제합니다.
@@ -221,7 +225,7 @@ class TopSubjectPostsAPIView(APIView):
     """
 
     @extend_schema(
-        responses=TopPostSerializer,
+        responses={200: TopPostSerializer},
         summary="인기 게시글 조회",
         description="""
             홈 [전체] - 주제별 조회수 상위 10개 인기 게시글 조회 API
