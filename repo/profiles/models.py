@@ -2,7 +2,6 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 
-from repo.common.bucket import photo_upload_to
 from repo.profiles.helpers import CoffeeLifeHelper, PreferredBeanTasteHelper
 
 # from profiles.managers import CustomUserManager
@@ -33,7 +32,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         blank=True,
         choices=login_type_choices,
     )
-    profile_image = models.CharField(max_length=255, null=True, blank=True)
+    profile_image = models.ImageField(upload_to="profiles/", null=True, blank=True)
 
     social_id = models.BigIntegerField(null=True, unique=True, blank=False)
 
