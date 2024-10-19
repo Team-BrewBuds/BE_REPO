@@ -7,17 +7,33 @@ from allauth.socialaccount.providers.naver import views as naver_view
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
+from django.db import transaction
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
-from django.shortcuts import get_object_or_404, redirect
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from repo.profiles.models import CustomUser, Relationship, UserDetail
 from repo.profiles.serializers import BudyRecommendSerializer, UserSignupSerializer, UserDetailSignupSerializer
+from repo.profiles.serializers import (
+    BudyRecommendSerializer,
+    UserFollowListSerializer,
+    UserProfileSerializer,
+    UserRegisterSerializer,
+    UserUpdateSerializer,
+)
+from repo.profiles.services import get_follower_list, get_following_list
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -206,7 +222,7 @@ class AppleLoginView(APIView):
             
             if created:
                 user.login_type = "apple"
-            
+
             user.last_login = now()
             user.save()
 
@@ -312,46 +328,234 @@ class SignupView(APIView):
 #         return self.request.user
 
 
-class FollowAPIView(APIView):
-    """
-    팔로우, 팔로우 취소 API
-    Args:
-        (post) follow_user_id: 팔로우할 사용자의 id
-        (delete) following_user_id: 팔로우 취소할 사용자의 id
-    Returns:
-        팔로우 성공 시: HTTP 201 Created
-        팔로우 취소 성공 시: HTTP 200 OK
-        실패 시: HTTP 400 Bad Request or 404 Not Found
+@extend_schema_view(
+    get=extend_schema(
+        responses=UserProfileSerializer,
+        summary="자기 프로필 조회",
+        description="""
+            현재 로그인한 사용자의 프로필을 조회합니다.
 
-    담당자: hwstar1204
-    """
+            닉네임, 프로필 이미지, 커피 생활 방식, 팔로워 수, 팔로잉 수, 게시글 수를 반환합니다.
+            담당자 : hwstar1204
+        """,
+        tags=["profile"],
+    ),
+    patch=extend_schema(
+        request=UserUpdateSerializer,
+        responses={
+            200: UserProfileSerializer,
+            400: OpenApiResponse(description="Bad Request"),
+            401: OpenApiResponse(description="Unauthorized"),
+        },
+        summary="자기 프로필 수정",
+        description="""
+            현재 로그인한 사용자의 프로필을 수정합니다.
 
-    def post(self, request):
+            닉네임, 프로필 이미지, 소개, 프로필 링크, 커피 생활 방식, 선호하는 커피 맛, 자격증 여부를 수정합니다.
+            담당자 : hwstar1204
+        """,
+        tags=["profile"],
+    ),
+)
+class MyProfileAPIView(APIView):
+    def get(self, request):
         user = request.user
-        follow_user_id = request.data.get("follow_user_id")
-        if not follow_user_id:
-            return Response({"error": "follow_user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        data = {
+            "nickname": user.nickname,
+            "profile_image": user.profile_image,
+            "coffee_life": user.user_detail.coffee_life,
+            "follower_cnt": Relationship.objects.followers(user).count(),
+            "following_cnt": Relationship.objects.following(user).count(),
+            "post_cnt": user.post_set.count(),
+        }
 
-        follow_user = get_object_or_404(CustomUser, id=follow_user_id)
+        serializer = UserProfileSerializer(data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-        relationship, created = Relationship.custom_objects.follow(user, follow_user)
+    @transaction.atomic
+    def patch(self, request):
+        user = request.user
+        if not user.is_authenticated:
+            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            fields = ["nickname", "profile_image"]
+            for field in fields:
+                setattr(user, field, serializer.validated_data.get(field, getattr(user, field)))
+            user.save()
+
+            user_detail_data = serializer.validated_data.get("user_detail", None)
+            if user_detail_data:
+                user_detail, created = UserDetail.objects.get_or_create(user=user)
+                fields = ["introduction", "profile_link", "coffee_life", "preferred_bean_taste", "is_certificated"]
+                for field in fields:
+                    setattr(user_detail, field, user_detail_data.get(field, getattr(user_detail, field)))
+                user_detail.save()
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        responses=UserProfileSerializer,
+        summary="상대 프로필 조회",
+        description="""
+            특정 사용자의 프로필을 조회합니다.
+
+            닉네임, 프로필 이미지, 커피 생활 방식, 팔로워 수, 팔로잉 수, 게시글 수를 반환합니다.
+            요청한 사용자가 팔로우 중인지 여부도 반환합니다.
+            담당자 : hwstar1204
+        """,
+        tags=["profile"],
+    ),
+)
+class OtherProfileAPIView(APIView):
+    def get(self, request, id):
+        request_user = request.user
+        user = CustomUser.objects.get_user_and_user_detail(id=id)
+        data = {
+            "nickname": user.nickname,
+            "profile_image": user.profile_image,
+            "coffee_life": user.user_detail.coffee_life,
+            "follower_cnt": Relationship.objects.followers(user).count(),
+            "following_cnt": Relationship.objects.following(user).count(),
+            "post_cnt": user.post_set.count(),
+            "is_user_following": Relationship.objects.check_relationship(request_user, user, "follow"),
+        }
+
+        serializer = UserProfileSerializer(data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="type",
+                type=str,
+                enum=["following", "follower"],
+            ),
+        ],
+        responses={
+            200: UserFollowListSerializer,
+            400: OpenApiResponse(description="Bad Request"),
+            404: OpenApiResponse(description="Not Found"),
+        },
+        summary="자신의 팔로잉/팔로워 프로필 조회",
+        description="""
+            사용자의 팔로잉/팔로워 리스트를 조회합니다.
+            type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
+
+            담당자 : hwstar1204
+        """,
+        tags=["follow"],
+    )
+)
+class FollowListAPIView(APIView):
+    def get(self, request):
+        page = request.query_params.get("page", 1)
+        follow_type = request.query_params.get("type")  # 쿼리 파라미터로 type을 받음
+        user = request.user
+
+        if follow_type == "following":
+            data = get_following_list(user, True)
+        elif follow_type == "follower":
+            data = get_follower_list(user)
+        else:
+            return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 12
+        page_obj = paginator.paginate_queryset(data, request)
+
+        serializer = UserFollowListSerializer(page_obj, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="type",
+                type=str,
+                enum=["following", "follower"],
+            ),
+        ],
+        responses={
+            200: UserFollowListSerializer,
+            400: OpenApiResponse(description="Bad Request"),
+            404: OpenApiResponse(description="Not Found"),
+        },
+        summary="사용자의 팔로잉/팔로워 리스트 조회",
+        description="""
+            특정 사용자의 팔로잉/팔로워 리스트를 조회합니다.
+            id 파라미터로 사용자의 id를 받고,type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
+
+            담당자 : hwstar1204
+        """,
+        tags=["follow"],
+    ),
+    post=extend_schema(
+        responses=status.HTTP_201_CREATED,
+        summary="팔로우",
+        description="""
+            특정 사용자를 팔로우합니다.
+            이미 팔로우 중인 경우 409 CONFLICT
+
+            담당자 : hwstar1204
+        """,
+        tags=["follow"],
+    ),
+    delete=extend_schema(
+        responses=status.HTTP_200_OK,
+        summary="팔로우 취소",
+        description="""
+            특정 사용자의 언팔로우합니다.
+            팔로우 중이 아닌 경우 404 NOT FOUND
+
+            담당자 : hwstar1204
+        """,
+        tags=["follow"],
+    ),
+)
+class FollowListCreateDeleteAPIView(APIView):
+    def get(self, request, id):
+        follow_type = request.query_params.get("type")
+        user = get_object_or_404(CustomUser, id=id)
+
+        if follow_type == "following":
+            data = get_following_list(user, False)
+        elif follow_type == "follower":
+            data = get_follower_list(user)
+        else:
+            return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 12
+        page_obj = paginator.paginate_queryset(data, request)
+
+        serializer = UserFollowListSerializer(page_obj, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    def post(self, request, id):
+        user = request.user
+        follow_user = get_object_or_404(CustomUser, id=id)
+
+        relationship, created = Relationship.objects.follow(user, follow_user)
         if not created:
-            return Response({"error": "already following"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "already following"}, status=status.HTTP_409_CONFLICT)
+        return Response({"success": "follow"}, status=status.HTTP_201_CREATED)
 
-        return Response({"success": "create follow success"}, status=status.HTTP_201_CREATED)
-
-    def delete(self, request):
+    def delete(self, request, id):
         user = request.user
-        following_user_id = request.data.get("following_user_id")
-        if not following_user_id:
-            return Response({"error": "following_user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        following_user = get_object_or_404(CustomUser, id=id)
 
-        following_user = get_object_or_404(CustomUser, id=following_user_id)
-
-        relationship, deleted = Relationship.custom_objects.unfollow(user, following_user)
+        relationship, deleted = Relationship.objects.unfollow(user, following_user)
         if not deleted:
-            return Response({"error": "not following"}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"success": "delete follow success"}, status=status.HTTP_200_OK)
+            return Response({"error": "not following"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
 
 
 class BudyRecommendAPIView(APIView):
@@ -369,6 +573,12 @@ class BudyRecommendAPIView(APIView):
     담당자: hwtar1204
     """
 
+    @extend_schema(
+        summary="버디 추천",
+        description="유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환 (10명 랜덤순)",
+        responses={200: BudyRecommendSerializer},
+        tags=["recommend"],
+    )
     def get(self, request):
         user = request.user
 
@@ -394,7 +604,7 @@ class BudyRecommendAPIView(APIView):
 
         recommend_user_list = []
         for user in user_list:
-            recommend_user_list.append({"user": user, "follower_cnt": Relationship.custom_objects.followers(user).count()})
+            recommend_user_list.append({"user": user, "follower_cnt": Relationship.objects.followers(user).count()})
 
         serializer = BudyRecommendSerializer(recommend_user_list, many=True)
         category = random_true_category if true_categories else random_category

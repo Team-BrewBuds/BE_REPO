@@ -1,4 +1,5 @@
 from django.urls import include, path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from repo.profiles import views
 
@@ -10,7 +11,15 @@ urlpatterns = [
     path("login/naver/finish/", views.NaverLoginView.as_view(), name="naver_login_todjango"),
     path("login/oauth/apple/", views.AppleCallbackView.as_view(), name="apple_callback"),
     path("login/apple/finish/", views.AppleLoginView.as_view(), name="apple_login_todjango"),
+
     path("signup/", views.SignupView.as_view(), name="signup"),
-    path("follow/", views.FollowAPIView.as_view(), name="follow"),
+
+    path("", views.MyProfileAPIView.as_view(), name="my_profile"),
+    path("<int:id>/", views.OtherProfileAPIView.as_view(), name="other_profile"),
+    path("<int:id>/follow/", views.FollowListCreateDeleteAPIView.as_view(), name="follow"),
+    path("follow/", views.FollowListAPIView.as_view(), name="my_follow_list"),
+
     path("recommend/", views.BudyRecommendAPIView.as_view(), name="budy-recommend"),
+    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 ]
