@@ -18,3 +18,17 @@ DATABASES = {
         "PORT": env.int("LOCAL_MYSQL_PORT", 3306),
     }
 }
+
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_URL = "/media/"
+# FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024  # 5MB
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+

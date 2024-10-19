@@ -1,5 +1,4 @@
 import os
-import environ
 from datetime import timedelta
 from pathlib import Path
 
@@ -56,7 +55,7 @@ THIRD_PARTY_APPS = [
     # swagger
     "drf_spectacular",
     # s3
-    'storages',
+    "storages",
 ]
 
 INSTALLED_APPS = [
@@ -111,51 +110,6 @@ NAVER_CLIENT_ID = env.str("NAVER_CLIENT_ID")
 NAVER_CLIENT_SECRET = env.str("NAVER_CLIENT_SECRET")
 NAVER_REDIRECT_URI = env.str("NAVER_REDIRECT_URI")
 
-if DEBUG:
-    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-    MEDIA_URL = "/media/"
-    # FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024  # 5MB
-
-    STORAGES = {
-        "default": {
-            "BACKEND": "django.core.files.storage.FileSystemStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-        },
-    }
-
-else:
-    AWS_STORAGE_BUCKET_NAME = env.str("AWS_STORAGE_BUCKET_NAME", default="")
-    AWS_S3_ACCESS_KEY_ID = env.str("AWS_S3_ACCESS_KEY_ID", default="")
-    AWS_S3_SECRET_ACCESS_KEY = env.str("AWS_S3_SECRET_ACCESS_KEY", default="")
-    AWS_S3_REGION_NAME = env.str("AWS_S3_REGION_NAME", default="ap-northeast-2")
-    AWS_S3_CUSTOM_DOMAIN = '%s.s3.%s.amazonaws.com' % (AWS_STORAGE_BUCKET_NAME, AWS_S3_REGION_NAME)
-    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-    AWS_DEFAULT_ACL = 'public-read'
-
-    STORAGES = {
-        "default": {
-            "BACKEND": "repo.common.bucket.AwsMediaStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "repo.common.bucket.AwsStaticStorage",
-        },
-    }
-
-MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
-    # allauth
-    'allauth.account.middleware.AccountMiddleware',
-]
 
 # CORS settings
 CORS_ALLOW_CREDENTIALS = True
@@ -236,15 +190,6 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
-
-# CORS settings
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False
-BASE_BACKEND_URL = env.str("DJANGO_BASE_BACKEND_URL", default="http://localhost:8000")
-BASE_FRONTEND_URL = env.str("DJANGO_BASE_FRONTEND_URL", default="http://localhost:3000")
-CORS_ORIGIN_WHITELIST = env.list("DJANGO_CORS_ORIGIN_WHITELIST", default=[BASE_FRONTEND_URL])
-CSRF_TRUSTED_ORIGINS = [BASE_FRONTEND_URL]
-
 
 ROOT_URLCONF = "config.urls"
 
