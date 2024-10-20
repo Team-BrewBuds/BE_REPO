@@ -6,13 +6,12 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('profiles', '0004_merge_20241018_2357'),
+        ("profiles", "0004_merge_20241018_2357"),
     ]
 
     operations = [
         migrations.AlterModelManagers(
-            name='relationship',
-            managers=[
-            ],
+            name="relationship",
+            managers=[],
         ),
     ]
