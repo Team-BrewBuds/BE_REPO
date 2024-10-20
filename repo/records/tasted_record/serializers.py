@@ -3,7 +3,7 @@ from rest_framework import serializers
 from repo.beans.serializers import BeanSerializer, BeanTasteReviewSerializer
 from repo.common.serializers import PhotoSerializer
 from repo.profiles.serializers import UserSimpleSerializer
-from repo.records.models import TastedRecord, Photo
+from repo.records.models import Photo, TastedRecord
 
 
 class TastedRecordListSerializer(serializers.ModelSerializer):
@@ -25,9 +25,20 @@ class TastedRecordListSerializer(serializers.ModelSerializer):
     class Meta:
         model = TastedRecord
         fields = [
-            "id", "author", "bean_name", "bean_type", "star_rating", "flavor",
-            "content", "view_cnt", "like_cnt", "is_private", "created_at",
-            "tag", "photos", "is_user_liked",
+            "id",
+            "author",
+            "bean_name",
+            "bean_type",
+            "star_rating",
+            "flavor",
+            "content",
+            "view_cnt",
+            "like_cnt",
+            "is_private",
+            "created_at",
+            "tag",
+            "photos",
+            "is_user_liked",
         ]
 
 

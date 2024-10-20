@@ -5,8 +5,9 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiExample,
     OpenApiParameter,
+    OpenApiResponse,
     extend_schema,
-    extend_schema_view, OpenApiResponse,
+    extend_schema_view,
 )
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
@@ -52,11 +53,7 @@ from repo.records.services import get_post_detail, get_post_feed
     ),
     post=extend_schema(
         request=PostCreateUpdateSerializer,
-        responses={
-            201: PostCreateUpdateSerializer,
-            400: OpenApiResponse(description="Bad Request")
-
-        },
+        responses={201: PostCreateUpdateSerializer, 400: OpenApiResponse(description="Bad Request")},
         summary="게시글 생성",
         description="""
             단일 게시글을 생성합니다. (사진과 시음기록은 함께 등록할 수 없습니다.)
@@ -120,10 +117,7 @@ class PostListCreateAPIView(APIView):
     ),
     put=extend_schema(
         request=PostCreateUpdateSerializer,
-        responses={
-            200: PostCreateUpdateSerializer,
-            400: OpenApiResponse(description="Bad Request")
-        },
+        responses={200: PostCreateUpdateSerializer, 400: OpenApiResponse(description="Bad Request")},
         summary="게시글 수정",
         description="""
             게시글의 정보를 수정합니다.
@@ -134,10 +128,7 @@ class PostListCreateAPIView(APIView):
     ),
     patch=extend_schema(
         request=PostCreateUpdateSerializer,
-        responses={
-            200: PostCreateUpdateSerializer,
-            400: OpenApiResponse(description="Bad Request")
-        },
+        responses={200: PostCreateUpdateSerializer, 400: OpenApiResponse(description="Bad Request")},
         summary="게시글 수정",
         description="""
             게시글의 정보를 수정합니다.

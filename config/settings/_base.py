@@ -3,9 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
-import pymysql
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env()
@@ -13,25 +11,11 @@ env.read_env(os.path.join(BASE_DIR, ".env"))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env.str("SECRET_KEY", "test")
-#
+
 # # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = env.bool("DEBUG")
-#
-ALLOWED_HOSTS = ["*"]
 
-# Database
-if os.environ.get("GITHUB_WORKFLOW"):
-    pymysql.install_as_MySQLdb()
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.mysql",
-            "NAME": "github_actions",
-            "USER": "root",
-            "PASSWORD": "password",
-            "HOST": "mysql",
-            "PORT": "3306",
-        }
-    }
+ALLOWED_HOSTS = ["*"]
 
 LOCAL_APPS = [
     "repo.profiles",
@@ -45,17 +29,14 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework.authtoken",
-    # allauth
     "django.contrib.sites",
-    "allauth",
+    "allauth",  # allauth
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.kakao",
     "allauth.socialaccount.providers.naver",
-    # swagger
-    "drf_spectacular",
-    # s3
-    "storages",
+    "drf_spectacular",  # swagger
+    "storages",  # s3
 ]
 
 INSTALLED_APPS = [
@@ -78,8 +59,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # allauth
-    "allauth.account.middleware.AccountMiddleware",
+    "allauth.account.middleware.AccountMiddleware",  # allauth
 ]
 
 # jwt 권한 인증 관련
@@ -125,7 +105,7 @@ AUTHENTICATION_BACKENDS = [
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
-# JWT 발급 관련
+# JWT 설정
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
@@ -210,7 +190,6 @@ TEMPLATES = [
 ]
 
 # Password validation
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -226,14 +205,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# WSGI_APPLICATION = 'config.wsgi.application'  # 수정
-
-
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Seoul"
 USE_I18N = True
 USE_TZ = False
-
 
 STATIC_URL = "static/"
 

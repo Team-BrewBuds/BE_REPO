@@ -20,6 +20,7 @@ class AwsStaticStorage(S3StaticStorage):
     location = "static"
     default_acl = "public-read"
 
+
 def photo_upload_to(instance, filename):
     """
     이미지 저장 경로 결정 함수
@@ -35,7 +36,6 @@ def photo_upload_to(instance, filename):
     unique_id = uuid.uuid4()
 
     return f"others/{unique_id}.{ext}"
-
 
 
 def delete_photo_from_s3(photo_url: str) -> None:
