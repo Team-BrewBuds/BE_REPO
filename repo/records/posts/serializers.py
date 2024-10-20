@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from repo.common.serializers import PhotoSerializer
 from repo.profiles.serializers import UserSimpleSerializer
-from repo.records.models import Post, TastedRecord
+from repo.records.models import Photo, Post, TastedRecord
 from repo.records.tasted_record.serializers import TastedRecordInPostSerializer
 
 
@@ -43,12 +43,12 @@ class TopPostSerializer(PostListSerializer):
 class PostCreateUpdateSerializer(serializers.ModelSerializer):
     """게시글 생성, 수정용"""
 
-    tasted_record = serializers.ListField(child=serializers.PrimaryKeyRelatedField(queryset=TastedRecord.objects.all()), required=False)
-    photos = PhotoSerializer(many=True, required=False)
+    tasted_records = serializers.PrimaryKeyRelatedField(many=True, queryset=TastedRecord.objects.all(), required=False)
+    photos = serializers.PrimaryKeyRelatedField(many=True, queryset=Photo.objects.all(), required=False)
 
     class Meta:
         model = Post
-        fields = ["author", "title", "content", "subject", "tag", "tasted_record", "photos"]
+        fields = ["title", "content", "subject", "tag", "tasted_records", "photos"]
 
 
 class PostDetailSerializer(serializers.ModelSerializer):
@@ -70,13 +70,3 @@ class PostDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = "__all__"
-
-
-class PostUpdateSerializer(serializers.ModelSerializer):
-    """게시글 수정용"""
-
-    photos = PhotoSerializer(many=True, required=False)
-
-    class Meta:
-        model = Post
-        fields = ["title", "content", "subject", "tag", "tasted_records", "photos"]
