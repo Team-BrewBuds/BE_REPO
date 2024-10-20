@@ -1,7 +1,4 @@
 import json
-from datetime import datetime, timedelta
-
-from django.utils import timezone
 
 COOKIE_EXP_MIN = 30
 

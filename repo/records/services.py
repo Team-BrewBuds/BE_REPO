@@ -2,7 +2,6 @@ import random
 from datetime import timedelta
 from itertools import chain
 
-from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone

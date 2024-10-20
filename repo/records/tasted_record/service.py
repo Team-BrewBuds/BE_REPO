@@ -1,7 +1,6 @@
-from django.core.files.storage import default_storage
 from django.db import transaction
 
-from ..models import Bean, BeanTasteReview, Photo
+from ..models import Bean, BeanTasteReview
 
 
 def update_bean(instance, bean_data):

@@ -78,7 +78,7 @@ class UserDetail(models.Model):
 
     COFFEE_LIFE_CHOICES = ["cafe_tour", "coffee_extraction", "coffee_study", "cafe_alba", "cafe_work", "cafe_operation"]
     TASTE_CHOICES = ["body", "acidity", "bitterness", "sweetness"]
-    
+
     def default_coffee_life():
         return dict.fromkeys(UserDetail.COFFEE_LIFE_CHOICES, False)
 
