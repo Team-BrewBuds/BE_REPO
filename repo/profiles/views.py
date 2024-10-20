@@ -18,19 +18,19 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from repo.profiles.models import CustomUser, Relationship, UserDetail
-from repo.profiles.serializers import BudyRecommendSerializer, UserSignupSerializer, UserDetailSignupSerializer
 from repo.profiles.serializers import (
     BudyRecommendSerializer,
+    UserDetailSignupSerializer,
     UserFollowListSerializer,
     UserProfileSerializer,
-    UserRegisterSerializer,
+    UserSignupSerializer,
     UserUpdateSerializer,
 )
 from repo.profiles.services import get_follower_list, get_following_list
@@ -151,6 +151,7 @@ class KakaoLoginView(SocialLoginView):
 
     담당자: blakej2432
     """
+
     adapter_class = kakao_view.KakaoOAuth2Adapter
     client_class = OAuth2Client
     callback_url = KAKAO_REDIRECT_URI
@@ -161,9 +162,9 @@ class KakaoLoginView(SocialLoginView):
         user = self.request.user
         if not user.is_authenticated:
             return response
-        
+
         if user.login_type is None:
-            user.login_type = 'kakao'
+            user.login_type = "kakao"
             user.save()
 
         return response
@@ -190,9 +191,9 @@ class NaverLoginView(SocialLoginView):
         user = self.request.user
         if not user.is_authenticated:
             return response
-        
+
         if user.login_type is None:
-            user.login_type = 'naver'
+            user.login_type = "naver"
             user.save()
 
         return response
@@ -219,7 +220,7 @@ class AppleLoginView(APIView):
             user_email = decoded_token.get("email")
 
             user, created = CustomUser.objects.get_or_create(email=user_email, defaults={"email": user_email})
-            
+
             if created:
                 user.login_type = "apple"
 
@@ -247,16 +248,15 @@ class AppleLoginView(APIView):
             return Response({"detail": "Invalid id_token."}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
 class SignupView(APIView):
     """
     사용자 회원가입을 처리하는 API.
 
-    이 API는 사용자로부터 추가적인 회원 정보(닉네임, 성별, 출생연도, 커피 생활 정보, 
+    이 API는 사용자로부터 추가적인 회원 정보(닉네임, 성별, 출생연도, 커피 생활 정보,
     선호하는 원두 맛, 커피 자격증 여부)를 받아 유효성을 검사하고 저장합니다.
 
     Args:
-        request: 클라이언트로부터 전달받은 회원가입 데이터 (닉네임, 성별, 출생연도, 커피 생활, 
+        request: 클라이언트로부터 전달받은 회원가입 데이터 (닉네임, 성별, 출생연도, 커피 생활,
                 선호하는 원두 맛, 커피 자격증 여부).
 
     Returns:
@@ -266,14 +266,15 @@ class SignupView(APIView):
 
     담당자: blakej2432
     """
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         user = request.user
         user_data = {
-            "nickname": request.data.get('nickname'),
-            "gender": request.data.get('gender'),
-            "birth": request.data.get('birth_year')
+            "nickname": request.data.get("nickname"),
+            "gender": request.data.get("gender"),
+            "birth": request.data.get("birth_year"),
         }
 
         user_serializer = UserSignupSerializer(user, data=user_data, partial=True)
@@ -281,22 +282,22 @@ class SignupView(APIView):
             return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         user_serializer.save()
 
-        coffee_life_data = {choice: choice in request.data.get('coffee_life', []) for choice in UserDetail.COFFEE_LIFE_CHOICES}
+        coffee_life_data = {choice: choice in request.data.get("coffee_life", []) for choice in UserDetail.COFFEE_LIFE_CHOICES}
 
         user_detail_data = {
             "coffee_life": coffee_life_data,
-            "preferred_bean_taste": request.data.get('preferred_bean_taste', {}),
-            "is_certificated": request.data.get('is_certificated', False)
+            "preferred_bean_taste": request.data.get("preferred_bean_taste", {}),
+            "is_certificated": request.data.get("is_certificated", False),
         }
         user_detail, created = UserDetail.objects.get_or_create(user=user)
         user_detail_serializer = UserDetailSignupSerializer(user_detail, data=user_detail_data, partial=True)
-        
+
         if not user_detail_serializer.is_valid():
             return Response(user_detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         user_detail_serializer.save()
 
         return Response({"message": "회원가입을 성공했습니다."}, status=status.HTTP_200_OK)
-    
+
 
 # TODO: Profile - User 정보 수정 관련 구현
 # class UpdateUserInfoView(generics.UpdateAPIView):

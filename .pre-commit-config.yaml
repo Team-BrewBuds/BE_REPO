@@ -8,27 +8,17 @@ repos:
       - id: check-case-conflict
       - id: check-merge-conflict
 
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.0
+    hooks:
+      - id: ruff
+        args: [ --fix ]
+
   - repo: https://github.com/ambv/black
     rev: 24.8.0
     hooks:
     - id: black
       args: ['-l', '140', '-t', 'py312']
-      exclude: |
-          (?x)(
-              ^migrations/|
-              ^tests/
-          )
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        args: ['--profile', 'black', '--filter-files', 'true']
-        exclude: |
-          (?x)(
-              ^migrations/|
-              ^tests/
-          )
 
 default_language_version:
   python: python3.12

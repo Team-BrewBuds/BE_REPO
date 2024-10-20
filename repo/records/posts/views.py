@@ -1,4 +1,3 @@
-from django.core.files.storage import default_storage
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
@@ -17,7 +16,6 @@ from rest_framework.views import APIView
 from repo.common.serializers import PageNumberSerializer
 from repo.common.utils import delete, get_object
 from repo.common.view_counter import update_view_count
-from repo.records.models import Photo
 from repo.records.posts.serializers import *
 from repo.records.services import get_post_detail, get_post_feed
 
