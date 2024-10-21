@@ -7,18 +7,6 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    replaces = [
-        ("records", "0001_initial"),
-        ("records", "0002_alter_post_subject"),
-        ("records", "0003_remove_post_tasted_record_post_tasted_records"),
-        ("records", "0004_alter_tastedrecord_like_cnt"),
-        ("records", "0005_alter_post_tasted_records"),
-        ("records", "0006_alter_post_tasted_records"),
-        ("records", "0003_alter_photo_photo_url"),
-        ("records", "0007_merge_20241018_2357"),
-        ("records", "0008_alter_photo_photo_url"),
-    ]
-
     initial = True
 
     dependencies = [
