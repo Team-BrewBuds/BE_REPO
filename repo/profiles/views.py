@@ -7,17 +7,33 @@ from allauth.socialaccount.providers.naver import views as naver_view
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from repo.profiles.models import CustomUser, Relationship, UserDetail
-from repo.profiles.serializers import BudyRecommendSerializer, UserRegisterSerializer
+from repo.profiles.serializers import (
+    BudyRecommendSerializer,
+    UserDetailSignupSerializer,
+    UserFollowListSerializer,
+    UserProfileSerializer,
+    UserSignupSerializer,
+    UserUpdateSerializer,
+)
+from repo.profiles.services import get_follower_list, get_following_list
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -140,6 +156,19 @@ class KakaoLoginView(SocialLoginView):
     client_class = OAuth2Client
     callback_url = KAKAO_REDIRECT_URI
 
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+
+        user = self.request.user
+        if not user.is_authenticated:
+            return response
+
+        if user.login_type is None:
+            user.login_type = "kakao"
+            user.save()
+
+        return response
+
 
 class NaverLoginView(SocialLoginView):
     """
@@ -155,6 +184,19 @@ class NaverLoginView(SocialLoginView):
     adapter_class = naver_view.NaverOAuth2Adapter
     client_class = OAuth2Client
     callback_url = NAVER_REDIRECT_URI
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+
+        user = self.request.user
+        if not user.is_authenticated:
+            return response
+
+        if user.login_type is None:
+            user.login_type = "naver"
+            user.save()
+
+        return response
 
 
 class AppleLoginView(APIView):
@@ -178,6 +220,9 @@ class AppleLoginView(APIView):
             user_email = decoded_token.get("email")
 
             user, created = CustomUser.objects.get_or_create(email=user_email, defaults={"email": user_email})
+
+            if created:
+                user.login_type = "apple"
 
             user.last_login = now()
             user.save()
@@ -203,28 +248,55 @@ class AppleLoginView(APIView):
             return Response({"detail": "Invalid id_token."}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# TODO: 회원가입 구현
-class RegistrationView(APIView):
+class SignupView(APIView):
     """
-    사용자 회원가입을 처리하는 API
+    사용자 회원가입을 처리하는 API.
+
+    이 API는 사용자로부터 추가적인 회원 정보(닉네임, 성별, 출생연도, 커피 생활 정보,
+    선호하는 원두 맛, 커피 자격증 여부)를 받아 유효성을 검사하고 저장합니다.
+
+    Args:
+        request: 클라이언트로부터 전달받은 회원가입 데이터 (닉네임, 성별, 출생연도, 커피 생활,
+                선호하는 원두 맛, 커피 자격증 여부).
+
+    Returns:
+        JSON 응답:
+            - 회원가입 성공 시: "회원가입을 성공했습니다." 메시지와 함께 HTTP 200 응답.
+            - 유효성 검사 실패 시: 에러 메시지와 함께 HTTP 400 응답.
+
+    담당자: blakej2432
     """
 
-    def get(self, request):
-        # user = request.user
-        # serializer = UserRegisterSerializer(user)
+    permission_classes = [IsAuthenticated]
 
-        # return Response(serializer.data)
-        return Response("회원가입 완료")
+    def post(self, request):
+        user = request.user
+        user_data = {
+            "nickname": request.data.get("nickname"),
+            "gender": request.data.get("gender"),
+            "birth": request.data.get("birth_year"),
+        }
 
-    def patch(self, request):
-        user = request.user  # 현재 로그인한 사용자
-        serializer = UserRegisterSerializer(user, data=request.data, partial=True)
+        user_serializer = UserSignupSerializer(user, data=user_data, partial=True)
+        if not user_serializer.is_valid():
+            return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user_serializer.save()
 
-        if serializer.is_valid():
-            # 회원가입 완료 처리
-            serializer.save(is_active=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        coffee_life_data = {choice: choice in request.data.get("coffee_life", []) for choice in UserDetail.COFFEE_LIFE_CHOICES}
+
+        user_detail_data = {
+            "coffee_life": coffee_life_data,
+            "preferred_bean_taste": request.data.get("preferred_bean_taste", {}),
+            "is_certificated": request.data.get("is_certificated", False),
+        }
+        user_detail, created = UserDetail.objects.get_or_create(user=user)
+        user_detail_serializer = UserDetailSignupSerializer(user_detail, data=user_detail_data, partial=True)
+
+        if not user_detail_serializer.is_valid():
+            return Response(user_detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user_detail_serializer.save()
+
+        return Response({"message": "회원가입을 성공했습니다."}, status=status.HTTP_200_OK)
 
 
 # TODO: Profile - User 정보 수정 관련 구현
@@ -258,6 +330,174 @@ class RegistrationView(APIView):
 
 
 @extend_schema_view(
+    get=extend_schema(
+        responses=UserProfileSerializer,
+        summary="자기 프로필 조회",
+        description="""
+            현재 로그인한 사용자의 프로필을 조회합니다.
+
+            닉네임, 프로필 이미지, 커피 생활 방식, 팔로워 수, 팔로잉 수, 게시글 수를 반환합니다.
+            담당자 : hwstar1204
+        """,
+        tags=["profile"],
+    ),
+    patch=extend_schema(
+        request=UserUpdateSerializer,
+        responses={
+            200: UserProfileSerializer,
+            400: OpenApiResponse(description="Bad Request"),
+            401: OpenApiResponse(description="Unauthorized"),
+        },
+        summary="자기 프로필 수정",
+        description="""
+            현재 로그인한 사용자의 프로필을 수정합니다.
+
+            닉네임, 프로필 이미지, 소개, 프로필 링크, 커피 생활 방식, 선호하는 커피 맛, 자격증 여부를 수정합니다.
+            담당자 : hwstar1204
+        """,
+        tags=["profile"],
+    ),
+)
+class MyProfileAPIView(APIView):
+    def get(self, request):
+        user = request.user
+        data = {
+            "nickname": user.nickname,
+            "profile_image": user.profile_image,
+            "coffee_life": user.user_detail.coffee_life,
+            "follower_cnt": Relationship.objects.followers(user).count(),
+            "following_cnt": Relationship.objects.following(user).count(),
+            "post_cnt": user.post_set.count(),
+        }
+
+        serializer = UserProfileSerializer(data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @transaction.atomic
+    def patch(self, request):
+        user = request.user
+        if not user.is_authenticated:
+            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            fields = ["nickname", "profile_image"]
+            for field in fields:
+                setattr(user, field, serializer.validated_data.get(field, getattr(user, field)))
+            user.save()
+
+            user_detail_data = serializer.validated_data.get("user_detail", None)
+            if user_detail_data:
+                user_detail, created = UserDetail.objects.get_or_create(user=user)
+                fields = ["introduction", "profile_link", "coffee_life", "preferred_bean_taste", "is_certificated"]
+                for field in fields:
+                    setattr(user_detail, field, user_detail_data.get(field, getattr(user_detail, field)))
+                user_detail.save()
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        responses=UserProfileSerializer,
+        summary="상대 프로필 조회",
+        description="""
+            특정 사용자의 프로필을 조회합니다.
+
+            닉네임, 프로필 이미지, 커피 생활 방식, 팔로워 수, 팔로잉 수, 게시글 수를 반환합니다.
+            요청한 사용자가 팔로우 중인지 여부도 반환합니다.
+            담당자 : hwstar1204
+        """,
+        tags=["profile"],
+    ),
+)
+class OtherProfileAPIView(APIView):
+    def get(self, request, id):
+        request_user = request.user
+        user = CustomUser.objects.get_user_and_user_detail(id=id)
+        data = {
+            "nickname": user.nickname,
+            "profile_image": user.profile_image,
+            "coffee_life": user.user_detail.coffee_life,
+            "follower_cnt": Relationship.objects.followers(user).count(),
+            "following_cnt": Relationship.objects.following(user).count(),
+            "post_cnt": user.post_set.count(),
+            "is_user_following": Relationship.objects.check_relationship(request_user, user, "follow"),
+        }
+
+        serializer = UserProfileSerializer(data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="type",
+                type=str,
+                enum=["following", "follower"],
+            ),
+        ],
+        responses={
+            200: UserFollowListSerializer,
+            400: OpenApiResponse(description="Bad Request"),
+            404: OpenApiResponse(description="Not Found"),
+        },
+        summary="자신의 팔로잉/팔로워 프로필 조회",
+        description="""
+            사용자의 팔로잉/팔로워 리스트를 조회합니다.
+            type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
+
+            담당자 : hwstar1204
+        """,
+        tags=["follow"],
+    )
+)
+class FollowListAPIView(APIView):
+    def get(self, request):
+        page = request.query_params.get("page", 1)
+        follow_type = request.query_params.get("type")  # 쿼리 파라미터로 type을 받음
+        user = request.user
+
+        if follow_type == "following":
+            data = get_following_list(user, True)
+        elif follow_type == "follower":
+            data = get_follower_list(user)
+        else:
+            return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 12
+        page_obj = paginator.paginate_queryset(data, request)
+
+        serializer = UserFollowListSerializer(page_obj, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="type",
+                type=str,
+                enum=["following", "follower"],
+            ),
+        ],
+        responses={
+            200: UserFollowListSerializer,
+            400: OpenApiResponse(description="Bad Request"),
+            404: OpenApiResponse(description="Not Found"),
+        },
+        summary="사용자의 팔로잉/팔로워 리스트 조회",
+        description="""
+            특정 사용자의 팔로잉/팔로워 리스트를 조회합니다.
+            id 파라미터로 사용자의 id를 받고,type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
+
+            담당자 : hwstar1204
+        """,
+        tags=["follow"],
+    ),
     post=extend_schema(
         responses=status.HTTP_201_CREATED,
         summary="팔로우",
@@ -281,7 +521,25 @@ class RegistrationView(APIView):
         tags=["follow"],
     ),
 )
-class FollowAPIView(APIView):
+class FollowListCreateDeleteAPIView(APIView):
+    def get(self, request, id):
+        follow_type = request.query_params.get("type")
+        user = get_object_or_404(CustomUser, id=id)
+
+        if follow_type == "following":
+            data = get_following_list(user, False)
+        elif follow_type == "follower":
+            data = get_follower_list(user)
+        else:
+            return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 12
+        page_obj = paginator.paginate_queryset(data, request)
+
+        serializer = UserFollowListSerializer(page_obj, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
     def post(self, request, id):
         user = request.user
         follow_user = get_object_or_404(CustomUser, id=id)

@@ -37,6 +37,7 @@ def test_get_post_detail(api_client, post):
     # print(response.cookies.get("post_viewed"))
     assert_post_detail(response.data, post)
 
+
 def assert_tasted_record_detail(response_data, tasted_record):
     assert response_data.get("id") == tasted_record.id
     assert response_data.get("bean")["name"] == tasted_record.bean.name
@@ -49,7 +50,7 @@ def assert_tasted_record_detail(response_data, tasted_record):
     # print('생성 시간: ', tasted_record.created_at.strftime("%Y-%m-%dT%H:%M:%S.%f"))
     assert response_data.get("created_at") == tasted_record.created_at.strftime("%Y-%m-%dT%H:%M:%S.%f")
     print(json.dumps(response_data.get("user"), indent=4))
-    assert response_data.get("author")['id'] == tasted_record.author.id
+    assert response_data.get("author")["id"] == tasted_record.author.id
     assert response_data.get("author")["nickname"] == tasted_record.author.nickname
     assert response_data.get("author")["profile_image"] == tasted_record.author.profile_image
     assert response_data.get("bean")["bean_type"] == tasted_record.bean.bean_type
@@ -63,7 +64,7 @@ def assert_post_detail(response_data, post):
     assert response_data.get("view_cnt") == 1
     assert response_data.get("like_cnt") == 0
     assert response_data.get("created_at") == post.created_at.strftime("%Y-%m-%dT%H:%M:%S.%f")
-    assert response_data.get("author")['id'] == post.author.id
+    assert response_data.get("author")["id"] == post.author.id
     assert response_data.get("author")["nickname"] == post.author.nickname
     assert response_data.get("author")["profile_image"] == post.author.profile_image
     assert response_data.get("tasted_record")["id"] == post.tasted_record.id

@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "brewbuds"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
-authors = ["hwstar-1204 <115150798+hwstar-1204@users.noreply.github.com>"]
+authors = ["hwstar-1204 <hwstar-1204@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
@@ -20,9 +20,21 @@ drf-spectacular = "^0.27.2"
 dj-rest-auth = "^6.0.0"
 pytest = "^8.3.3"
 pytest-django = "^4.9.0"
+boto3 = "^1.35.36"
+django-storages = "^1.14.4"
+pillow = "^10.4.0"
 pymysql = "^1.1.1"
 gunicorn = "^23.0.0"
 cryptography = "^43.0.1"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.7.0"
+black = "^24.10.0"
+
+[tool.ruff]
+lint.select = ["E4", "E7", "E9", "F", "B", "I", "N"]
+lint.ignore = ["E501", "F403", "F405", "F841"]  # F841: unused variable (제거 필요)
 
 
 [build-system]

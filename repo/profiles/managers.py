@@ -1,5 +1,6 @@
 from django.contrib.auth.models import BaseUserManager
 from django.db import models
+from django.shortcuts import get_object_or_404
 
 
 class CustomUserManager(BaseUserManager):
@@ -26,8 +27,14 @@ class CustomUserManager(BaseUserManager):
 
         return self.create_user(email, password, **extra_fields)
 
+    def get_user_and_user_detail(self, id):
+        return get_object_or_404(self.select_related("user_detail"), id=id)
+
 
 class RelationshipManager(models.Manager):
+
+    def check_relationship(self, from_user, to_user, relationship_type):
+        return self.filter(from_user=from_user, to_user=to_user, relationship_type=relationship_type).exists()
 
     def follow(self, from_user, to_user):
         relationship, created = self.get_or_create(from_user=from_user, to_user=to_user, relationship_type="follow")
