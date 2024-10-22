@@ -242,3 +242,17 @@ def get_comment_list(object_type, object_id):
 def get_comment(comment_id):
     comment = Comment.objects.get(pk=comment_id)
     return comment
+
+
+def get_user_posts_by_subject(user, subject):
+    """사용자가 작성한 주제별 게시글 리스트를 가져오는 함수"""
+
+    subject_filter = Q(subject=subject) if subject != "all" else Q()
+    posts = (
+        user.post_set.filter(subject_filter)
+        .select_related("author")
+        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .order_by("-id")
+    )
+
+    return posts

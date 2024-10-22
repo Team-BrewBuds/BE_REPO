@@ -34,6 +34,9 @@ from repo.profiles.serializers import (
     UserUpdateSerializer,
 )
 from repo.profiles.services import get_follower_list, get_following_list
+from repo.records.models import Post
+from repo.records.posts.serializers import UserPostSerializer
+from repo.records.services import get_user_posts_by_subject
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -612,3 +615,33 @@ class BudyRecommendAPIView(APIView):
         response_data = {"users": serializer.data, "category": category}
 
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class UserPostListAPIView(APIView):
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="subject",
+                type=str,
+                enum=[choice[0] for choice in Post.SUBJECT_TYPE_CHOICES],
+                description="게시글 주제",
+            ),
+        ],
+        summary="유저 게시글 조회",
+        description="특정 사용자의 게시글을 주제별로 조회합니다.",
+        responses={200: UserPostSerializer(many=True)},
+        tags=["profile_records"],
+    )
+    def get(self, request, id):
+        subject = request.query_params.get("subject", "전체")
+        subject_choice = dict(Post.SUBJECT_TYPE_CHOICES).get(subject)
+        user = get_object_or_404(CustomUser, id=id)
+
+        posts = get_user_posts_by_subject(user, subject_choice)
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 12
+        paginated_posts = paginator.paginate_queryset(posts, request)
+
+        serializer = UserPostSerializer(paginated_posts, many=True)
+        return paginator.get_paginated_response(serializer.data)

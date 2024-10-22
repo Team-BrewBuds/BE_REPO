@@ -70,3 +70,28 @@ class PostDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = "__all__"
+
+
+class UserPostSerializer(serializers.ModelSerializer):
+    """특정 사용자의 게시글 리스트 조회용"""
+
+    author = serializers.CharField(source="author.nickname", read_only=True)
+    represent_post_photo = serializers.SerializerMethodField()
+    tasted_records_photo = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
+
+    def get_represent_post_photo(self, obj):
+        photos = obj.photo_set.all()
+        if photos.exists():
+            return PhotoSerializer(photos.first()).data
+        return None
+
+    def get_tasted_records_photo(self, obj):
+        for tasted_record in obj.tasted_records.all():
+            if tasted_record.photo_set.exists():
+                return PhotoSerializer(tasted_record.photo_set.first()).data
+        return None
+
+    class Meta:
+        model = Post
+        fields = ["id", "author", "title", "subject", "created_at", "represent_post_photo", "tasted_records_photo"]
