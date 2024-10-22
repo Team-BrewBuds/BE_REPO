@@ -1,6 +1,8 @@
+from datetime import timedelta
 from typing import Optional, Tuple, Type
 
 from django.db.models import Model
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -91,3 +93,29 @@ def delete(request: Request, pk: int, model: Type[Model]) -> Response:
 
     data.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def get_time_difference(object_created_at: timezone) -> str:
+    """
+    주어진 객체의 생성 시간과 현재 시간의 차이를 반환
+    Args:
+        object_created_at (datetime): 객체의 생성 시간
+    Returns:
+        timedelta: 현재 시간과 객체의 생성 시간의 차이
+    작성자 : hwstar1204
+    """
+
+    now = timezone.now()
+    time_difference = now - object_created_at
+
+    if (years_ago := time_difference // timedelta(days=365)) > 0:
+        return f"{years_ago}년 전"
+    if (months_ago := (time_difference % timedelta(days=365)) // timedelta(days=30)) > 0:
+        return f"{months_ago}개월 전"
+    if (days_ago := (time_difference % timedelta(days=365)) // timedelta(days=1)) > 0:
+        return f"{days_ago}일 전"
+    if (hours_ago := time_difference // timedelta(hours=1)) > 0:
+        return f"{hours_ago}시간 전"
+    if (minutes_ago := (time_difference % timedelta(hours=1)) // timedelta(minutes=1)) > 0:
+        return f"{minutes_ago}분 전"
+    return "방금 전"

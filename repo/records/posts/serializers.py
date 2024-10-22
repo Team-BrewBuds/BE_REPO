@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from repo.common.serializers import PhotoSerializer
+from repo.common.utils import get_time_difference
 from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import Photo, Post, TastedRecord
 from repo.records.tasted_record.serializers import TastedRecordInPostSerializer
@@ -91,6 +92,9 @@ class UserPostSerializer(serializers.ModelSerializer):
             if tasted_record.photo_set.exists():
                 return PhotoSerializer(tasted_record.photo_set.first()).data
         return None
+
+    def get_created_at(self, obj):
+        return get_time_difference(obj.created_at)
 
     class Meta:
         model = Post
