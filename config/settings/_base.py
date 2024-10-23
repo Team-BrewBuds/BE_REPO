@@ -37,6 +37,7 @@ THIRD_PARTY_APPS = [
     "allauth.socialaccount.providers.naver",
     "drf_spectacular",  # swagger
     "storages",  # s3
+    "django_filters",  # filtering
 ]
 
 INSTALLED_APPS = [
