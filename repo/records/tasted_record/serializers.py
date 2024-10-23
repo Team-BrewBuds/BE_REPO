@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from repo.beans.serializers import BeanSerializer, BeanTasteReviewSerializer
 from repo.common.serializers import PhotoSerializer
+from repo.common.utils import get_first_photo_url
 from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import Photo, TastedRecord
 
@@ -86,3 +87,16 @@ class TastedRecordInPostSerializer(serializers.ModelSerializer):
     class Meta:
         model = TastedRecord
         fields = ["id", "content", "bean_name", "bean_type", "star_rating", "flavor", "photos"]
+
+
+class UserTastedRecordSerializer(serializers.ModelSerializer):
+    bean_name = serializers.CharField(source="bean.name")
+    star = serializers.FloatField(source="taste_review.star")
+    photo_url = serializers.SerializerMethodField()
+
+    def get_photo_url(self, obj):
+        return get_first_photo_url(obj)
+
+    class Meta:
+        model = TastedRecord
+        fields = ["id", "bean_name", "star", "photo_url"]

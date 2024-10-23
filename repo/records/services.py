@@ -256,3 +256,12 @@ def get_user_posts_by_subject(user, subject):
     )
 
     return posts
+
+
+def get_user_tasted_records_by_filter(user):
+    """사용자가 작성한 주제별 시음기록 리스트를 가져오는 함수"""
+
+    queryset = user.tastedrecord_set.select_related("author", "bean", "taste_review").prefetch_related(
+        Prefetch("photo_set", queryset=Photo.objects.only("photo_url"))
+    )
+    return queryset
