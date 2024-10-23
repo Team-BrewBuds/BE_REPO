@@ -119,3 +119,18 @@ def get_time_difference(object_created_at: timezone) -> str:
     if (minutes_ago := (time_difference % timedelta(hours=1)) // timedelta(minutes=1)) > 0:
         return f"{minutes_ago}분 전"
     return "방금 전"
+
+
+def get_first_photo_url(obj: Model) -> Optional[str]:
+    """
+    주어진 객체의 첫 번째 사진 URL을 반환
+    Args:
+        obj: 사진 URL을 가져올 객체
+    Returns:
+        str: 객체의 첫 번째 사진 URL
+    작성자 : hwstar1204
+    """
+
+    if obj and hasattr(obj, "photo_set") and obj.photo_set.exists():
+        return obj.photo_set.first().photo_url.url
+    return None

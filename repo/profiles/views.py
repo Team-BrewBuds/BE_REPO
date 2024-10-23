@@ -11,13 +11,14 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
+from django_filters import rest_framework as filters
 from drf_spectacular.utils import (
     OpenApiParameter,
     OpenApiResponse,
     extend_schema,
     extend_schema_view,
 )
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -34,9 +35,14 @@ from repo.profiles.serializers import (
     UserUpdateSerializer,
 )
 from repo.profiles.services import get_follower_list, get_following_list
+from repo.records.filters import TastedRecordFilter
 from repo.records.models import Post
 from repo.records.posts.serializers import UserPostSerializer
-from repo.records.services import get_user_posts_by_subject
+from repo.records.services import (
+    get_user_posts_by_subject,
+    get_user_tasted_records_by_filter,
+)
+from repo.records.tasted_record.serializers import UserTastedRecordSerializer
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -645,3 +651,54 @@ class UserPostListAPIView(APIView):
 
         serializer = UserPostSerializer(paginated_posts, many=True)
         return paginator.get_paginated_response(serializer.data)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        parameters=[
+            OpenApiParameter(name="bean_type", type=str, enum=["single", "blend"]),
+            OpenApiParameter(
+                name="origin_country",
+                type=str,
+                enum=["케냐", "과테말라", "에티오피아", "브라질", "콜롬비아", "인도네시아", "온두라스", "탄자니아", "르완다"],
+            ),
+            OpenApiParameter(
+                name="star_min",
+                type=float,
+                enum=[x / 2 for x in range(11)],
+            ),
+            OpenApiParameter(
+                name="star_max",
+                type=float,
+                enum=[x / 2 for x in range(11)],
+            ),
+            OpenApiParameter(
+                name="is_decaf",
+                type=bool,
+                enum=[True, False],
+            ),
+            OpenApiParameter(
+                name="ordering",
+                type=str,
+                enum=["-created_at", "-taste_review__star"],
+                required=False,
+            ),
+        ],
+        responses=UserTastedRecordSerializer,
+        summary="유저 시음기록 리스트 조회",
+        description="특정 사용자의 시음기록 리스트를 필터링하여 조회합니다.",
+        tags=["profile_records"],
+    )
+)
+class UserTastedRecordListView(generics.ListAPIView):
+    serializer_class = UserTastedRecordSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = TastedRecordFilter
+    ordering_fields = ["-created_at", "-taste_review__star"]
+
+    def get_queryset(self):
+        user_id = self.kwargs.get("id")
+        user = get_object_or_404(CustomUser, id=user_id)
+        queryset = get_user_tasted_records_by_filter(user)
+        ordering = self.request.query_params.get("ordering", "-created_at")
+        return queryset.order_by(ordering)
