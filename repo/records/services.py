@@ -2,10 +2,12 @@ import random
 from datetime import timedelta
 from itertools import chain
 
-from django.db.models import Prefetch, Q
+from django.db.models import Avg, Count, FloatField, Prefetch, Q
+from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
+from repo.beans.models import Bean
 from repo.common.view_counter import is_viewed
 from repo.profiles.models import Relationship
 from repo.records.models import Comment, Photo, Post, TastedRecord
@@ -265,3 +267,19 @@ def get_user_tasted_records_by_filter(user):
         Prefetch("photo_set", queryset=Photo.objects.only("photo_url"))
     )
     return queryset
+
+
+def get_user_saved_beans(user):
+    """사용자가 저장한 원두 리스트와 관련된 bean 및 평균 평점을 가져오는 함수 (찜한 원두 리스트 정보)"""
+
+    saved_beans = (
+        Bean.objects.filter(note__author=user)  # 사용자가 저장한 원두
+        .prefetch_related("tastedrecord_set__taste_review")  # tasted_record 관련된 taste_review
+        .annotate(
+            avg_star=Coalesce(  # 평균 평점 계산, null일 경우 0으로 설정
+                Avg("tastedrecord__taste_review__star"), 0, output_field=FloatField()
+            ),
+            tasted_records_cnt=Count("tastedrecord"),  # 시음기록 개수 계산
+        )
+    )
+    return saved_beans

@@ -25,6 +25,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from repo.beans.serializers import UserBeanSerializer
 from repo.profiles.models import CustomUser, Relationship, UserDetail
 from repo.profiles.serializers import (
     BudyRecommendSerializer,
@@ -35,11 +36,12 @@ from repo.profiles.serializers import (
     UserUpdateSerializer,
 )
 from repo.profiles.services import get_follower_list, get_following_list
-from repo.records.filters import TastedRecordFilter
+from repo.records.filters import BeanFilter, TastedRecordFilter
 from repo.records.models import Post
 from repo.records.posts.serializers import UserPostSerializer
 from repo.records.services import (
     get_user_posts_by_subject,
+    get_user_saved_beans,
     get_user_tasted_records_by_filter,
 )
 from repo.records.tasted_record.serializers import UserTastedRecordSerializer
@@ -701,4 +703,70 @@ class UserTastedRecordListView(generics.ListAPIView):
         user = get_object_or_404(CustomUser, id=user_id)
         queryset = get_user_tasted_records_by_filter(user)
         ordering = self.request.query_params.get("ordering", "-created_at")
+        return queryset.order_by(ordering)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        responses=UserBeanSerializer,
+        parameters=[
+            OpenApiParameter(name="bean_type", type=str, enum=["single", "blend"]),
+            OpenApiParameter(
+                name="origin_country",
+                type=str,
+                enum=["케냐", "과테말라", "에티오피아", "브라질", "콜롬비아", "인도네시아", "온두라스", "탄자니아", "르완다"],
+            ),
+            OpenApiParameter(
+                name="is_decaf",
+                type=bool,
+                enum=[True, False],
+            ),
+            OpenApiParameter(
+                name="avg_star_min",
+                type=float,
+                enum=[x / 2 for x in range(11)],
+            ),
+            OpenApiParameter(
+                name="avg_star_max",
+                type=float,
+                enum=[x / 2 for x in range(11)],
+            ),
+            OpenApiParameter(
+                name="roast_point_min",
+                type=int,
+                enum=range(0, 6),
+            ),
+            OpenApiParameter(
+                name="roast_point_max",
+                type=int,
+                enum=range(0, 6),
+            ),
+            OpenApiParameter(
+                name="ordering",
+                type=str,
+                enum=["-note__created_at", "-avg_star", "-tasted_records_cnt"],
+                required=False,
+            ),
+        ],
+        summary="유저 찜한 원두 리스트 조회",
+        description="""
+            특정 사용자가 저장한 원두 리스트를 조회합니다.
+            필터링: 원두 종류, 원산지, 디카페인 여부, 평균 별점, 로스팅
+            정렬: 노트 생성일, 평균 별점, 시음기록 수
+            담당자 : hwstar1204
+        """,
+        tags=["profile_records"],
+    )
+)
+class UserBeanListAPIView(generics.ListAPIView):
+    serializer_class = UserBeanSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = BeanFilter
+    ordering_fields = ["-note__created_at", "-avg_star", "-tasted_records_cnt"]
+
+    def get_queryset(self):
+        user_id = self.kwargs.get("id")
+        user = get_object_or_404(CustomUser, id=user_id)
+        queryset = get_user_saved_beans(user)
+        ordering = self.request.query_params.get("ordering", "-note__created_at")
         return queryset.order_by(ordering)
