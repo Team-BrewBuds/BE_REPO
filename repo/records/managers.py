@@ -32,7 +32,7 @@ class PostManagers(models.Manager):
 
 
 class NoteManagers(models.Manager):
-    model_map = {"post": "repo.records.Post", "tasted_record": "repo.records.Tasted_Record", "bean": "repo.beans.Bean"}
+    model_map = {"post": "repo.records.Post", "tasted_record": "repo.records.TastedRecord", "bean": "repo.beans.Bean"}
 
     def create_note_for_object(self, user, object_type, object_id):
         from repo.records.models import Note
