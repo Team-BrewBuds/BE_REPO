@@ -26,6 +26,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from repo.beans.serializers import UserBeanSerializer
+from repo.common.utils import get_first_photo_url
 from repo.profiles.models import CustomUser, Relationship, UserDetail
 from repo.profiles.serializers import (
     BudyRecommendSerializer,
@@ -724,8 +725,13 @@ class UserNoteAPIView(APIView):
         user = get_object_or_404(CustomUser, id=id)
         notes = user.note_set.filter(bean__isnull=True).select_related("post", "tasted_record")
 
+        notes_with_photos = []
+        for note in notes:
+            note.photo_url = get_first_photo_url(note.post if note.post else note.tasted_record)
+            notes_with_photos.append(note)
+
         paginator = PageNumberPagination()
-        paginated_notes = paginator.paginate_queryset(notes, request)
+        paginated_notes = paginator.paginate_queryset(notes_with_photos, request)
 
         serializer = UserNoteSerializer(paginated_notes, many=True)
         return paginator.get_paginated_response(serializer.data)

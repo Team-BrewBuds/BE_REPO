@@ -1,6 +1,5 @@
 from rest_framework import serializers
 
-from repo.common.utils import get_first_photo_url
 from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import Comment, Note, Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
@@ -32,10 +31,7 @@ class NotePostSimpleSerializer(serializers.ModelSerializer):
     subject = serializers.CharField(source="post.subject")
     created_at = serializers.DateTimeField(source="post.created_at")
     nickname = serializers.CharField(source="post.author.nickname", read_only=True)
-    photo_url = serializers.SerializerMethodField()
-
-    def get_photo_url(self, obj):
-        return get_first_photo_url(obj.post)
+    photo_url = serializers.CharField(read_only=True)
 
     class Meta:
         model = Note
@@ -46,10 +42,7 @@ class NoteTastedRecordSimpleSerializer(serializers.ModelSerializer):
     tasted_record_id = serializers.IntegerField(source="tasted_record.id")
     bean_name = serializers.CharField(source="tasted_record.bean.name")
     flavor = serializers.CharField(source="tasted_record.taste_review.flavor")
-    photo_url = serializers.SerializerMethodField()
-
-    def get_photo_url(self, obj):
-        return get_first_photo_url(obj.tasted_record)
+    photo_url = serializers.CharField(read_only=True)
 
     class Meta:
         model = Note
