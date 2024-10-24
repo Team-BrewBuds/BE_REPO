@@ -9,16 +9,6 @@ import repo.profiles.models
 
 class Migration(migrations.Migration):
 
-    replaces = [
-        ("profiles", "0001_initial"),
-        ("profiles", "0002_userdetail"),
-        ("profiles", "0003_alter_userdetail_coffee_life_and_more"),
-        ("profiles", "0003_alter_customuser_profile_image"),
-        ("profiles", "0004_merge_20241018_2357"),
-        ("profiles", "0005_alter_relationship_managers"),
-        ("profiles", "0006_alter_customuser_profile_image"),
-    ]
-
     initial = True
 
     dependencies = [

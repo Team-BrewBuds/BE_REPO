@@ -32,6 +32,8 @@ django-filter = "^24.3"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.7.0"
 black = "^24.10.0"
+django-seed = "^0.2.2"
+psycopg2-binary = "^2.9.10"
 
 [tool.ruff]
 lint.select = ["E4", "E7", "E9", "F", "B", "I", "N"]

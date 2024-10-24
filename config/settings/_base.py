@@ -23,6 +23,7 @@ LOCAL_APPS = [
     "repo.records",
     "repo.search",
     "repo.recommendation",
+    "repo.common",
 ]
 
 THIRD_PARTY_APPS = [
@@ -38,6 +39,7 @@ THIRD_PARTY_APPS = [
     "drf_spectacular",  # swagger
     "storages",  # s3
     "django_filters",  # filtering
+    "django_seed",  # seed
 ]
 
 INSTALLED_APPS = [
