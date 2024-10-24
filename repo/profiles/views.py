@@ -39,6 +39,7 @@ from repo.profiles.services import get_follower_list, get_following_list
 from repo.records.filters import BeanFilter, TastedRecordFilter
 from repo.records.models import Post
 from repo.records.posts.serializers import UserPostSerializer
+from repo.records.serializers import UserNoteSerializer
 from repo.records.services import (
     get_user_posts_by_subject,
     get_user_saved_beans,
@@ -710,3 +711,21 @@ class UserBeanListAPIView(generics.ListAPIView):
         queryset = get_user_saved_beans(user)
         ordering = self.request.query_params.get("ordering", "-note__created_at")
         return queryset.order_by(ordering)
+
+
+class UserNoteAPIView(APIView):
+    @extend_schema(
+        summary="유저 저장한 노트 조회",
+        description="특정 사용자의 저장한 노트를 조회합니다.",
+        responses={200: UserNoteSerializer(many=True), 404: OpenApiResponse(description="Not Found")},
+        tags=["profile_records"],
+    )
+    def get(self, request, id):
+        user = get_object_or_404(CustomUser, id=id)
+        notes = user.note_set.filter(bean__isnull=True).select_related("post", "tasted_record")
+
+        paginator = PageNumberPagination()
+        paginated_notes = paginator.paginate_queryset(notes, request)
+
+        serializer = UserNoteSerializer(paginated_notes, many=True)
+        return paginator.get_paginated_response(serializer.data)
