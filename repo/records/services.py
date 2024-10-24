@@ -2,10 +2,12 @@ import random
 from datetime import timedelta
 from itertools import chain
 
-from django.db.models import Prefetch, Q
+from django.db.models import Avg, Count, FloatField, Prefetch, Q
+from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
+from repo.beans.models import Bean
 from repo.common.view_counter import is_viewed
 from repo.profiles.models import Relationship
 from repo.records.models import Comment, Photo, Post, TastedRecord
@@ -242,3 +244,42 @@ def get_comment_list(object_type, object_id):
 def get_comment(comment_id):
     comment = Comment.objects.get(pk=comment_id)
     return comment
+
+
+def get_user_posts_by_subject(user, subject):
+    """사용자가 작성한 주제별 게시글 리스트를 가져오는 함수"""
+
+    subject_filter = Q(subject=subject) if subject != "all" else Q()
+    posts = (
+        user.post_set.filter(subject_filter)
+        .select_related("author")
+        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .order_by("-id")
+    )
+
+    return posts
+
+
+def get_user_tasted_records_by_filter(user):
+    """사용자가 작성한 주제별 시음기록 리스트를 가져오는 함수"""
+
+    queryset = user.tastedrecord_set.select_related("author", "bean", "taste_review").prefetch_related(
+        Prefetch("photo_set", queryset=Photo.objects.only("photo_url"))
+    )
+    return queryset
+
+
+def get_user_saved_beans(user):
+    """사용자가 저장한 원두 리스트와 관련된 bean 및 평균 평점을 가져오는 함수 (찜한 원두 리스트 정보)"""
+
+    saved_beans = (
+        Bean.objects.filter(note__author=user)  # 사용자가 저장한 원두
+        .prefetch_related("tastedrecord_set__taste_review")  # tasted_record 관련된 taste_review
+        .annotate(
+            avg_star=Coalesce(  # 평균 평점 계산, null일 경우 0으로 설정
+                Avg("tastedrecord__taste_review__star"), 0, output_field=FloatField()
+            ),
+            tasted_records_cnt=Count("tastedrecord"),  # 시음기록 개수 계산
+        )
+    )
+    return saved_beans
