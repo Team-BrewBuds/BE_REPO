@@ -6,18 +6,10 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.common.serializers import PageNumberSerializer, PhotoSerializer
+from repo.common.serializers import PhotoSerializer
 from repo.common.utils import delete, update
 from repo.records.models import Comment, Note, Photo, Post, TastedRecord
-from repo.records.schemas import (
-    CommentDetailSchema,
-    CommentSchema,
-    FeedSchema,
-    ImageSchema,
-    LikeSchema,
-    NoteDetailSchema,
-    NoteSchema,
-)
+from repo.records.schemas import *
 from repo.records.serializers import CommentSerializer, LikeSerializer, NoteSerializer
 from repo.records.services import (
     get_comment,

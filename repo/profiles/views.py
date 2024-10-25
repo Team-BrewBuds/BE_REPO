@@ -22,17 +22,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from repo.beans.serializers import UserBeanSerializer
 from repo.common.utils import get_first_photo_url
 from repo.profiles.models import CustomUser, Relationship, UserDetail
-from repo.profiles.schemas import (
-    BudyRecommendSchema,
-    FollowListCreateDeleteSchema,
-    FollowListSchema,
-    OtherProfileSchema,
-    ProfileSchema,
-    UserBeanListSchema,
-    UserNoteSchema,
-    UserPostListSchema,
-    UserTastedRecordListSchema,
-)
+from repo.profiles.schemas import *
 from repo.profiles.serializers import (
     BudyRecommendSerializer,
     UserDetailSignupSerializer,

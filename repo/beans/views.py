@@ -2,7 +2,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 
 from repo.beans.models import Bean
-from repo.beans.schemas import BeanSchema
+from repo.beans.schemas import *
 from repo.beans.serializers import BeanSerializer
 
 
