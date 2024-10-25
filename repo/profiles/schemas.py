@@ -25,13 +25,13 @@ Profile_Records_Tag = "profile_records"
 
 class ProfileSchema:
     my_profile_get_schema = extend_schema(
-        responses=UserProfileSerializer,
+        responses={200: UserProfileSerializer},
         summary="자기 프로필 조회",
         description="""
-                현재 로그인한 사용자의 프로필을 조회합니다.
-                닉네임, 프로필 이미지, 커피 생활 방식, 팔로워 수, 팔로잉 수, 게시글 수를 반환합니다.
-                담당자 : hwstar1204
-             """,
+            현재 로그인한 사용자의 프로필을 조회합니다.
+            닉네임, 프로필 이미지, 커피 생활 방식, 팔로워 수, 팔로잉 수, 게시글 수를 반환합니다.
+            담당자 : hwstar1204
+         """,
         tags=[Profile_Tag],
     )
 
@@ -44,10 +44,10 @@ class ProfileSchema:
         },
         summary="자기 프로필 수정",
         description="""
-                    현재 로그인한 사용자의 프로필을 수정합니다.
-                    닉네임, 프로필 이미지, 소개, 프로필 링크, 커피 생활 방식, 선호하는 커피 맛, 자격증 여부를 수정합니다.
-                    담당자 : hwstar1204
-                """,
+            현재 로그인한 사용자의 프로필을 수정합니다.
+            닉네임, 프로필 이미지, 소개, 프로필 링크, 커피 생활 방식, 선호하는 커피 맛, 자격증 여부를 수정합니다.
+            담당자 : hwstar1204
+        """,
         tags=[Profile_Tag],
     )
 
@@ -56,7 +56,7 @@ class ProfileSchema:
 
 class OtherProfileSchema:
     other_proflie_get_schema = extend_schema(
-        responses=UserProfileSerializer,
+        responses={200: UserProfileSerializer},
         summary="상대 프로필 조회",
         description="""
             특정 사용자의 프로필을 조회합니다.
@@ -75,7 +75,7 @@ class FollowListSchema:
     follow_list_get_schema = extend_schema(
         parameters=[OpenApiParameter(name="type", type=str, enum=["following", "follower"])],
         responses={
-            200: UserFollowListSerializer,
+            200: UserFollowListSerializer(many=True),
             400: OpenApiResponse(description="Bad Request"),
             404: OpenApiResponse(description="Not Found"),
         },
@@ -95,7 +95,7 @@ class FollowListCreateDeleteSchema:
     follow_list_create_delete_get_schema = extend_schema(
         parameters=[OpenApiParameter(name="type", type=str, enum=["following", "follower"])],
         responses={
-            200: UserFollowListSerializer,
+            200: UserFollowListSerializer(many=True),
             400: OpenApiResponse(description="Bad Request"),
             404: OpenApiResponse(description="Not Found"),
         },
@@ -109,29 +109,35 @@ class FollowListCreateDeleteSchema:
     )
 
     follow_list_create_delete_post_schema = extend_schema(
-        responses=201,  # status code 201
+        responses={
+            201: OpenApiResponse(description="success follow"),
+            409: OpenApiResponse(description="already following"),
+        },
         summary="팔로우",
         description="""
             특정 사용자를 팔로우합니다.
-            이미 팔로우 중인 경우 409 CONFLICT
             담당자 : hwstar1204
         """,
         tags=[Follow_Tag],
     )
 
     follow_list_create_delete_delete_schema = extend_schema(
-        responses=200,  # status code 200
+        responses={
+            200: OpenApiResponse(description="success unfollow"),
+            404: OpenApiResponse(description="not following"),
+        },
         summary="팔로우 취소",
         description="""
             특정 사용자의 언팔로우합니다.
-            팔로우 중이 아닌 경우 404 NOT FOUND
-             담당자 : hwstar1204
+            담당자 : hwstar1204
          """,
         tags=[Follow_Tag],
     )
 
     follow_list_create_delete_schema_view = extend_schema_view(
-        get=follow_list_create_delete_get_schema, post=follow_list_create_delete_post_schema, delete=follow_list_create_delete_delete_schema
+        get=follow_list_create_delete_get_schema,
+        post=follow_list_create_delete_post_schema,
+        delete=follow_list_create_delete_delete_schema,
     )
 
 
@@ -139,7 +145,10 @@ class BudyRecommendSchema:
     budy_recommend_get_schema = extend_schema(
         summary="버디 추천",
         description="유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환 (10명 랜덤순)",
-        responses={200: BudyRecommendSerializer},
+        responses={
+            200: BudyRecommendSerializer(many=True),
+            404: OpenApiResponse(description="Not Found"),
+        },
         tags=[Recommend_Tag],
     )
 
@@ -158,7 +167,10 @@ class UserPostListSchema:
         ],
         summary="유저 게시글 조회",
         description="특정 사용자의 게시글을 주제별로 조회합니다.",
-        responses={200: UserPostSerializer(many=True)},
+        responses={
+            200: UserPostSerializer(many=True),
+            404: OpenApiResponse(description="Not Found"),
+        },
         tags=[Profile_Records_Tag],
     )
 
@@ -168,18 +180,32 @@ class UserPostListSchema:
 class UserTastedRecordListSchema:
     user_tasted_record_list_get_schema = extend_schema(
         parameters=[
-            OpenApiParameter(name="bean_type", type=str, enum=["single", "blend"]),
+            OpenApiParameter(name="bean_type", type=str, enum=["single", "blend"], required=False),
             OpenApiParameter(
                 name="origin_country",
                 type=str,
-                enum=["케냐", "과테말라", "에티오피아", "브라질", "콜롬비아", "인도네시아", "온두라스", "탄자니아", "르완다"],
+                enum=[
+                    "케냐",
+                    "과테말라",
+                    "에티오피아",
+                    "브라질",
+                    "콜롬비아",
+                    "인도네시아",
+                    "온두라스",
+                    "탄자니아",
+                    "르완다",
+                ],
+                required=False,
             ),
-            OpenApiParameter(name="star_min", type=float, enum=[x / 2 for x in range(11)]),
-            OpenApiParameter(name="star_max", type=float, enum=[x / 2 for x in range(11)]),
-            OpenApiParameter(name="is_decaf", type=bool, enum=[True, False]),
+            OpenApiParameter(name="star_min", type=float, enum=[x / 2 for x in range(11)], required=False),
+            OpenApiParameter(name="star_max", type=float, enum=[x / 2 for x in range(11)], required=False),
+            OpenApiParameter(name="is_decaf", type=bool, enum=[True, False], required=False),
             OpenApiParameter(name="ordering", type=str, enum=["-created_at", "-taste_review__star"], required=False),
         ],
-        responses=UserTastedRecordSerializer,
+        responses={
+            200: UserTastedRecordSerializer(many=True),
+            404: OpenApiResponse(description="Not Found"),
+        },
         summary="유저 시음기록 리스트 조회",
         description="특정 사용자의 시음기록 리스트를 필터링하여 조회합니다.",
         tags=[Profile_Records_Tag],
@@ -190,20 +216,39 @@ class UserTastedRecordListSchema:
 
 class UserBeanListSchema:
     user_bean_list_get_schema = extend_schema(
-        responses=UserBeanSerializer,
+        responses={
+            200: UserBeanSerializer(many=True),
+            404: OpenApiResponse(description="Not Found"),
+        },
         parameters=[
             OpenApiParameter(name="bean_type", type=str, enum=["single", "blend"]),
             OpenApiParameter(
                 name="origin_country",
                 type=str,
-                enum=["케냐", "과테말라", "에티오피아", "브라질", "콜비아", "인도네시아", "온두라스", "탄자니아", "르완다"],
+                enum=[
+                    "케냐",
+                    "과테말라",
+                    "에티오피아",
+                    "브라질",
+                    "콜비아",
+                    "인도네시아",
+                    "온두라스",
+                    "탄자니아",
+                    "르완다",
+                ],
+                required=False,
             ),
-            OpenApiParameter(name="is_decaf", type=bool, enum=[True, False]),
-            OpenApiParameter(name="avg_star_min", type=float, enum=[x / 2 for x in range(11)]),
-            OpenApiParameter(name="avg_star_max", type=float, enum=[x / 2 for x in range(11)]),
-            OpenApiParameter(name="roast_point_min", type=int, enum=range(0, 6)),
-            OpenApiParameter(name="roast_point_max", type=int, enum=range(0, 6)),
-            OpenApiParameter(name="ordering", type=str, enum=["-note__created_at", "-avg_star", "-tasted_records_cnt"], required=False),
+            OpenApiParameter(name="is_decaf", type=bool, enum=[True, False], required=False),
+            OpenApiParameter(name="avg_star_min", type=float, enum=[x / 2 for x in range(11)], required=False),
+            OpenApiParameter(name="avg_star_max", type=float, enum=[x / 2 for x in range(11)], required=False),
+            OpenApiParameter(name="roast_point_min", type=int, enum=range(0, 6), required=False),
+            OpenApiParameter(name="roast_point_max", type=int, enum=range(0, 6), required=False),
+            OpenApiParameter(
+                name="ordering",
+                type=str,
+                enum=["-note__created_at", "-avg_star", "-tasted_records_cnt"],
+                required=False,
+            ),
         ],
         summary="유저 찜한 원두 리스트 조회",
         description="""
