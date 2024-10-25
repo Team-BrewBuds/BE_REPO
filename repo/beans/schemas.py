@@ -10,7 +10,7 @@ BeansTag = "beans"
 class BeanSchema:
     bena_name_list_schema = extend_schema(
         parameters=[PageNumberSerializer],
-        responses=BeanSerializer(many=True),
+        responses={200: BeanSerializer(many=True)},
         summary="모든 원두 리스트 조회",
         description="""
             모든 원두 리스트 가져오는 API
@@ -26,7 +26,7 @@ class BeanSchema:
             PageNumberSerializer,
             OpenApiParameter(name="name", type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, description="원두명"),
         ],
-        responses=BeanSerializer(many=True),
+        responses={200: BeanSerializer(many=True)},
         summary="원두명 검색",
         description="""
                시음기록 작성시 원두 선택을 위해 사용
