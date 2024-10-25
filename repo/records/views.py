@@ -1,22 +1,15 @@
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiParameter,
-    OpenApiResponse,
-    extend_schema,
-    extend_schema_view,
-)
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.common.serializers import PageNumberSerializer, PhotoSerializer
+from repo.common.serializers import PhotoSerializer
 from repo.common.utils import delete, update
 from repo.records.models import Comment, Note, Photo, Post, TastedRecord
-from repo.records.posts.serializers import PostListSerializer
+from repo.records.schemas import *
 from repo.records.serializers import CommentSerializer, LikeSerializer, NoteSerializer
 from repo.records.services import (
     get_comment,
@@ -27,44 +20,10 @@ from repo.records.services import (
     get_refresh_feed,
     get_serialized_data,
 )
-from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
+@FeedSchema.feed_schema_view
 class FeedAPIView(APIView):
-    @extend_schema(
-        parameters=[
-            PageNumberSerializer,
-            OpenApiParameter(
-                name="feed_type",
-                type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-                description="feed type",
-                enum=["following", "common", "refresh"],
-            ),
-        ],
-        responses=[TastedRecordListSerializer, PostListSerializer],
-        summary="홈 [전체] 피드",
-        description="""
-            following:
-            홈 [전체] 사용자가 팔로잉한 유저들의 1시간 이내 작성한 시음기록과 게시글을 랜덤순으로 가져오는 함수
-            30분이내 조회한 기록, 프라이빗한 시음기록은 제외
-
-            common:
-            홈 [전체] 일반 시음기록과 게시글을 최신순으로 가져오는 함수
-            30분이내 조회한 기록, 프라이빗한 시음기록은 제외
-
-            refresh:
-            홈 [전체] 시음기록과 게시글을 랜덤순으로 반환하는 API
-            프라이빗한 시음기록은 제외
-
-            response:
-            TastedRecordListSerializer or PostListSerializer
-            (아래 Schemas 참조)
-
-            담당자 : hwstar1204
-        """,
-        tags=["Feed"],
-    )
     def get(self, request):
         feed_type = request.query_params.get("feed_type")
         if feed_type not in ["following", "common", "refresh"]:
@@ -99,22 +58,8 @@ class FeedAPIView(APIView):
         )
 
 
+@LikeSchema.like_schema_view
 class LikeApiView(APIView):
-    @extend_schema(
-        request=LikeSerializer,
-        responses=[status.HTTP_201_CREATED, status.HTTP_200_OK],
-        summary="좋아요 추가/취소 API",
-        description="""
-            object_type : "post" or "tasted_record" or "comment"
-            object_id : 좋아요를 처리할 객체의 ID
-
-            response:
-                201: 좋아요 추가, 200: 좋아요 취소
-
-            담당자 : hwstar1204
-        """,
-        tags=["Like"],
-    )
     def post(self, request):
         user_id = request.user.id
         serializer = LikeSerializer(data=request.data)
@@ -139,47 +84,9 @@ class LikeApiView(APIView):
         return Response(status=status_code)
 
 
-@extend_schema_view(
-    # get=extend_schema(
-    #     responses=NoteListSerializer,
-    #     summary="노트 리스트 조회",
-    #     description="""
-    #         object_type : "post" 또는 "TastedRecord"
-    #         object_id : 노트를 처리할 객체의 ID
-    #
-    #         담당자: hwstar1204
-    #     """,
-    #     tags=["Note"],
-    # ),
-    post=extend_schema(
-        request=NoteSerializer,
-        responses={
-            200: OpenApiResponse(description="Note already exists"),
-            201: OpenApiResponse(description="Note created"),
-        },
-        summary="노트 생성",
-        description="""
-            object_type : "post" 또는 "tasted_record"
-            object_id : 노트를 처리할 객체의 ID
-
-            담당자: hwstar1204
-        """,
-        tags=["Note"],
-    ),
-)
+# TODO NoteAPI, NoteDetailAPI 통합 가능
+@NoteSchema.note_schema_view
 class NoteApiView(APIView):
-    # def get(self, request):
-    #     user = request.user
-    #
-    #     # notes = Note.objects.get_notes_for_user_and_object(user, object_type)
-    #     model_map = {"post": Post, "tasted_record": TastedRecord}
-    #
-    #     model = model_map.get(object_type)  # **{object_type: model}
-    #     notes = Note.objects.filter(author=user.id).order_by("-id")
-    #     serializer = NoteListSerializer(notes, many=True)
-    #
-    #     return Response(serializer.data, status=status.HTTP_200_OK)
-
     def post(self, request):
         serializer = NoteSerializer(data=request.data)
         if not serializer.is_valid():
@@ -197,22 +104,7 @@ class NoteApiView(APIView):
         return Response({"detail": "note created"}, status=status.HTTP_201_CREATED)
 
 
-@extend_schema_view(
-    delete=extend_schema(
-        responses={
-            200: OpenApiResponse(description="Note deleted"),
-            404: OpenApiResponse(description="Note not found"),
-        },
-        summary="노트 삭제",
-        description="""
-                object_type : "post" 또는 "tasted_record"
-                object_id : 노트를 처리할 객체의 ID
-
-                담당자: hwstar1204
-            """,
-        tags=["Note"],
-    ),
-)
+@NoteDetailSchema.note_detail_schema_view
 class NoteDetailApiView(APIView):
     def delete(self, request, object_type, object_id):
         user = request.user
@@ -224,33 +116,7 @@ class NoteDetailApiView(APIView):
         return Response({"detail": "note not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
-@extend_schema_view(
-    get=extend_schema(
-        parameters=[PageNumberSerializer],
-        responses=CommentSerializer,
-        summary="댓글 리스트 조회",
-        description="""
-            object_type : "post" 또는 "tasted_record"
-            object_id : 댓글을 처리할 객체의 ID
-        """,
-        tags=["Comment"],
-    ),
-    post=extend_schema(
-        request=CommentSerializer,
-        responses={
-            200: OpenApiResponse(description="Comment created"),
-            400: OpenApiResponse(description="Invalid data"),
-        },
-        summary="댓글 생성 (대댓글 포함)",
-        description="""
-            object_type : "post" 또는 "tasted_record"
-            object_id : 댓글을 처리할 객체의 ID
-            content : 댓글 내용
-            parent_id : 대댓글인 경우 부모 댓글의 ID (optional)
-        """,
-        tags=["Comment"],
-    ),
-)
+@CommentSchema.comment_schema_view
 class CommentApiView(APIView):
     """
     게시글 및 시음기록에 댓글 생성, 리스트 조회 API
@@ -315,54 +181,7 @@ class CommentApiView(APIView):
         return Response(status=status.HTTP_200_OK)
 
 
-@extend_schema_view(
-    get=extend_schema(
-        responses=CommentSerializer,
-        summary="댓글 상세 조회",
-        description="""
-            id : 댓글 ID
-        """,
-        tags=["Comment"],
-    ),
-    put=extend_schema(
-        request=CommentSerializer,
-        responses={
-            200: OpenApiResponse(description="Comment updated"),
-            404: OpenApiResponse(description="Comment not found"),
-        },
-        summary="댓글 수정",
-        description="""
-            id : 댓글 ID
-            content : 수정할 댓글 내용
-        """,
-        tags=["Comment"],
-    ),
-    patch=extend_schema(
-        request=CommentSerializer,
-        responses={
-            200: OpenApiResponse(description="Comment updated"),
-            404: OpenApiResponse(description="Comment not found"),
-        },
-        summary="댓글 수정",
-        description="""
-            id : 댓글 ID
-            content : 수정할 댓글 내용
-        """,
-        tags=["Comment"],
-    ),
-    delete=extend_schema(
-        responses={
-            200: OpenApiResponse(description="Comment deleted"),
-            404: OpenApiResponse(description="Comment not found"),
-        },
-        summary="댓글 삭제",
-        description="""
-            id : 댓글 ID
-            soft delete : 부모 댓글이 없는 경우 소프트 삭제
-        """,
-        tags=["Comment"],
-    ),
-)
+@CommentDetailSchema.comment_detail_schema_view
 class CommentDetailAPIView(APIView):
     def get(self, request, id):
         comment = get_comment(id)
@@ -387,64 +206,7 @@ class CommentDetailAPIView(APIView):
         return delete(request, id, Comment)
 
 
-@extend_schema_view(
-    post=extend_schema(
-        request={
-            "multipart/form-data": {
-                "type": "object",
-                "properties": {
-                    "photo_url": {
-                        "type": "array",
-                        "items": {
-                            "type": "string",
-                            "format": "binary",
-                        },
-                        "description": "이미지 파일 리스트",
-                    }
-                },
-                "required": ["photo_url"],
-            }
-        },
-        responses={
-            201: OpenApiResponse(
-                response={
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "integer", "example": 123},
-                            "photo_url": {"type": "string", "example": "https://s3.amazonaws.com/bucket_name/uploads" "/photo1.jpg"},
-                        },
-                    },
-                },
-                description="이미지 업로드 성공",
-            ),
-            400: OpenApiResponse(description="잘못된 데이터 형식 또는 유효성 검증 실패"),
-        },
-        summary="이미지 업로드 API",
-        description="여러 개의 이미지를 업로드하는 API. 업로드된 이미지는 고유 ID와 S3 URL로 반환됩니다.",
-        tags=["Image"],
-    ),
-    delete=extend_schema(
-        parameters=[
-            OpenApiParameter(
-                name="photo_id",
-                description="삭제할 사진의 ID 목록 (쿼리 파라미터로 여러 개의 photo_id 전달)",
-                required=True,
-                type={"type": "array", "items": {"type": "integer"}},
-            )
-        ],
-        responses={
-            204: OpenApiResponse(description="성공적으로 삭제됨"),
-            400: OpenApiResponse(description="잘못된 요청 (photo_id 누락 또는 잘못된 형식)"),
-            404: OpenApiResponse(description="해당 ID의 사진을 찾을 수 없음"),
-            500: OpenApiResponse(description="서버 에러"),
-        },
-        summary="이미지 삭제 API",
-        description="여러 개의 이미지를 삭제하는 API. 삭제할 이미지의 ID를 쿼리 파라미터로 전달하면 해당 이미지가 삭제됩니다.",
-        tags=["Image"],
-    ),
-)
+@ImageSchema.image_schema_view
 class ImageApiView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
