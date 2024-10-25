@@ -179,42 +179,40 @@ def get_tasted_record_detail(pk):
     return record
 
 
-def get_post_feed(user, subject):
-    """사용자가 팔로우한 유저와 추가 게시글을 가져오는 함수"""
+def get_post_queryset(authors, user, subject):
+    is_user_liked_subquery = Post.like_cnt.through.objects.filter(post_id=OuterRef("pk"), customuser_id=user.id)
+    is_user_post_noted_subquery = user.note_set.filter(post_id=OuterRef("pk"), author_id=user.id)
 
-    # 팔로우한 유저들의 ID 가져오기
-    following_users = Relationship.objects.following(user.id).values_list("to_user", flat=True)
+    post_filter = Q(author__in=authors)
+    post_filter &= Q(subject=subject) if subject is not None else Q()
 
-    # 기본 필터 조건 (subject에 따른 필터 처리)
-    post_filter = Q(author__in=following_users)
-    if subject != "all":
-        post_filter &= Q(subject=subject)
-
-    # 팔로우한 유저들의 게시글 가져오기
-    following_posts = (
+    return (
         Post.objects.filter(post_filter)
         .select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .prefetch_related("tasted_records", "comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .annotate(
+            likes=Count("like_cnt", distinct=True),
+            comments=Count("comment", distinct=True),
+            is_user_liked=Exists(is_user_liked_subquery),
+            is_user_noted=Exists(is_user_post_noted_subquery),
+        )
         .order_by("-created_at")
     )
 
-    # 팔로우한 유저가 없거나 게시글이 10개 미만일 경우 추가 게시글 가져오기
-    if not following_users.exists() or following_posts.count() < 10:
-        additional_filter = ~Q(author__in=following_users)  # 팔로우한 유저 제외
-        if subject != "all":
-            additional_filter &= Q(subject=subject)
 
-        additional_posts = (
-            Post.objects.filter(additional_filter)
-            .select_related("author")
-            .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-            .order_by("-created_at")
-        )
+def get_post_feed(user, subject):
+    """사용자가 팔로우한 유저와 추가 게시글을 가져오는 함수"""
+    following_users = Relationship.objects.following(user.id).values_list("to_user", flat=True)
+
+    following_posts = get_post_queryset(following_users, user, subject)
+
+    if not following_users.exists() or following_posts.count() < 12:
+        additional_authors = Post.objects.exclude(author__in=following_users).values_list("author", flat=True)
+        additional_posts = get_post_queryset(additional_authors, user, subject)
     else:
-        additional_posts = []
+        additional_posts = Post.objects.none()
 
-    posts = list(chain(following_posts, additional_posts))
-    return posts
+    return list(chain(following_posts, additional_posts))
 
 
 def get_post_detail(post_id):

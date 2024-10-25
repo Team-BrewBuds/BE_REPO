@@ -30,6 +30,7 @@ from repo.records.services import get_post_detail, get_post_feed
                 location=OpenApiParameter.QUERY,
                 description="subject filter",
                 enum=[choice[0] for choice in Post.SUBJECT_TYPE_CHOICES],
+                required=False,
                 examples=[
                     OpenApiExample(
                         name=f"{choice[0]} 조회",
@@ -38,6 +39,14 @@ from repo.records.services import get_post_detail, get_post_feed
                         value=choice[0],
                     )
                     for choice in Post.SUBJECT_TYPE_CHOICES
+                ]
+                + [
+                    OpenApiExample(
+                        name="주제 필터 없음",
+                        summary="주제 필터 없이 전체 게시글 조회",
+                        description="홈 게시글에서 주제 필터 없이 전체 게시글을 조회합니다.",
+                        value=None,
+                    )
                 ],
             ),
         ],
@@ -64,18 +73,14 @@ class PostListCreateAPIView(APIView):
     """게시글 리스트 조회, 생성 API"""
 
     def get(self, request):
-        subject = request.GET.get("subject")
+        subject = request.query_params.get("subject")
 
-        if subject not in [choice[0] for choice in Post.SUBJECT_TYPE_CHOICES]:
-            subject = "전체"
         subject_mapping = dict(Post.SUBJECT_TYPE_CHOICES)
-
-        subject_value = subject_mapping.get(subject, "all")
+        subject_value = subject_mapping.get(subject, None)
 
         posts = get_post_feed(request.user, subject_value)
 
         paginator = PageNumberPagination()
-        paginator.page_size = 12
         paginated_posts = paginator.paginate_queryset(posts, request)
 
         serializer = PostListSerializer(paginated_posts, many=True, context={"request": request})

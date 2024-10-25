@@ -31,17 +31,13 @@ class TastedRecord(models.Model):
 
 
 class Post(models.Model):
-
+    # fmt: off
     SUBJECT_TYPE_CHOICES = (
-        ("전체", "all"),
-        ("일반", "normal"),
-        ("카페", "cafe"),
-        ("원두", "bean"),
-        ("정보", "info"),
-        ("장비", "gear"),
-        ("질문", "question"),
-        ("고민", "worry"),
+        ("일반", "normal"), ("카페", "cafe"),
+        ("원두", "bean"), ("정보", "info"),
+        ("질문", "question"), ("고민", "worry"),
     )
+    # fmt: on
 
     author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
     tasted_records = models.ManyToManyField(TastedRecord, blank=True, related_name="posts", verbose_name="관련 시음 기록")
