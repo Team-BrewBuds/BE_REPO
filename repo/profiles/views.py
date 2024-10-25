@@ -12,12 +12,6 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
 from django_filters import rest_framework as filters
-from drf_spectacular.utils import (
-    OpenApiParameter,
-    OpenApiResponse,
-    extend_schema,
-    extend_schema_view,
-)
 from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
@@ -28,6 +22,17 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from repo.beans.serializers import UserBeanSerializer
 from repo.common.utils import get_first_photo_url
 from repo.profiles.models import CustomUser, Relationship, UserDetail
+from repo.profiles.schemas import (
+    BudyRecommendSchema,
+    FollowListCreateDeleteSchema,
+    FollowListSchema,
+    OtherProfileSchema,
+    ProfileSchema,
+    UserBeanListSchema,
+    UserNoteSchema,
+    UserPostListSchema,
+    UserTastedRecordListSchema,
+)
 from repo.profiles.serializers import (
     BudyRecommendSerializer,
     UserDetailSignupSerializer,
@@ -342,33 +347,7 @@ class SignupView(APIView):
 #         return self.request.user
 
 
-@extend_schema_view(
-    get=extend_schema(
-        responses=UserProfileSerializer,
-        summary="자기 프로필 조회",
-        description="""
-            현재 로그인한 사용자의 프로필을 조회합니다.
-            닉네임, 프로필 이미지, 커피 생활 방식, 팔로워 수, 팔로잉 수, 게시글 수를 반환합니다.
-            담당자 : hwstar1204
-         """,
-        tags=["profile"],
-    ),
-    patch=extend_schema(
-        request=UserUpdateSerializer,
-        responses={
-            200: UserProfileSerializer,
-            400: OpenApiResponse(description="Bad Request"),
-            401: OpenApiResponse(description="Unauthorized"),
-        },
-        summary="자기 프로필 수정",
-        description="""
-            현재 로그인한 사용자의 프로필을 수정합니다.
-            닉네임, 프로필 이미지, 소개, 프로필 링크, 커피 생활 방식, 선호하는 커피 맛, 자격증 여부를 수정합니다.
-            담당자 : hwstar1204
-        """,
-        tags=["profile"],
-    ),
-)
+@ProfileSchema.my_profile_schema_view
 class MyProfileAPIView(APIView):
     def get(self, request):
         user = request.user
@@ -409,20 +388,7 @@ class MyProfileAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@extend_schema_view(
-    get=extend_schema(
-        responses=UserProfileSerializer,
-        summary="상대 프로필 조회",
-        description="""
-            특정 사용자의 프로필을 조회합니다.
-
-            닉네임, 프로필 이미지, 커피 생활 방식, 팔로워 수, 팔로잉 수, 게시글 수를 반환합니다.
-            요청한 사용자가 팔로우 중인지 여부도 반환합니다.
-            담당자 : hwstar1204
-        """,
-        tags=["profile"],
-    ),
-)
+@OtherProfileSchema.other_proflie_schema_view
 class OtherProfileAPIView(APIView):
     def get(self, request, id):
         request_user = request.user
@@ -441,23 +407,7 @@ class OtherProfileAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-@extend_schema_view(
-    get=extend_schema(
-        parameters=[OpenApiParameter(name="type", type=str, enum=["following", "follower"])],
-        responses={
-            200: UserFollowListSerializer,
-            400: OpenApiResponse(description="Bad Request"),
-            404: OpenApiResponse(description="Not Found"),
-        },
-        summary="자신의 팔로잉/팔로워 프로필 조회",
-        description="""
-            사용자의 팔로잉/팔로워 리스트를 조회합니다.
-            type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
-            담당자 : hwstar1204
-        """,
-        tags=["follow"],
-    )
-)
+@FollowListSchema.follow_list_schema_view
 class FollowListAPIView(APIView):
     def get(self, request):
         page = request.query_params.get("page", 1)
@@ -479,43 +429,7 @@ class FollowListAPIView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 
-@extend_schema_view(
-    get=extend_schema(
-        parameters=[OpenApiParameter(name="type", type=str, enum=["following", "follower"])],
-        responses={
-            200: UserFollowListSerializer,
-            400: OpenApiResponse(description="Bad Request"),
-            404: OpenApiResponse(description="Not Found"),
-        },
-        summary="사용자의 팔로잉/팔로워 리스트 조회",
-        description="""
-            특정 사용자의 팔로잉/팔로워 리스트를 조회합니다.
-            id 파라미터로 사용자의 id를 받고, type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
-            담당자 : hwstar1204
-        """,
-        tags=["follow"],
-    ),
-    post=extend_schema(
-        responses=status.HTTP_201_CREATED,
-        summary="팔로우",
-        description="""
-            특정 사용자를 팔로우합니다.
-            이미 팔로우 중인 경우 409 CONFLICT
-            담당자 : hwstar1204
-        """,
-        tags=["follow"],
-    ),
-    delete=extend_schema(
-        responses=status.HTTP_200_OK,
-        summary="팔로우 취소",
-        description="""
-            특정 사용자의 언팔로우합니다.
-            팔로우 중이 아닌 경우 404 NOT FOUND
-             담당자 : hwstar1204
-         """,
-        tags=["follow"],
-    ),
-)
+@FollowListCreateDeleteSchema.follow_list_create_delete_schema_view
 class FollowListCreateDeleteAPIView(APIView):
     def get(self, request, id):
         follow_type = request.query_params.get("type")
@@ -554,6 +468,7 @@ class FollowListCreateDeleteAPIView(APIView):
         return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
 
 
+@BudyRecommendSchema.budy_recommend_schema_view
 class BudyRecommendAPIView(APIView):
     """
     유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환
@@ -569,12 +484,6 @@ class BudyRecommendAPIView(APIView):
     담당자: hwtar1204
     """
 
-    @extend_schema(
-        summary="버디 추천",
-        description="유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환 (10명 랜덤순)",
-        responses={200: BudyRecommendSerializer},
-        tags=["recommend"],
-    )
     def get(self, request):
         user = request.user
 
@@ -609,21 +518,8 @@ class BudyRecommendAPIView(APIView):
         return Response(response_data, status=status.HTTP_200_OK)
 
 
+@UserPostListSchema.user_post_list_schema_view
 class UserPostListAPIView(APIView):
-    @extend_schema(
-        parameters=[
-            OpenApiParameter(
-                name="subject",
-                type=str,
-                enum=[choice[0] for choice in Post.SUBJECT_TYPE_CHOICES],
-                description="게시글 주제",
-            ),
-        ],
-        summary="유저 게시글 조회",
-        description="특정 사용자의 게시글을 주제별로 조회합니다.",
-        responses={200: UserPostSerializer(many=True)},
-        tags=["profile_records"],
-    )
     def get(self, request, id):
         subject = request.query_params.get("subject", "전체")
         subject_choice = dict(Post.SUBJECT_TYPE_CHOICES).get(subject)
@@ -639,26 +535,7 @@ class UserPostListAPIView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 
-@extend_schema_view(
-    get=extend_schema(
-        parameters=[
-            OpenApiParameter(name="bean_type", type=str, enum=["single", "blend"]),
-            OpenApiParameter(
-                name="origin_country",
-                type=str,
-                enum=["케냐", "과테말라", "에티오피아", "브라질", "콜롬비아", "인도네시아", "온두라스", "탄자니아", "르완다"],
-            ),
-            OpenApiParameter(name="star_min", type=float, enum=[x / 2 for x in range(11)]),
-            OpenApiParameter(name="star_max", type=float, enum=[x / 2 for x in range(11)]),
-            OpenApiParameter(name="is_decaf", type=bool, enum=[True, False]),
-            OpenApiParameter(name="ordering", type=str, enum=["-created_at", "-taste_review__star"], required=False),
-        ],
-        responses=UserTastedRecordSerializer,
-        summary="유저 시음기록 리스트 조회",
-        description="특정 사용자의 시음기록 리스트를 필터링하여 조회합니다.",
-        tags=["profile_records"],
-    )
-)
+@UserTastedRecordListSchema.user_tasted_record_list_schema_view
 class UserTastedRecordListView(generics.ListAPIView):
     serializer_class = UserTastedRecordSerializer
     filter_backends = [filters.DjangoFilterBackend]
@@ -673,33 +550,7 @@ class UserTastedRecordListView(generics.ListAPIView):
         return queryset.order_by(ordering)
 
 
-@extend_schema_view(
-    get=extend_schema(
-        responses=UserBeanSerializer,
-        parameters=[
-            OpenApiParameter(name="bean_type", type=str, enum=["single", "blend"]),
-            OpenApiParameter(
-                name="origin_country",
-                type=str,
-                enum=["케냐", "과테말라", "에티오피아", "브라질", "콜비아", "인도네시아", "온두라스", "탄자니아", "르완다"],
-            ),
-            OpenApiParameter(name="is_decaf", type=bool, enum=[True, False]),
-            OpenApiParameter(name="avg_star_min", type=float, enum=[x / 2 for x in range(11)]),
-            OpenApiParameter(name="avg_star_max", type=float, enum=[x / 2 for x in range(11)]),
-            OpenApiParameter(name="roast_point_min", type=int, enum=range(0, 6)),
-            OpenApiParameter(name="roast_point_max", type=int, enum=range(0, 6)),
-            OpenApiParameter(name="ordering", type=str, enum=["-note__created_at", "-avg_star", "-tasted_records_cnt"], required=False),
-        ],
-        summary="유저 찜한 원두 리스트 조회",
-        description="""
-            특정 사용자가 저장한 원두 리스트를 조회합니다.
-            필터링: 원두 종류, 원산지, 디카페인 여부, 평균 별점, 로스팅
-            정렬: 노트 생성일, 평균 별점, 시음기록 수
-            담당자 : hwstar1204
-        """,
-        tags=["profile_records"],
-    )
-)
+@UserBeanListSchema.user_bean_list_schema_view
 class UserBeanListAPIView(generics.ListAPIView):
     serializer_class = UserBeanSerializer
     filter_backends = [filters.DjangoFilterBackend]
@@ -714,13 +565,8 @@ class UserBeanListAPIView(generics.ListAPIView):
         return queryset.order_by(ordering)
 
 
+@UserNoteSchema.user_note_schema_view
 class UserNoteAPIView(APIView):
-    @extend_schema(
-        summary="유저 저장한 노트 조회",
-        description="특정 사용자의 저장한 노트를 조회합니다.",
-        responses={200: UserNoteSerializer(many=True), 404: OpenApiResponse(description="Not Found")},
-        tags=["profile_records"],
-    )
     def get(self, request, id):
         user = get_object_or_404(CustomUser, id=id)
         notes = user.note_set.filter(bean__isnull=True).select_related("post", "tasted_record")
