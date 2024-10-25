@@ -66,7 +66,6 @@ class TastedRecordListCreateAPIView(APIView):
         tasted_records = get_tasted_record_feed(request.user)
 
         paginator = PageNumberPagination()
-        paginator.page_size = 12
         paginated_tasted_records = paginator.paginate_queryset(tasted_records, request)
 
         serializer = TastedRecordListSerializer(paginated_tasted_records, many=True, context={"request": request})

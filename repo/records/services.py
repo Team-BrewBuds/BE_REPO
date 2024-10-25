@@ -2,7 +2,15 @@ import random
 from datetime import timedelta
 from itertools import chain
 
-from django.db.models import Avg, Count, FloatField, Prefetch, Q
+from django.db.models import (
+    Avg,
+    Count,
+    Exists,
+    FloatField,
+    OuterRef,
+    Prefetch,
+    Q,
+)
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -124,41 +132,39 @@ def get_refresh_feed():
     return combined_data
 
 
+def get_tasted_record_queryset(authors, user):
+    """필터링된 TastedRecord 쿼리셋을 생성하는 헬퍼 함수"""
+    is_user_liked_subquery = TastedRecord.like_cnt.through.objects.filter(tastedrecord_id=OuterRef("pk"), customuser_id=user.id)
+    is_user_tasted_record_noted_subquery = user.note_set.filter(tasted_record_id=OuterRef("pk"), author_id=user.id)
+
+    return (
+        TastedRecord.objects.filter(author__in=authors, is_private=False)
+        .select_related("author", "bean", "taste_review")
+        .prefetch_related("comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .annotate(
+            likes=Count("like_cnt", distinct=True),
+            comments=Count("comment", distinct=True),
+            is_user_liked=Exists(is_user_liked_subquery),
+            is_user_noted=Exists(is_user_tasted_record_noted_subquery),
+        )
+        .order_by("-created_at")
+    )
+
+
 def get_tasted_record_feed(user):
     following_users = Relationship.objects.following(user.id).values_list("to_user", flat=True)
 
-    followed_records = (
-        TastedRecord.objects.filter(author__in=following_users, is_private=False)
-        .select_related("author", "bean", "taste_review")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-created_at")
-    )
+    # 팔로우한 유저의 tasted records
+    followed_records = get_tasted_record_queryset(following_users, user)
 
-    if not following_users.exists() or followed_records.count() < 10:
-        additional_records = (
-            TastedRecord.objects.filter(is_private=False)
-            .exclude(author__in=following_users)
-            .select_related("author", "bean", "taste_review")
-            .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-            .order_by("-created_at")
-        )
+    # 추가로 필요한 경우 팔로우하지 않은 유저의 tasted records 가져오기
+    if not following_users.exists() or followed_records.count() < 12:
+        additional_authors = TastedRecord.objects.exclude(author__in=following_users).values_list("author", flat=True)
+        additional_records = get_tasted_record_queryset(additional_authors, user)
     else:
         additional_records = TastedRecord.objects.none()
 
-    all_records = list(chain(followed_records, additional_records))
-
-    return all_records
-
-
-def get_tasted_record_feed2():
-    tasted_records = (
-        TastedRecord.objects.filter(is_private=False)
-        .select_related("author", "bean", "taste_review")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-created_at")
-    )
-
-    return tasted_records
+    return list(chain(followed_records, additional_records))
 
 
 def get_tasted_record_detail(pk):

@@ -14,33 +14,20 @@ class TastedRecordListSerializer(serializers.ModelSerializer):
     star_rating = serializers.IntegerField(source="taste_review.star")
     flavor = serializers.CharField(source="taste_review.flavor")
     photos = PhotoSerializer(many=True, source="photo_set", read_only=True)
-    like_cnt = serializers.IntegerField(source="like_cnt.count")
-    is_user_liked = serializers.SerializerMethodField()
+    likes = serializers.IntegerField()
+    comments = serializers.IntegerField()
+    is_user_liked = serializers.BooleanField()
+    is_user_noted = serializers.BooleanField()
 
-    def get_is_user_liked(self, obj):
-        user = self.context["request"].user
-        if user.is_authenticated:
-            return obj.like_cnt.filter(id=user.id).exists()
-        return False
-
+    # fmt: off
     class Meta:
         model = TastedRecord
         fields = [
-            "id",
-            "author",
-            "bean_name",
-            "bean_type",
-            "star_rating",
-            "flavor",
-            "content",
-            "view_cnt",
-            "like_cnt",
-            "is_private",
-            "created_at",
-            "tag",
-            "photos",
-            "is_user_liked",
+            "id", "author", "bean_name", "bean_type", "star_rating", "flavor",
+            "content", "view_cnt", "is_private", "created_at", "tag", "photos",
+            "likes", "comments", "is_user_liked", "is_user_noted"
         ]
+    # fmt: on
 
 
 class TastedRecordDetailSerializer(serializers.ModelSerializer):
