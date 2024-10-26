@@ -23,6 +23,11 @@ from repo.records.posts.serializers import PostListSerializer
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
+def get_following_users(user):
+    """사용자가 팔로우한 유저 리스트를 가져오는 함수"""
+    return Relationship.objects.following(user.id).values_list("to_user", flat=True)
+
+
 def get_serialized_data(request, page_obj):
     """
     페이지 객체를 받아 시리얼라이즈된 데이터를 반환하는 함수
@@ -41,7 +46,7 @@ def get_following_feed(request, user):
     사용자가 팔로잉한 유저들의 1시간 이내 작성한 시음기록과 게시글을 랜덤순으로 가져오는 함수
     30분이내 조회한 기록, 프라이빗한 시음기록은 제외
     """
-    following_users = Relationship.objects.following(user.id).values_list("to_user", flat=True)
+    following_users = get_following_users(user)
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
     following_tasted_record = (
@@ -79,7 +84,7 @@ def get_common_feed(request, user):
     30분이내 조회한 기록, 프라이빗한 시음기록은 제외
     팔로잉한 유저 기록 제외
     """
-    following_users = Relationship.objects.following(user.id).values_list("to_user", flat=True)
+    following_users = get_following_users(user)
 
     common_tasted_record = (
         TastedRecord.objects.filter(is_private=False)
@@ -152,7 +157,7 @@ def get_tasted_record_queryset(authors, user):
 
 
 def get_tasted_record_feed(user):
-    following_users = Relationship.objects.following(user.id).values_list("to_user", flat=True)
+    following_users = get_following_users(user)
 
     # 팔로우한 유저의 tasted records
     followed_records = get_tasted_record_queryset(following_users, user)
@@ -202,7 +207,7 @@ def get_post_queryset(authors, user, subject):
 
 def get_post_feed(user, subject):
     """사용자가 팔로우한 유저와 추가 게시글을 가져오는 함수"""
-    following_users = Relationship.objects.following(user.id).values_list("to_user", flat=True)
+    following_users = get_following_users(user)
 
     following_posts = get_post_queryset(following_users, user, subject)
 
