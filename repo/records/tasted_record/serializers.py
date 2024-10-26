@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from repo.beans.serializers import BeanSerializer, BeanTasteReviewSerializer
 from repo.common.serializers import PhotoSerializer
-from repo.common.utils import get_first_photo_url
+from repo.common.utils import get_first_photo_url, get_time_difference
 from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import Photo, TastedRecord
 
@@ -14,10 +14,14 @@ class TastedRecordListSerializer(serializers.ModelSerializer):
     star_rating = serializers.IntegerField(source="taste_review.star")
     flavor = serializers.CharField(source="taste_review.flavor")
     photos = PhotoSerializer(many=True, source="photo_set", read_only=True)
+    created_at = serializers.SerializerMethodField()
     likes = serializers.IntegerField()
     comments = serializers.IntegerField()
     is_user_liked = serializers.BooleanField()
     is_user_noted = serializers.BooleanField()
+
+    def get_created_at(self, obj):
+        return get_time_difference(obj.created_at)
 
     # fmt: off
     class Meta:
