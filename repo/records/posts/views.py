@@ -213,7 +213,7 @@ class TopSubjectPostsAPIView(APIView):
         - subject : 조회할 주제
     Returns:
         - status: 200
-    주제 종류 : 일반, 카페, 원두, 정보, 장비, 질문, 고민 (default: 전체)
+    주제 종류 : 일반, 카페, 원두, 정보, 질문, 고민 (default: 전체)
 
     담당자 : hwstar1204
     """
@@ -222,7 +222,10 @@ class TopSubjectPostsAPIView(APIView):
         responses={200: TopPostSerializer},
         summary="인기 게시글 조회",
         description="""
-            홈 [전체] - 주제별 조회수 상위 10개 인기 게시글 조회 API
+            홈 [전체] - 주제별 조회수 상위 12개 인기 게시글 조회 API
+            - 정렬: 조회수
+            - 페이지네이션 적용
+
             담당자 : hwstar1204
         """,
         tags=["posts"],
@@ -242,24 +245,29 @@ class TopSubjectPostsAPIView(APIView):
                         value=choice[0],
                     )
                     for choice in Post.SUBJECT_TYPE_CHOICES
+                ]
+                + [
+                    OpenApiExample(
+                        name="주제 필터 없음",
+                        summary="주제 필터 없이 전체 게시글 조회",
+                        description="홈 게시글에서 주제 필터 없이 전체 게시글을 조회합니다.",
+                        value=None,
+                    )
                 ],
             ),
         ],
     )
     def get(self, request):
         subject = request.GET.get("subject")
+        subject = request.query_params.get("subject")
 
-        if subject not in [choice[0] for choice in Post.SUBJECT_TYPE_CHOICES]:
-            subject = "전체"
         subject_mapping = dict(Post.SUBJECT_TYPE_CHOICES)
-
-        subject_value = subject_mapping.get(subject, "all")
+        subject_value = subject_mapping.get(subject, None)
 
         # TODO 캐시 적용
         posts = Post.objects.get_top_subject_weekly_posts(subject_value)
 
         paginator = PageNumberPagination()
-        paginator.page_size = 12
         paginated_posts = paginator.paginate_queryset(posts, request)
 
         serializer = TopPostSerializer(paginated_posts, many=True)
