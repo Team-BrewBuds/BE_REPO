@@ -50,10 +50,19 @@ from repo.records.services import get_post_detail, get_post_feed
                 ],
             ),
         ],
-        responses=PostListSerializer,
-        summary="홈 게시글 리스트 조회",
+        responses={200: PostListSerializer},
+        summary="홈 [게시글] 피드 조회",
         description="""
-            홈 피드의 게시글 list 데이터를 가져옵니다.
+            홈 피드의 주제별 게시글 list 데이터를 가져옵니다.
+            - 순서: 팔로잉, 일반
+            - 정렬: 최신순
+            - 페이지네이션 적용 (12개)
+            - 30분이내 조회하지않은 게시글만 가져옵니다.
+
+            Notice:
+            - like_cnt에서 likes로 변경
+            - comments(댓글 수), is_user_noted(사용자 저장여부) 추가 됨
+
             담당자: hwstar1204
         """,
         tags=["posts"],
@@ -258,7 +267,6 @@ class TopSubjectPostsAPIView(APIView):
         ],
     )
     def get(self, request):
-        subject = request.GET.get("subject")
         subject = request.query_params.get("subject")
 
         subject_mapping = dict(Post.SUBJECT_TYPE_CHOICES)

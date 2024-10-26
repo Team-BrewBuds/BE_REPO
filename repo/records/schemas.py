@@ -49,6 +49,10 @@ class FeedSchema:
             TastedRecordListSerializer or PostListSerializer
             (아래 Schemas 참조)
 
+            Notice:
+            - like_cnt에서 likes로 변경
+            - comments(댓글 수), is_user_noted(사용자 저장여부) 추가 됨
+
             담당자 : hwstar1204
         """,
         tags=[Feed_Tag],
