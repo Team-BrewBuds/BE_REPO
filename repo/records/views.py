@@ -138,7 +138,6 @@ class CommentApiView(APIView):
         comments = get_comment_list(object_type, object_id)
 
         paginator = PageNumberPagination()
-        paginator.page_size = 12
         page_obj = paginator.paginate_queryset(comments, request)
 
         serializer = CommentSerializer(page_obj, many=True)
