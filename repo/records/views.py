@@ -41,7 +41,7 @@ class FeedAPIView(APIView):
         elif feed_type == "common":
             data = get_common_feed(request, user)
         else:  # refresh
-            data = get_refresh_feed()
+            data = get_refresh_feed(user)
 
         paginator = Paginator(data, 12)
         page_obj = paginator.get_page(page)

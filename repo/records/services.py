@@ -49,29 +49,17 @@ def get_following_feed(request, user):
     following_users = get_following_users(user)
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
-    following_tasted_record = (
-        TastedRecord.objects.filter(author__in=following_users, is_private=False, created_at__gte=one_hour_ago)
-        .select_related("author", "bean", "taste_review")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-id")
-    )
+    tr_add_filter = {"is_private": False, "created_at__gte": one_hour_ago}
+    following_tasted_record = get_tasted_record_queryset(following_users, user, tr_add_filter, None)
 
-    following_post = (
-        Post.objects.filter(author__in=following_users, created_at__gte=one_hour_ago)
-        .select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-id")
-    )
+    p_add_filter = {"created_at__gte": one_hour_ago}
+    following_post = get_post_queryset(following_users, user, None, p_add_filter, None)
 
-    # 30분 이내 조회한 시음 기록 제외
     not_viewed_tasted_record = [
         record for record in following_tasted_record if not is_viewed(request, cookie_name="tasted_record_viewed", content_id=record.id)
     ]
-
-    # 30분 이내 조회한 게시글 제외
     not_viewed_post = [post for post in following_post if not is_viewed(request, cookie_name="post_viewed", content_id=post.id)]
 
-    # 두 쿼리셋 결합
     combined_data = list(chain(not_viewed_tasted_record, not_viewed_post))
     random.shuffle(combined_data)
 
@@ -86,25 +74,15 @@ def get_common_feed(request, user):
     """
     following_users = get_following_users(user)
 
-    common_tasted_record = (
-        TastedRecord.objects.filter(is_private=False)
-        .exclude(author__in=following_users)
-        .select_related("author", "bean", "taste_review")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-created_at")
-    )
+    add_filter = {"is_private": False}
+    exclude_filter = {"author__in": following_users}
 
-    common_post = (
-        Post.objects.exclude(author__in=following_users)
-        .select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-created_at")
-    )
+    common_tasted_record = get_tasted_record_queryset([], user, add_filter, exclude_filter)
+    common_post = get_post_queryset([], user, None, None, exclude_filter)
 
     not_viewed_tasted_record = [
         record for record in common_tasted_record if not is_viewed(request, cookie_name="tasted_record_viewed", content_id=record.id)
     ]
-
     not_viewed_post = [post for post in common_post if not is_viewed(request, cookie_name="post_viewed", content_id=post.id)]
 
     combined_data = sorted(chain(not_viewed_tasted_record, not_viewed_post), key=lambda x: x.created_at, reverse=True)
@@ -112,22 +90,42 @@ def get_common_feed(request, user):
     return combined_data
 
 
-def get_refresh_feed():
+def get_refresh_feed(user):
     """
     시음기록과 게시글을 랜덤순으로 가져오는 함수
     프라이빗한 시음기록은 제외
     """
 
+    is_user_liked_tasted_record_subquery = TastedRecord.like_cnt.through.objects.filter(
+        tastedrecord_id=OuterRef("pk"), customuser_id=user.id
+    )
+    is_user_tasted_record_noted_subquery = user.note_set.filter(tasted_record_id=OuterRef("pk"), author_id=user.id)
+
     tasted_records = (
         TastedRecord.objects.filter(is_private=False)
         .select_related("author", "bean", "taste_review")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .prefetch_related("comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .annotate(
+            likes=Count("like_cnt", distinct=True),
+            comments=Count("comment", distinct=True),
+            is_user_liked=Exists(is_user_liked_tasted_record_subquery),
+            is_user_noted=Exists(is_user_tasted_record_noted_subquery),
+        )
         .order_by("?")
     )
 
+    is_user_liked_post_subquery = Post.like_cnt.through.objects.filter(post_id=OuterRef("pk"), customuser_id=user.id)
+    is_user_post_noted_subquery = user.note_set.filter(post_id=OuterRef("pk"), author_id=user.id)
+
     posts = (
         Post.objects.select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .prefetch_related("tasted_records", "comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+        .annotate(
+            likes=Count("like_cnt", distinct=True),
+            comments=Count("comment", distinct=True),
+            is_user_liked=Exists(is_user_liked_post_subquery),
+            is_user_noted=Exists(is_user_post_noted_subquery),
+        )
         .order_by("?")
     )
 
@@ -137,19 +135,28 @@ def get_refresh_feed():
     return combined_data
 
 
-def get_tasted_record_queryset(authors, user):
+def get_tasted_record_queryset(authors, user, add_filter=None, exclude_filter=None):
     """필터링된 TastedRecord 쿼리셋을 생성하는 헬퍼 함수"""
-    is_user_liked_subquery = TastedRecord.like_cnt.through.objects.filter(tastedrecord_id=OuterRef("pk"), customuser_id=user.id)
+    is_user_liked_tasted_record_subquery = TastedRecord.like_cnt.through.objects.filter(
+        tastedrecord_id=OuterRef("pk"), customuser_id=user.id
+    )
     is_user_tasted_record_noted_subquery = user.note_set.filter(tasted_record_id=OuterRef("pk"), author_id=user.id)
 
+    add_filters = Q()
+    add_filters &= Q(author__in=authors) if authors else Q()
+    add_filters &= Q(**add_filter) if add_filter else Q()
+
+    exclude_filters = Q(**exclude_filter) if exclude_filter else Q()
+
     return (
-        TastedRecord.objects.filter(author__in=authors, is_private=False)
+        TastedRecord.objects.filter(add_filters)
+        .exclude(exclude_filters)
         .select_related("author", "bean", "taste_review")
         .prefetch_related("comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .annotate(
             likes=Count("like_cnt", distinct=True),
             comments=Count("comment", distinct=True),
-            is_user_liked=Exists(is_user_liked_subquery),
+            is_user_liked=Exists(is_user_liked_tasted_record_subquery),
             is_user_noted=Exists(is_user_tasted_record_noted_subquery),
         )
         .order_by("-created_at")
@@ -160,12 +167,12 @@ def get_tasted_record_feed(user):
     following_users = get_following_users(user)
 
     # 팔로우한 유저의 tasted records
-    followed_records = get_tasted_record_queryset(following_users, user)
+    followed_records = get_tasted_record_queryset(following_users, user, {"is_private": False}, None)
 
     # 추가로 필요한 경우 팔로우하지 않은 유저의 tasted records 가져오기
     if not following_users.exists() or followed_records.count() < 12:
         additional_authors = TastedRecord.objects.exclude(author__in=following_users).values_list("author", flat=True)
-        additional_records = get_tasted_record_queryset(additional_authors, user)
+        additional_records = get_tasted_record_queryset(additional_authors, user, {"is_private": False}, None)
     else:
         additional_records = TastedRecord.objects.none()
 
@@ -184,21 +191,26 @@ def get_tasted_record_detail(pk):
     return record
 
 
-def get_post_queryset(authors, user, subject):
-    is_user_liked_subquery = Post.like_cnt.through.objects.filter(post_id=OuterRef("pk"), customuser_id=user.id)
+def get_post_queryset(authors, user, subject=None, add_filter=None, exclude_filter=None):
+    is_user_liked_post_subquery = Post.like_cnt.through.objects.filter(post_id=OuterRef("pk"), customuser_id=user.id)
     is_user_post_noted_subquery = user.note_set.filter(post_id=OuterRef("pk"), author_id=user.id)
 
-    post_filter = Q(author__in=authors)
-    post_filter &= Q(subject=subject) if subject is not None else Q()
+    add_filters = Q()
+    add_filters &= Q(author__in=authors) if authors else Q()
+    add_filters &= Q(subject=subject) if subject is not None else Q()
+    add_filters &= Q(**add_filter) if add_filter else Q()
+
+    exclude_filters = Q(**exclude_filter) if exclude_filter else Q()
 
     return (
-        Post.objects.filter(post_filter)
+        Post.objects.filter(add_filters)
+        .exclude(exclude_filters)
         .select_related("author")
         .prefetch_related("tasted_records", "comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .annotate(
             likes=Count("like_cnt", distinct=True),
             comments=Count("comment", distinct=True),
-            is_user_liked=Exists(is_user_liked_subquery),
+            is_user_liked=Exists(is_user_liked_post_subquery),
             is_user_noted=Exists(is_user_post_noted_subquery),
         )
         .order_by("-created_at")
@@ -209,11 +221,11 @@ def get_post_feed(user, subject):
     """사용자가 팔로우한 유저와 추가 게시글을 가져오는 함수"""
     following_users = get_following_users(user)
 
-    following_posts = get_post_queryset(following_users, user, subject)
+    following_posts = get_post_queryset(following_users, user, subject, None, None)
 
     if not following_users.exists() or following_posts.count() < 12:
         additional_authors = Post.objects.exclude(author__in=following_users).values_list("author", flat=True)
-        additional_posts = get_post_queryset(additional_authors, user, subject)
+        additional_posts = get_post_queryset(additional_authors, user, subject, None, None)
     else:
         additional_posts = Post.objects.none()
 
