@@ -72,7 +72,7 @@ class TastedRecordListCreateAPIView(APIView):
     """
 
     def get(self, request, *args, **kwargs):
-        tasted_records = get_tasted_record_feed(request.user)
+        tasted_records = get_tasted_record_feed(request, request.user)
 
         paginator = PageNumberPagination()
         paginated_tasted_records = paginator.paginate_queryset(tasted_records, request)

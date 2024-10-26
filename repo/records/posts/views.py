@@ -87,7 +87,7 @@ class PostListCreateAPIView(APIView):
         subject_mapping = dict(Post.SUBJECT_TYPE_CHOICES)
         subject_value = subject_mapping.get(subject, None)
 
-        posts = get_post_feed(request.user, subject_value)
+        posts = get_post_feed(request, request.user, subject_value)
 
         paginator = PageNumberPagination()
         paginated_posts = paginator.paginate_queryset(posts, request)
