@@ -520,17 +520,18 @@ Django = ">=4.2"
 
 [[package]]
 name = "django-seed"
-version = "0.2.2"
+version = "0.3.1"
 description = "Seed your Django project with fake data"
 optional = false
 python-versions = "*"
 files = [
-    {file = "django-seed-0.2.2.tar.gz", hash = "sha256:5cdda71dcd51b2e7340e4aec9035d99d7014409a4b11adddbdff17d814968221"},
+    {file = "django-seed-0.3.1.tar.gz", hash = "sha256:93e65d2c10449c464b83e9031be02763ec10e786aa064d649c4dd5ad06fa0eea"},
 ]
 
 [package.dependencies]
 django = ">=1.11"
 Faker = ">=0.7.7"
+toposort = ">=1.5"
 
 [[package]]
 name = "django-storages"
@@ -1423,6 +1424,17 @@ dev = ["build", "hatch"]
 doc = ["sphinx"]
 
 [[package]]
+name = "toposort"
+version = "1.10"
+description = "Implements a topological sort algorithm."
+optional = false
+python-versions = "*"
+files = [
+    {file = "toposort-1.10-py3-none-any.whl", hash = "sha256:cbdbc0d0bee4d2695ab2ceec97fe0679e9c10eab4b2a87a9372b929e70563a87"},
+    {file = "toposort-1.10.tar.gz", hash = "sha256:bfbb479c53d0a696ea7402601f4e693c97b0367837c8898bc6471adfca37a6bd"},
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.12.2"
 description = "Backported and Experimental Type Hints for Python 3.8+"
@@ -1495,4 +1507,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "772d91220d14c570263a54792d324be4606d17b343c90703496214b54cb600b3"
+content-hash = "7e85c68fcbff1023a2a300e7fa4cc6d3ed51c5337ee0daac8a1a2213199a8908"
