@@ -26,6 +26,9 @@ pillow = "^10.4.0"
 pymysql = "^1.1.1"
 gunicorn = "^23.0.0"
 cryptography = "^43.0.1"
+django-filter = "^24.3"
+django-seed = "^0.3.1"
+psycopg2-binary = "^2.9.10"
 
 
 [tool.poetry.group.dev.dependencies]

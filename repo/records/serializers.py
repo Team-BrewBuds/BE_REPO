@@ -15,6 +15,40 @@ class FeedSerializer(serializers.ModelSerializer):
         return super().to_representation(instance)
 
 
+class UserNoteSerializer(serializers.Serializer):
+    def to_representation(self, instance):
+        if isinstance(instance, Note):
+            if instance.post:
+                return NotePostSimpleSerializer(instance).data
+            elif instance.tasted_record:
+                return NoteTastedRecordSimpleSerializer(instance).data
+        return super().to_representation(instance)
+
+
+class NotePostSimpleSerializer(serializers.ModelSerializer):
+    post_id = serializers.IntegerField(source="post.id")
+    title = serializers.CharField(source="post.title")
+    subject = serializers.CharField(source="post.subject")
+    created_at = serializers.DateTimeField(source="post.created_at")
+    nickname = serializers.CharField(source="post.author.nickname", read_only=True)
+    photo_url = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Note
+        fields = ["post_id", "title", "subject", "created_at", "nickname", "photo_url"]
+
+
+class NoteTastedRecordSimpleSerializer(serializers.ModelSerializer):
+    tasted_record_id = serializers.IntegerField(source="tasted_record.id")
+    bean_name = serializers.CharField(source="tasted_record.bean.name")
+    flavor = serializers.CharField(source="tasted_record.taste_review.flavor")
+    photo_url = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Note
+        fields = ["tasted_record_id", "bean_name", "flavor", "photo_url"]
+
+
 class CommentSerializer(serializers.ModelSerializer):
     content = serializers.CharField(max_length=200)
     parent = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(), required=False)
@@ -40,17 +74,3 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ["id", "content", "parent", "author", "like_cnt", "created_at", "replies", "is_user_liked"]
-
-
-class LikeSerializer(serializers.Serializer):
-    object_type = serializers.ChoiceField(choices=["post", "tasted_record", "comment"])
-    object_id = serializers.IntegerField()
-
-
-class NoteSerializer(serializers.ModelSerializer):
-    object_type = serializers.ChoiceField(choices=["post", "tasted_record"])
-    object_id = serializers.IntegerField()
-
-    class Meta:
-        model = Note
-        fields = ["object_type", "object_id"]

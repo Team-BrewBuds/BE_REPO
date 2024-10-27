@@ -11,20 +11,18 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
-from drf_spectacular.utils import (
-    OpenApiParameter,
-    OpenApiResponse,
-    extend_schema,
-    extend_schema_view,
-)
-from rest_framework import status
+from django_filters import rest_framework as filters
+from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from repo.beans.serializers import UserBeanSerializer
+from repo.common.utils import get_first_photo_url
 from repo.profiles.models import CustomUser, Relationship, UserDetail
+from repo.profiles.schemas import *
 from repo.profiles.serializers import (
     BudyRecommendSerializer,
     UserDetailSignupSerializer,
@@ -34,6 +32,16 @@ from repo.profiles.serializers import (
     UserUpdateSerializer,
 )
 from repo.profiles.services import get_follower_list, get_following_list
+from repo.records.filters import BeanFilter, TastedRecordFilter
+from repo.records.models import Post
+from repo.records.posts.serializers import UserPostSerializer
+from repo.records.serializers import UserNoteSerializer
+from repo.records.services import (
+    get_user_posts_by_subject,
+    get_user_saved_beans,
+    get_user_tasted_records_by_filter,
+)
+from repo.records.tasted_record.serializers import UserTastedRecordSerializer
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -329,35 +337,7 @@ class SignupView(APIView):
 #         return self.request.user
 
 
-@extend_schema_view(
-    get=extend_schema(
-        responses=UserProfileSerializer,
-        summary="자기 프로필 조회",
-        description="""
-            현재 로그인한 사용자의 프로필을 조회합니다.
-
-            닉네임, 프로필 이미지, 커피 생활 방식, 팔로워 수, 팔로잉 수, 게시글 수를 반환합니다.
-            담당자 : hwstar1204
-        """,
-        tags=["profile"],
-    ),
-    patch=extend_schema(
-        request=UserUpdateSerializer,
-        responses={
-            200: UserProfileSerializer,
-            400: OpenApiResponse(description="Bad Request"),
-            401: OpenApiResponse(description="Unauthorized"),
-        },
-        summary="자기 프로필 수정",
-        description="""
-            현재 로그인한 사용자의 프로필을 수정합니다.
-
-            닉네임, 프로필 이미지, 소개, 프로필 링크, 커피 생활 방식, 선호하는 커피 맛, 자격증 여부를 수정합니다.
-            담당자 : hwstar1204
-        """,
-        tags=["profile"],
-    ),
-)
+@ProfileSchema.my_profile_schema_view
 class MyProfileAPIView(APIView):
     def get(self, request):
         user = request.user
@@ -398,20 +378,7 @@ class MyProfileAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@extend_schema_view(
-    get=extend_schema(
-        responses=UserProfileSerializer,
-        summary="상대 프로필 조회",
-        description="""
-            특정 사용자의 프로필을 조회합니다.
-
-            닉네임, 프로필 이미지, 커피 생활 방식, 팔로워 수, 팔로잉 수, 게시글 수를 반환합니다.
-            요청한 사용자가 팔로우 중인지 여부도 반환합니다.
-            담당자 : hwstar1204
-        """,
-        tags=["profile"],
-    ),
-)
+@OtherProfileSchema.other_proflie_schema_view
 class OtherProfileAPIView(APIView):
     def get(self, request, id):
         request_user = request.user
@@ -430,30 +397,7 @@ class OtherProfileAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-@extend_schema_view(
-    get=extend_schema(
-        parameters=[
-            OpenApiParameter(
-                name="type",
-                type=str,
-                enum=["following", "follower"],
-            ),
-        ],
-        responses={
-            200: UserFollowListSerializer,
-            400: OpenApiResponse(description="Bad Request"),
-            404: OpenApiResponse(description="Not Found"),
-        },
-        summary="자신의 팔로잉/팔로워 프로필 조회",
-        description="""
-            사용자의 팔로잉/팔로워 리스트를 조회합니다.
-            type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
-
-            담당자 : hwstar1204
-        """,
-        tags=["follow"],
-    )
-)
+@FollowListSchema.follow_list_schema_view
 class FollowListAPIView(APIView):
     def get(self, request):
         page = request.query_params.get("page", 1)
@@ -468,59 +412,13 @@ class FollowListAPIView(APIView):
             return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
         paginator = PageNumberPagination()
-        paginator.page_size = 12
         page_obj = paginator.paginate_queryset(data, request)
 
         serializer = UserFollowListSerializer(page_obj, many=True)
         return paginator.get_paginated_response(serializer.data)
 
 
-@extend_schema_view(
-    get=extend_schema(
-        parameters=[
-            OpenApiParameter(
-                name="type",
-                type=str,
-                enum=["following", "follower"],
-            ),
-        ],
-        responses={
-            200: UserFollowListSerializer,
-            400: OpenApiResponse(description="Bad Request"),
-            404: OpenApiResponse(description="Not Found"),
-        },
-        summary="사용자의 팔로잉/팔로워 리스트 조회",
-        description="""
-            특정 사용자의 팔로잉/팔로워 리스트를 조회합니다.
-            id 파라미터로 사용자의 id를 받고,type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
-
-            담당자 : hwstar1204
-        """,
-        tags=["follow"],
-    ),
-    post=extend_schema(
-        responses=status.HTTP_201_CREATED,
-        summary="팔로우",
-        description="""
-            특정 사용자를 팔로우합니다.
-            이미 팔로우 중인 경우 409 CONFLICT
-
-            담당자 : hwstar1204
-        """,
-        tags=["follow"],
-    ),
-    delete=extend_schema(
-        responses=status.HTTP_200_OK,
-        summary="팔로우 취소",
-        description="""
-            특정 사용자의 언팔로우합니다.
-            팔로우 중이 아닌 경우 404 NOT FOUND
-
-            담당자 : hwstar1204
-        """,
-        tags=["follow"],
-    ),
-)
+@FollowListCreateDeleteSchema.follow_list_create_delete_schema_view
 class FollowListCreateDeleteAPIView(APIView):
     def get(self, request, id):
         follow_type = request.query_params.get("type")
@@ -534,7 +432,6 @@ class FollowListCreateDeleteAPIView(APIView):
             return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
         paginator = PageNumberPagination()
-        paginator.page_size = 12
         page_obj = paginator.paginate_queryset(data, request)
 
         serializer = UserFollowListSerializer(page_obj, many=True)
@@ -559,6 +456,7 @@ class FollowListCreateDeleteAPIView(APIView):
         return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
 
 
+@BudyRecommendSchema.budy_recommend_schema_view
 class BudyRecommendAPIView(APIView):
     """
     유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환
@@ -574,13 +472,24 @@ class BudyRecommendAPIView(APIView):
     담당자: hwtar1204
     """
 
-    @extend_schema(
-        summary="버디 추천",
-        description="유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환 (10명 랜덤순)",
-        responses={200: BudyRecommendSerializer},
-        tags=["recommend"],
-    )
     def get(self, request):
+        # 테스트용 데이터 (추후 삭제 필요)
+        test_users = CustomUser.objects.order_by("?")[:20]
+        test_json_data = {"users": [], "category": "cafe_tour"}
+        for user in test_users:
+            test_json_data["users"].append(
+                {
+                    "user": {
+                        "id": user.id,
+                        "nickname": user.nickname if user.nickname else user.email,
+                        "profile_image": user.profile_image.url if user.profile_image else None,
+                    },
+                    "follower_cnt": Relationship.objects.followers(user).count(),
+                }
+            )
+
+        return Response(test_json_data, status=status.HTTP_200_OK)
+        # ---------------------------------------------------
         user = request.user
 
         user_detail = get_object_or_404(UserDetail, user=user)
@@ -612,3 +521,67 @@ class BudyRecommendAPIView(APIView):
         response_data = {"users": serializer.data, "category": category}
 
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+@UserPostListSchema.user_post_list_schema_view
+class UserPostListAPIView(APIView):
+    def get(self, request, id):
+        subject = request.query_params.get("subject", "전체")
+        subject_choice = dict(Post.SUBJECT_TYPE_CHOICES).get(subject)
+        user = get_object_or_404(CustomUser, id=id)
+
+        posts = get_user_posts_by_subject(user, subject_choice)
+
+        paginator = PageNumberPagination()
+        paginated_posts = paginator.paginate_queryset(posts, request)
+
+        serializer = UserPostSerializer(paginated_posts, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+@UserTastedRecordListSchema.user_tasted_record_list_schema_view
+class UserTastedRecordListView(generics.ListAPIView):
+    serializer_class = UserTastedRecordSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = TastedRecordFilter
+    ordering_fields = ["-created_at", "-taste_review__star"]
+
+    def get_queryset(self):
+        user_id = self.kwargs.get("id")
+        user = get_object_or_404(CustomUser, id=user_id)
+        queryset = get_user_tasted_records_by_filter(user)
+        ordering = self.request.query_params.get("ordering", "-created_at")
+        return queryset.order_by(ordering)
+
+
+@UserBeanListSchema.user_bean_list_schema_view
+class UserBeanListAPIView(generics.ListAPIView):
+    serializer_class = UserBeanSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = BeanFilter
+    ordering_fields = ["-note__created_at", "-avg_star", "-tasted_records_cnt"]
+
+    def get_queryset(self):
+        user_id = self.kwargs.get("id")
+        user = get_object_or_404(CustomUser, id=user_id)
+        queryset = get_user_saved_beans(user)
+        ordering = self.request.query_params.get("ordering", "-note__created_at")
+        return queryset.order_by(ordering)
+
+
+@UserNoteSchema.user_note_schema_view
+class UserNoteAPIView(APIView):
+    def get(self, request, id):
+        user = get_object_or_404(CustomUser, id=id)
+        notes = user.note_set.filter(bean__isnull=True).select_related("post", "tasted_record")
+
+        notes_with_photos = []
+        for note in notes:
+            note.photo_url = get_first_photo_url(note.post if note.post else note.tasted_record)
+            notes_with_photos.append(note)
+
+        paginator = PageNumberPagination()
+        paginated_notes = paginator.paginate_queryset(notes_with_photos, request)
+
+        serializer = UserNoteSerializer(paginated_notes, many=True)
+        return paginator.get_paginated_response(serializer.data)

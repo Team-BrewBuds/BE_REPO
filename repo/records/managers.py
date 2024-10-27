@@ -17,11 +17,10 @@ class PostManagers(models.Manager):
     def get_subject_weekly_posts(self, subject):
         from .models import Post
 
-        if subject == "all":
-            # 전체 주제의 게시글 중 일주일 안에 작성된 게시글
-            posts = Post.objects.filter(created_at__gte=timezone.now() - timedelta(days=7))
-        else:
-            posts = Post.objects.filter(subject=subject, created_at__gte=timezone.now() - timedelta(days=7))
+        time_threshold = timezone.now() - timedelta(days=7)
+        posts = Post.objects.filter(created_at__gte=time_threshold)
+        if subject is not None:
+            posts = posts.filter(subject=subject)
 
         return posts
 
@@ -32,7 +31,7 @@ class PostManagers(models.Manager):
 
 
 class NoteManagers(models.Manager):
-    model_map = {"post": "repo.records.Post", "tasted_record": "repo.records.Tasted_Record", "bean": "repo.beans.Bean"}
+    model_map = {"post": "repo.records.Post", "tasted_record": "repo.records.TastedRecord", "bean": "repo.beans.Bean"}
 
     def create_note_for_object(self, user, object_type, object_id):
         from repo.records.models import Note
