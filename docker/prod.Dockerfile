@@ -24,7 +24,7 @@ COPY ./pyproject.toml ./poetry.lock* ./
 
 # install dependencies and build wheels
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-dev --no-interaction --no-ansi \
+    && poetry install --only main --no-interaction --no-ansi \
     && poetry export -f requirements.txt --output requirements.txt --without-hashes \
     && pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
 
