@@ -10,7 +10,7 @@ from repo.common.serializers import PhotoSerializer
 from repo.common.utils import delete, update
 from repo.records.models import Comment, Note, Photo, Post, TastedRecord
 from repo.records.schemas import *
-from repo.records.serializers import CommentSerializer, LikeSerializer, NoteSerializer
+from repo.records.serializers import CommentSerializer
 from repo.records.services import (
     get_comment,
     get_comment_list,
@@ -41,7 +41,7 @@ class FeedAPIView(APIView):
         elif feed_type == "common":
             data = get_common_feed(request, user)
         else:  # refresh
-            data = get_refresh_feed()
+            data = get_refresh_feed(user)
 
         paginator = Paginator(data, 12)
         page_obj = paginator.get_page(page)
@@ -60,41 +60,48 @@ class FeedAPIView(APIView):
 
 @LikeSchema.like_schema_view
 class LikeApiView(APIView):
-    def post(self, request):
-        user_id = request.user.id
-        serializer = LikeSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        object_type = serializer.validated_data["object_type"]
-        object_id = serializer.validated_data["object_id"]
-
+    def get_valid_object(self, object_type, object_id):
         model_map = {"post": Post, "tasted_record": TastedRecord, "comment": Comment}
         model_class = model_map.get(object_type)
 
-        obj = get_object_or_404(model_class, pk=object_id)
+        if not model_class:
+            raise ValueError("Invalid object type.")
+
+        return get_object_or_404(model_class, pk=object_id)
+
+    def post(self, request, object_type, object_id):
+        user_id = request.user.id
+        if not request.user.is_authenticated:
+            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        obj = self.get_valid_object(object_type, object_id)
 
         if user_id in obj.like_cnt.values_list("id", flat=True):
-            obj.like_cnt.remove(user_id)
-            status_code = status.HTTP_200_OK
-        else:
-            obj.like_cnt.add(user_id)
-            status_code = status.HTTP_201_CREATED
+            return Response({"detail": "like already exists"}, status=status.HTTP_409_CONFLICT)
 
-        return Response(status=status_code)
+        obj.like_cnt.add(user_id)
+        return Response({"detail": "like created"}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, object_type, object_id):
+        user_id = request.user.id
+        if not request.user.is_authenticated:
+            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        obj = self.get_valid_object(object_type, object_id)
+
+        if user_id not in obj.like_cnt.values_list("id", flat=True):
+            return Response({"detail": "like not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        obj.like_cnt.remove(user_id)
+        return Response({"detail": "like deleted"}, status=status.HTTP_204_NO_CONTENT)
 
 
 # TODO NoteAPI, NoteDetailAPI 통합 가능
 @NoteSchema.note_schema_view
 class NoteApiView(APIView):
-    def post(self, request):
-        serializer = NoteSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    def post(self, request, object_type, object_id):
         user = request.user
-        object_type = serializer.validated_data["object_type"]
-        object_id = serializer.validated_data["object_id"]
 
         existing_note = Note.objects.existing_note(user, object_type, object_id)
         if existing_note:
@@ -103,9 +110,6 @@ class NoteApiView(APIView):
         Note.objects.create_note_for_object(user, object_type, object_id)
         return Response({"detail": "note created"}, status=status.HTTP_201_CREATED)
 
-
-@NoteDetailSchema.note_detail_schema_view
-class NoteDetailApiView(APIView):
     def delete(self, request, object_type, object_id):
         user = request.user
 
@@ -138,7 +142,6 @@ class CommentApiView(APIView):
         comments = get_comment_list(object_type, object_id)
 
         paginator = PageNumberPagination()
-        paginator.page_size = 12
         page_obj = paginator.paginate_queryset(comments, request)
 
         serializer = CommentSerializer(page_obj, many=True)

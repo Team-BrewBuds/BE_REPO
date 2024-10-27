@@ -13,18 +13,18 @@ class PostListSerializer(serializers.ModelSerializer):
     author = UserSimpleSerializer(read_only=True)
     photos = PhotoSerializer(many=True, source="photo_set", read_only=True)
     tasted_records = TastedRecordInPostSerializer("tasted_records", many=True, read_only=True)
-    like_cnt = serializers.IntegerField(source="like_cnt.count")
-    is_user_liked = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
+    likes = serializers.IntegerField()
+    comments = serializers.IntegerField()
+    is_user_liked = serializers.BooleanField()
+    is_user_noted = serializers.BooleanField()
 
-    def get_is_user_liked(self, obj):
-        request = self.context.get("request")
-        if request and request.user.is_authenticated:
-            return obj.like_cnt.filter(id=request.user.id).exists()
-        return False
+    def get_created_at(self, obj):
+        return get_time_difference(obj.created_at)
 
     class Meta:
         model = Post
-        fields = "__all__"
+        exclude = ["like_cnt"]
 
 
 class TopPostSerializer(PostListSerializer):

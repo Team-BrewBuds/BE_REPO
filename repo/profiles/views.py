@@ -412,7 +412,6 @@ class FollowListAPIView(APIView):
             return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
         paginator = PageNumberPagination()
-        paginator.page_size = 12
         page_obj = paginator.paginate_queryset(data, request)
 
         serializer = UserFollowListSerializer(page_obj, many=True)
@@ -433,7 +432,6 @@ class FollowListCreateDeleteAPIView(APIView):
             return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
         paginator = PageNumberPagination()
-        paginator.page_size = 12
         page_obj = paginator.paginate_queryset(data, request)
 
         serializer = UserFollowListSerializer(page_obj, many=True)
@@ -518,7 +516,6 @@ class UserPostListAPIView(APIView):
         posts = get_user_posts_by_subject(user, subject_choice)
 
         paginator = PageNumberPagination()
-        paginator.page_size = 12
         paginated_posts = paginator.paginate_queryset(posts, request)
 
         serializer = UserPostSerializer(paginated_posts, many=True)

@@ -24,11 +24,20 @@ from repo.records.tasted_record.service import update_tasted_record
     get=extend_schema(
         parameters=[PageNumberSerializer],
         responses={200: TastedRecordListSerializer},
-        summary="홈 시음기록 리스트 조회",
+        summary="홈 [시음기록] 피드 조회",
         description="""
             홈 피드의 시음기록 list를 최신순으로 가져옵니다.
-            순서: 팔로잉, 최신순
-            담당자 : hwstar1204
+            - 순서: 팔로잉, 일반
+            - 정렬: 최신순
+            - 페이지네이션 적용 (12개)
+            - 30분이내 조회하지않은 게시글 가져옵니다.
+            - 프라이빗한 시음기록은 제외
+
+            Notice:
+            - like_cnt에서 likes로 변경
+            - comments(댓글 수), is_user_noted(사용자 저장여부) 추가 됨
+
+            담당자: hwstar1204
         """,
         tags=["tasted_records"],
     ),
@@ -63,10 +72,9 @@ class TastedRecordListCreateAPIView(APIView):
     """
 
     def get(self, request, *args, **kwargs):
-        tasted_records = get_tasted_record_feed(request.user)
+        tasted_records = get_tasted_record_feed(request, request.user)
 
         paginator = PageNumberPagination()
-        paginator.page_size = 12
         paginated_tasted_records = paginator.paginate_queryset(tasted_records, request)
 
         serializer = TastedRecordListSerializer(paginated_tasted_records, many=True, context={"request": request})

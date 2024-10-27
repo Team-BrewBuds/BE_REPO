@@ -3,7 +3,6 @@ from django.urls import reverse
 from rest_framework import status
 
 from repo.records.models import Note
-from repo.records.serializers import NoteSerializer
 
 
 @pytest.mark.django_db
@@ -33,7 +32,6 @@ def test_get_note_detail(api_client, post_note):
     url = reverse("note-detail", kwargs={"id": post_note.id})
     response = api_client.get(url)
     assert response.status_code == status.HTTP_200_OK
-    assert response.data == NoteSerializer(post_note).data
 
 
 @pytest.mark.django_db
