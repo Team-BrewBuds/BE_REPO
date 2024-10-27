@@ -8,7 +8,7 @@ from drf_spectacular.utils import (
 
 from repo.common.serializers import PageNumberSerializer
 from repo.records.posts.serializers import PostListSerializer
-from repo.records.serializers import CommentSerializer, NoteSerializer
+from repo.records.serializers import CommentSerializer
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 Feed_Tag = "Feed"
@@ -130,7 +130,6 @@ class LikeSchema:
 
 class NoteSchema:
     note_post_schema = extend_schema(
-        request=NoteSerializer,
         responses={
             200: OpenApiResponse(description="Note already exists"),
             201: OpenApiResponse(description="Note created"),
@@ -145,26 +144,22 @@ class NoteSchema:
         tags=[Note_Tag],
     )
 
-    note_schema_view = extend_schema_view(post=note_post_schema)
-
-
-class NoteDetailSchema:
-    note_detail_delete_schema = extend_schema(
+    note_delete_schema = extend_schema(
         responses={
             200: OpenApiResponse(description="Note deleted"),
             404: OpenApiResponse(description="Note not found"),
         },
         summary="노트 삭제",
         description="""
-                object_type : "post" 또는 "tasted_record"
-                object_id : 노트를 처리할 객체의 ID
+            object_type : "post" 또는 "tasted_record"
+            object_id : 노트를 처리할 객체의 ID
 
-                담당자: hwstar1204
-            """,
+            담당자: hwstar1204
+        """,
         tags=[Note_Tag],
     )
 
-    note_detail_schema_view = extend_schema_view(delete=note_detail_delete_schema)
+    note_schema_view = extend_schema_view(post=note_post_schema, delete=note_delete_schema)
 
 
 class CommentSchema:

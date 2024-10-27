@@ -10,7 +10,7 @@ from repo.common.serializers import PhotoSerializer
 from repo.common.utils import delete, update
 from repo.records.models import Comment, Note, Photo, Post, TastedRecord
 from repo.records.schemas import *
-from repo.records.serializers import CommentSerializer, NoteSerializer
+from repo.records.serializers import CommentSerializer
 from repo.records.services import (
     get_comment,
     get_comment_list,
@@ -100,14 +100,8 @@ class LikeApiView(APIView):
 # TODO NoteAPI, NoteDetailAPI 통합 가능
 @NoteSchema.note_schema_view
 class NoteApiView(APIView):
-    def post(self, request):
-        serializer = NoteSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    def post(self, request, object_type, object_id):
         user = request.user
-        object_type = serializer.validated_data["object_type"]
-        object_id = serializer.validated_data["object_id"]
 
         existing_note = Note.objects.existing_note(user, object_type, object_id)
         if existing_note:
@@ -116,9 +110,6 @@ class NoteApiView(APIView):
         Note.objects.create_note_for_object(user, object_type, object_id)
         return Response({"detail": "note created"}, status=status.HTTP_201_CREATED)
 
-
-@NoteDetailSchema.note_detail_schema_view
-class NoteDetailApiView(APIView):
     def delete(self, request, object_type, object_id):
         user = request.user
 
