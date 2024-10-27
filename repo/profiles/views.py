@@ -473,6 +473,23 @@ class BudyRecommendAPIView(APIView):
     """
 
     def get(self, request):
+        # 테스트용 데이터 (추후 삭제 필요)
+        test_users = CustomUser.objects.order_by("?")[:20]
+        test_json_data = {"users": [], "category": "cafe_tour"}
+        for user in test_users:
+            test_json_data["users"].append(
+                {
+                    "user": {
+                        "id": user.id,
+                        "nickname": user.nickname if user.nickname else user.email,
+                        "profile_image": user.profile_image.url if user.profile_image else None,
+                    },
+                    "follower_cnt": Relationship.objects.followers(user).count(),
+                }
+            )
+
+        return Response(test_json_data, status=status.HTTP_200_OK)
+        # ---------------------------------------------------
         user = request.user
 
         user_detail = get_object_or_404(UserDetail, user=user)
