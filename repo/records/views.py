@@ -1,4 +1,3 @@
-from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
@@ -7,11 +6,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from repo.common.serializers import PhotoSerializer
-from repo.common.utils import delete, update
+from repo.common.utils import delete, get_paginated_response_with_func, update
 from repo.records.models import Comment, Note, Photo, Post, TastedRecord
 from repo.records.schemas import *
 from repo.records.serializers import CommentSerializer
 from repo.records.services import (
+    annonymous_user_feed,
     get_comment,
     get_comment_list,
     get_common_feed,
@@ -25,37 +25,23 @@ from repo.records.services import (
 @FeedSchema.feed_schema_view
 class FeedAPIView(APIView):
     def get(self, request):
+        user = request.user
+        if not request.user.is_authenticated:  # AnonymousUser
+            queryset = annonymous_user_feed()
+            return get_paginated_response_with_func(request, queryset, get_serialized_data)
+
         feed_type = request.query_params.get("feed_type")
         if feed_type not in ["following", "common", "refresh"]:
             return Response({"error": "invalid feed type"}, status=status.HTTP_400_BAD_REQUEST)
 
-        page_serializer = PageNumberSerializer(data=request.GET)
-        if not page_serializer.is_valid():
-            return Response(page_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        user = request.user
-        page = page_serializer.validated_data["page"]
-
         if feed_type == "following":
-            data = get_following_feed(request, user)
+            queryset = get_following_feed(request, user)
         elif feed_type == "common":
-            data = get_common_feed(request, user)
+            queryset = get_common_feed(request, user)
         else:  # refresh
-            data = get_refresh_feed(user)
+            queryset = get_refresh_feed(user)
 
-        paginator = Paginator(data, 12)
-        page_obj = paginator.get_page(page)
-
-        serialized_data = get_serialized_data(request, page_obj)
-
-        return Response(
-            {
-                "results": serialized_data,
-                "has_next": page_obj.has_next(),
-                "current_page": page_obj.number,
-            },
-            status=status.HTTP_200_OK,
-        )
+        return get_paginated_response_with_func(request, queryset, get_serialized_data)
 
 
 @LikeSchema.like_schema_view

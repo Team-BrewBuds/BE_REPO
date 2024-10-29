@@ -4,12 +4,14 @@ from itertools import chain
 
 from django.db.models import (
     Avg,
+    BooleanField,
     Count,
     Exists,
     FloatField,
     OuterRef,
     Prefetch,
     Q,
+    Value,
 )
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
@@ -23,16 +25,27 @@ from repo.records.posts.serializers import PostListSerializer
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
-def get_serialized_data(request, page_obj):
+def serialize_tasted_record_list(item, request):
+    """TastedRecord 객체를 시리얼라이즈하는 함수"""
+    return TastedRecordListSerializer(item, context={"request": request}).data
+
+
+def serialize_post_list(item, request):
+    """Post 객체를 시리얼라이즈하는 함수"""
+    return PostListSerializer(item, context={"request": request}).data
+
+
+def get_serialized_data(request, page_obj_list):
     """
     페이지 객체를 받아 시리얼라이즈된 데이터를 반환하는 함수
     게시글 리스트 or 시음기록 리스트
     """
     obj_list = []
-    for item in page_obj.object_list:
-        serializer = TastedRecordListSerializer if isinstance(item, TastedRecord) else PostListSerializer
-        obj_list.append(serializer(item, context={"request": request}).data)
-
+    for item in page_obj_list:
+        if isinstance(item, TastedRecord):
+            obj_list.append(serialize_tasted_record_list(item, request))
+        else:
+            obj_list.append(serialize_post_list(item, request))
     return obj_list
 
 
@@ -83,7 +96,6 @@ def get_post_feed_queryset(user, add_filter=None, exclude_filter=None, subject=N
             is_user_liked=Exists(is_user_liked_post_subquery),
             is_user_noted=Exists(is_user_noted_post_subquery),
         )
-        .order_by("-id")
     )
 
 
@@ -106,7 +118,6 @@ def get_tasted_record_feed_queryset(user, add_filter=None, exclude_filter=None):
             is_user_liked=Exists(is_user_liked_tasted_record_subquery),
             is_user_noted=Exists(is_user_noted_tasted_record_subquery),
         )
-        .order_by("-id")
     )
 
 
@@ -121,13 +132,15 @@ def get_following_feed(request, user):
     # 1. 팔로우한 유저의 시음기록, 게시글
     tr_add_filter = {"author__in": following_users, "is_private": False, "created_at__gte": one_hour_ago}
     following_tasted_records = get_tasted_record_feed_queryset(user, tr_add_filter, None)
+    following_tasted_records_order = following_tasted_records.order_by("-id")
 
     p_add_filter = {"author__in": following_users, "created_at__gte": one_hour_ago}
     following_posts = get_post_feed_queryset(user, p_add_filter, None, None)
+    following_posts_order = following_posts.order_by("-id")
 
     # 2. 조회하지 않은 시음기록, 게시글
-    not_viewed_tasted_records = get_not_viewed_data(request, following_tasted_records, "tasted_record_viewed")
-    not_viewed_posts = get_not_viewed_data(request, following_posts, "post_viewed")
+    not_viewed_tasted_records = get_not_viewed_data(request, following_tasted_records_order, "tasted_record_viewed")
+    not_viewed_posts = get_not_viewed_data(request, following_posts_order, "post_viewed")
 
     # 3. 1 + 2
     combined_data = list(chain(not_viewed_tasted_records, not_viewed_posts))
@@ -151,11 +164,14 @@ def get_common_feed(request, user):
 
     # 1. 팔로우하지 않은 유저들의 시음기록, 게시글
     common_tasted_records = get_tasted_record_feed_queryset(user, add_filter, exclude_filter)
+    common_tasted_records_order = common_tasted_records.order_by("-id")
+
     common_posts = get_post_feed_queryset(user, None, exclude_filter, None)
+    common_posts_order = common_posts.order_by("-id")
 
     # 2. 조회하지 않은 시음기록, 게시글
-    not_viewd_tasted_records = get_not_viewed_data(request, common_tasted_records, "tasted_record_viewed")
-    not_viewd_posts = get_not_viewed_data(request, common_posts, "post_viewed")
+    not_viewd_tasted_records = get_not_viewed_data(request, common_tasted_records_order, "tasted_record_viewed")
+    not_viewd_posts = get_not_viewed_data(request, common_posts_order, "post_viewed")
 
     # 3. 1 + 2 (최신순 done)
     combined_data = list(chain(not_viewd_tasted_records, not_viewd_posts))
@@ -169,36 +185,50 @@ def get_refresh_feed(user):
     프라이빗한 시음기록은 제외
     """
 
-    is_user_liked_tasted_record_subquery = get_user_liked_tasted_record_queryset(user)
-    is_user_noted_tasted_record_subquery = get_user_noted_tasted_record_queryset(user)
+    tasted_records = get_tasted_record_feed_queryset(user, {"is_private": False}, None)
+    tasted_records_order = tasted_records.order_by("?")
 
-    tasted_records = (
+    posts = get_post_feed_queryset(user, None, None, None)
+    posts_order = posts.order_by("?")
+
+    combined_data = list(chain(tasted_records_order, posts_order))
+    random.shuffle(combined_data)
+
+    return combined_data
+
+
+def get_annonymous_tasted_records_feed():
+    return (
         TastedRecord.objects.filter(is_private=False)
         .select_related("author", "bean", "taste_review")
         .prefetch_related("comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .annotate(
             likes=Count("like_cnt", distinct=True),
             comments=Count("comment", distinct=True),
-            is_user_liked=Exists(is_user_liked_tasted_record_subquery),
-            is_user_noted=Exists(is_user_noted_tasted_record_subquery),
+            is_user_liked=Value(False, output_field=BooleanField()),
+            is_user_noted=Value(False, output_field=BooleanField()),
         )
         .order_by("?")
     )
 
-    is_user_liked_post_subquery = get_user_liked_post_queryset(user)
-    is_user_noted_post_subquery = get_user_noted_post_queryset(user)
 
-    posts = (
+def get_annonymous_posts_feed():
+    return (
         Post.objects.select_related("author")
         .prefetch_related("tasted_records", "comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
         .annotate(
             likes=Count("like_cnt", distinct=True),
             comments=Count("comment", distinct=True),
-            is_user_liked=Exists(is_user_liked_post_subquery),
-            is_user_noted=Exists(is_user_noted_post_subquery),
+            is_user_liked=Value(False, output_field=BooleanField()),
+            is_user_noted=Value(False, output_field=BooleanField()),
         )
         .order_by("?")
     )
+
+
+def annonymous_user_feed():
+    tasted_records = get_annonymous_tasted_records_feed()
+    posts = get_annonymous_posts_feed()
 
     combined_data = list(chain(tasted_records, posts))
     random.shuffle(combined_data)
@@ -215,12 +245,14 @@ def get_tasted_record_feed(request, user):
 
     # 1. 팔로우한 유저의 시음기록
     followed_tasted_records = get_tasted_record_feed_queryset(user, mixin_filter, None)
+    followed_tasted_records_order = followed_tasted_records.order_by("-id")
 
     # 2. 팔로우하지 않은 유저의 시음기록
     not_followed_tasted_records = get_tasted_record_feed_queryset(user, private_false_filter, following_users_filter)
+    not_followed_tasted_records_order = not_followed_tasted_records.order_by("-id")
 
     # 3. 1 + 2 (최신순 done)
-    tasted_records = list(chain(followed_tasted_records, not_followed_tasted_records))
+    tasted_records = list(chain(followed_tasted_records_order, not_followed_tasted_records_order))
 
     # 4. 조회하지 않은 시음기록
     not_viewd_tasted_records = get_not_viewed_data(request, tasted_records, "tasted_record_viewed")
@@ -247,12 +279,14 @@ def get_post_feed(request, user, subject):
     # 1. 팔로우한 유저의 게시글
     following_users_filter = {"author__in": following_users}
     followed_posts = get_post_feed_queryset(user, following_users_filter, None, subject)
+    followed_posts_order = followed_posts.order_by("-id")
 
     # 2. 팔로우하지 않은 유저의 게시글
     not_followed_posts = get_post_feed_queryset(user, None, following_users_filter, subject)
+    not_followed_posts_order = not_followed_posts.order_by("-id")
 
     # 3.  1 + 2 (최신순 done)
-    posts = list(chain(followed_posts, not_followed_posts))
+    posts = list(chain(followed_posts_order, not_followed_posts_order))
 
     # 4. 조회하지 않은 게시글
     not_viewed_posts = get_not_viewed_data(request, posts, "post_viewed")

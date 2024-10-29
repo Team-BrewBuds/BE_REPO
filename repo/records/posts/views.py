@@ -14,10 +14,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from repo.common.serializers import PageNumberSerializer
-from repo.common.utils import delete, get_object
+from repo.common.utils import delete, get_object, get_paginated_response_with_class
 from repo.common.view_counter import update_view_count
 from repo.records.posts.serializers import *
-from repo.records.services import get_post_detail, get_post_feed
+from repo.records.services import (
+    get_annonymous_posts_feed,
+    get_post_detail,
+    get_post_feed,
+)
 
 
 @extend_schema_view(
@@ -62,6 +66,7 @@ from repo.records.services import get_post_detail, get_post_feed
             Notice:
             - like_cnt에서 likes로 변경
             - comments(댓글 수), is_user_noted(사용자 저장여부) 추가 됨
+            - 비회원일경우 랜덤으로 게시글을 가져옵니다. (subject 쿼리 파라미터 미사용)
 
             담당자: hwstar1204
         """,
@@ -82,18 +87,17 @@ class PostListCreateAPIView(APIView):
     """게시글 리스트 조회, 생성 API"""
 
     def get(self, request):
-        subject = request.query_params.get("subject")
+        user = request.user
+        if not user.is_authenticated:
+            posts = get_annonymous_posts_feed()
+            return get_paginated_response_with_class(request, posts, PostListSerializer)
 
+        subject = request.query_params.get("subject")
         subject_mapping = dict(Post.SUBJECT_TYPE_CHOICES)
         subject_value = subject_mapping.get(subject, None)
 
         posts = get_post_feed(request, request.user, subject_value)
-
-        paginator = PageNumberPagination()
-        paginated_posts = paginator.paginate_queryset(posts, request)
-
-        serializer = PostListSerializer(paginated_posts, many=True, context={"request": request})
-        return paginator.get_paginated_response(serializer.data)
+        return get_paginated_response_with_class(request, posts, PostListSerializer)
 
     def post(self, request):
         serializer = PostCreateUpdateSerializer(data=request.data)
