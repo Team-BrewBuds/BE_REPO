@@ -23,16 +23,27 @@ from repo.records.posts.serializers import PostListSerializer
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
-def get_serialized_data(request, page_obj):
+def serialize_tasted_record_list(item, request):
+    """TastedRecord 객체를 시리얼라이즈하는 함수"""
+    return TastedRecordListSerializer(item, context={"request": request}).data
+
+
+def serialize_post_list(item, request):
+    """Post 객체를 시리얼라이즈하는 함수"""
+    return PostListSerializer(item, context={"request": request}).data
+
+
+def get_serialized_data(request, page_obj_list):
     """
     페이지 객체를 받아 시리얼라이즈된 데이터를 반환하는 함수
     게시글 리스트 or 시음기록 리스트
     """
     obj_list = []
-    for item in page_obj.object_list:
-        serializer = TastedRecordListSerializer if isinstance(item, TastedRecord) else PostListSerializer
-        obj_list.append(serializer(item, context={"request": request}).data)
-
+    for item in page_obj_list:
+        if isinstance(item, TastedRecord):
+            obj_list.append(serialize_tasted_record_list(item, request))
+        else:
+            obj_list.append(serialize_post_list(item, request))
     return obj_list
 
 
