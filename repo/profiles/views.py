@@ -7,7 +7,7 @@ from allauth.socialaccount.providers.naver import views as naver_view
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
-from django.db import transaction
+from django.db import models, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
@@ -486,13 +486,13 @@ class BudyRecommendAPIView(APIView):
         else:
             category = random.choice(true_categories)
 
-        user_list = (
-            CustomUser.objects.select_related("user_detail").filter(user_detail__coffee_life__contains={category: True}).order_by("?")[:10]
+        recommend_user_list = (
+            CustomUser.objects.select_related("user_detail")
+            .only("user_detail__coffee_life")
+            .filter(user_detail__coffee_life__contains={category: True})
+            .annotate(follower_cnt=models.Count("relationships_to", filter=models.Q(relationships_to__relationship_type="follow")))
+            .order_by("?")[:10]
         )
-
-        recommend_user_list = []
-        for user in user_list:
-            recommend_user_list.append({"user": user, "follower_cnt": Relationship.objects.followers(user).count()})
 
         serializer = BudyRecommendSerializer(recommend_user_list, many=True)
         response_data = {"users": serializer.data, "category": category}
