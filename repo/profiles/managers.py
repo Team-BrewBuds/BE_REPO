@@ -1,5 +1,5 @@
 from django.contrib.auth.models import BaseUserManager
-from django.db import models
+from django.db import models, transaction
 from django.shortcuts import get_object_or_404
 
 
@@ -44,8 +44,22 @@ class RelationshipManager(models.Manager):
         relationship = self.filter(from_user=from_user, to_user=to_user, relationship_type="follow")
         if relationship.exists():
             relationship.delete()
-            return relationship.first(), True
-        return None, False
+            return True
+        return False
+
+    @transaction.atomic
+    def block(self, from_user, to_user):
+        _ = self.unfollow(from_user, to_user)
+
+        relationship, created = self.get_or_create(from_user=from_user, to_user=to_user, relationship_type="block")
+        return relationship, created
+
+    def unblock(self, from_user, to_user):
+        relationship = self.filter(from_user=from_user, to_user=to_user, relationship_type="block")
+        if relationship.exists():
+            relationship.delete()
+            return True
+        return False
 
     def following(self, user_id):  # 팔로우한 사용자
         return self.filter(from_user=user_id, relationship_type="follow")

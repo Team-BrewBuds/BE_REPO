@@ -20,6 +20,7 @@ from repo.records.tasted_record.serializers import UserTastedRecordSerializer
 
 Profile_Tag = "profiles"
 Follow_Tag = "follow"
+Block_Tag = "block"
 Recommend_Tag = "recommend"
 Profile_Records_Tag = "profile_records"
 
@@ -139,6 +140,40 @@ class FollowListCreateDeleteSchema:
         get=follow_list_create_delete_get_schema,
         post=follow_list_create_delete_post_schema,
         delete=follow_list_create_delete_delete_schema,
+    )
+
+
+class BlockListCreateDeleteSchema:
+
+    block_list_create_delete_post_schema = extend_schema(
+        responses={
+            201: OpenApiResponse(description="success block"),
+            409: OpenApiResponse(description="User is already blocked"),
+        },
+        summary="차단",
+        description="""
+            특정 사용자를 차단합니다. (팔로우 관계였다면 팔로우도 강제 취소됩니다.)
+            담당자 : hwstar1204
+        """,
+        tags=[Block_Tag],
+    )
+
+    block_list_create_delete_delete_schema = extend_schema(
+        responses={
+            200: OpenApiResponse(description="success unblock"),
+            404: OpenApiResponse(description="User is not blocking"),
+        },
+        summary="차단 취소",
+        description="""
+            특정 사용자의 차단을 취소합니다.
+            담당자 : hwstar1204
+        """,
+        tags=[Block_Tag],
+    )
+
+    block_list_create_delete_schema_view = extend_schema_view(
+        post=block_list_create_delete_post_schema,
+        delete=block_list_create_delete_delete_schema,
     )
 
 

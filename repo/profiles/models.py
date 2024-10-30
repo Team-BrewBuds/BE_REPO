@@ -120,7 +120,6 @@ class Relationship(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일")
 
     objects = RelationshipManager()
-    # objects = models.Manager()
 
     def __str__(self):
         return f"{self.from_user.nickname} {self.get_relationship_type_display()} {self.to_user.nickname}"

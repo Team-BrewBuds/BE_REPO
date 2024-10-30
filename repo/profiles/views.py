@@ -450,10 +450,35 @@ class FollowListCreateDeleteAPIView(APIView):
         user = request.user
         following_user = get_object_or_404(CustomUser, id=id)
 
-        relationship, deleted = Relationship.objects.unfollow(user, following_user)
-        if not deleted:
+        is_deleted = Relationship.objects.unfollow(user, following_user)
+        if not is_deleted:
             return Response({"error": "not following"}, status=status.HTTP_404_NOT_FOUND)
         return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
+
+
+@BlockListCreateDeleteSchema.block_list_create_delete_schema_view
+class BlockListCreateDeleteAPIView(APIView):
+
+    def get(self, request, id):
+        pass
+
+    def post(self, request, id):
+        user = request.user
+        target_user = get_object_or_404(CustomUser, id=id)
+
+        relationship, created = Relationship.objects.block(user, target_user)
+        if not created:
+            return Response({"error": "User is already blocked"}, status=status.HTTP_409_CONFLICT)
+        return Response({"success": "block"}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, id):
+        user = request.user
+        block_user = get_object_or_404(CustomUser, id=id)
+
+        is_deleted = Relationship.objects.unblock(user, block_user)
+        if not is_deleted:
+            return Response({"error": "User is not blocking"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"success": "unblock"}, status=status.HTTP_200_OK)
 
 
 @BudyRecommendSchema.budy_recommend_schema_view
