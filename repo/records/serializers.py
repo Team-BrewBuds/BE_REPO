@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from repo.profiles.serializers import UserSimpleSerializer
-from repo.records.models import Comment, Note, Post, TastedRecord
+from repo.records.models import Comment, Note, Post, Report, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
@@ -74,3 +74,17 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ["id", "content", "parent", "author", "like_cnt", "created_at", "replies", "is_user_liked"]
+
+
+class ReportSerializer(serializers.ModelSerializer):
+    author = serializers.CharField(source="author.nickname", read_only=True)
+    target_author = serializers.CharField(read_only=True)
+
+    def validate(self, data):
+        report = Report(**data)
+        report.clean()
+        return data
+
+    class Meta:
+        model = Report
+        fields = ["author", "target_author", "object_type", "object_id", "reason"]

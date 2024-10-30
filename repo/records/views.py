@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
@@ -9,7 +10,7 @@ from repo.common.serializers import PhotoSerializer
 from repo.common.utils import delete, get_paginated_response_with_func, update
 from repo.records.models import Comment, Note, Photo, Post, TastedRecord
 from repo.records.schemas import *
-from repo.records.serializers import CommentSerializer
+from repo.records.serializers import CommentSerializer, ReportSerializer
 from repo.records.services import (
     annonymous_user_feed,
     get_comment,
@@ -17,6 +18,7 @@ from repo.records.services import (
     get_common_feed,
     get_following_feed,
     get_post_or_tasted_record_detail,
+    get_post_or_tasted_record_or_comment,
     get_refresh_feed,
     get_serialized_data,
 )
@@ -233,3 +235,26 @@ class ImageApiView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(f"{delete_cnt} photos deleted successfully", status=status.HTTP_204_NO_CONTENT)
+
+
+@ReportSchema.report_schema_view
+class ReportApiView(APIView):
+    @transaction.atomic
+    def post(self, request):
+        serializer = ReportSerializer(data=request.data)
+        if serializer.is_valid():
+            object_type = serializer.validated_data["object_type"]
+            object_id = serializer.validated_data["object_id"]
+
+            target_object = get_post_or_tasted_record_or_comment(object_type, object_id)
+            target_aurhor = target_object.author
+
+            serializer.save(author=request.user, object_type=object_type, object_id=object_id, reason=serializer.validated_data["reason"])
+            response_data = serializer.data
+            response_data["target_author"] = target_aurhor.nickname
+
+            # email send logic (신고사유, 신고 대상 내용, 신고 대상 작성자 정보, 신고자 정보)
+            # send_report_email()
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
