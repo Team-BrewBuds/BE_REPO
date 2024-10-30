@@ -33,9 +33,8 @@ class TastedRecord(models.Model):
 class Post(models.Model):
     # fmt: off
     SUBJECT_TYPE_CHOICES = (
-        ("일반", "normal"), ("카페", "cafe"),
-        ("원두", "bean"), ("정보", "info"),
-        ("질문", "question"), ("고민", "worry"),
+        ("일반", "normal"), ("카페", "cafe"), ("원두", "bean"),
+        ("정보", "info"), ("질문", "question"), ("고민", "worry"), ("장비", "gear"),
     )
     # fmt: on
 
@@ -127,3 +126,44 @@ class Note(models.Model):
         db_table = "note"
         verbose_name = "노트"
         verbose_name_plural = "노트"
+
+
+class Report(models.Model):
+    class ReportObjectType(models.TextChoices):
+        POST = "post", "게시글"
+        COMMENT = "comment", "댓글"
+        TASTED_RECORD = "tasted_record", "시음 기록"
+
+    class ReportStatus(models.TextChoices):
+        PENDING = "pending", "대기 중"
+        PROCESSING = "processing", "처리 중"
+        COMPLETED = "completed", "완료됨"
+
+    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
+    object_type = models.CharField(max_length=50, choices=ReportObjectType.choices, verbose_name="신고 대상 종류")
+    object_id = models.PositiveIntegerField(verbose_name="신고 대상 ID")
+    reason = models.TextField(verbose_name="신고 사유")
+    status = models.CharField(max_length=50, choices=ReportStatus.choices, default=ReportStatus.PENDING, verbose_name="신고 처리 상태")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="신고 일자")
+
+    def clean(self):
+        model_map = {
+            self.ReportObjectType.POST: Post,
+            self.ReportObjectType.COMMENT: Comment,
+            self.ReportObjectType.TASTED_RECORD: TastedRecord,
+        }
+        model = model_map.get(self.ReportObjectType(self.object_type))
+        if not model or not model.objects.filter(id=self.object_id).exists():
+            raise ValueError(f"{self.get_object_type_display()}이(가) 존재하지 않습니다.")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Report: {self.id} - {self.get_status_display()}"
+
+    class Meta:
+        db_table = "report"
+        verbose_name = "신고"
+        verbose_name_plural = "신고"

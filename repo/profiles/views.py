@@ -7,7 +7,7 @@ from allauth.socialaccount.providers.naver import views as naver_view
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
-from django.db import transaction
+from django.db import models, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
@@ -473,51 +473,28 @@ class BudyRecommendAPIView(APIView):
     """
 
     def get(self, request):
-        # 테스트용 데이터 (추후 삭제 필요)
-        test_users = CustomUser.objects.order_by("?")[:20]
-        test_json_data = {"users": [], "category": "cafe_tour"}
-        for user in test_users:
-            test_json_data["users"].append(
-                {
-                    "user": {
-                        "id": user.id,
-                        "nickname": user.nickname if user.nickname else user.email,
-                        "profile_image": user.profile_image.url if user.profile_image else None,
-                    },
-                    "follower_cnt": Relationship.objects.followers(user).count(),
-                }
-            )
-
-        return Response(test_json_data, status=status.HTTP_200_OK)
-        # ---------------------------------------------------
         user = request.user
+        if not user.is_authenticated:
+            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
         user_detail = get_object_or_404(UserDetail, user=user)
         coffee_life_helper = user_detail.get_coffee_life_helper()
         true_categories = coffee_life_helper.get_true_categories()
 
         if not true_categories:
-            # 커피 생활을 선택하지 않은 경우 무작위 카테고리에 해당 하는 유저 리스트 반환
-            random_category = random.choice(UserDetail.COFFEE_LIFE_CHOICES)
-            user_list = (
-                CustomUser.objects.select_related("user_detail")
-                .filter(user_detail__coffee_life__contains={random_category: True})
-                .order_by("?")[:10]
-            )
+            category = random.choice(UserDetail.COFFEE_LIFE_CHOICES)
         else:
-            random_true_category = random.choice(true_categories)
-            user_list = (
-                CustomUser.objects.select_related("user_detail")
-                .filter(user_detail__coffee_life__contains={random_true_category: True})
-                .order_by("?")[:10]
-            )
+            category = random.choice(true_categories)
 
-        recommend_user_list = []
-        for user in user_list:
-            recommend_user_list.append({"user": user, "follower_cnt": Relationship.objects.followers(user).count()})
+        recommend_user_list = (
+            CustomUser.objects.select_related("user_detail")
+            .only("user_detail__coffee_life")
+            .filter(user_detail__coffee_life__contains={category: True})
+            .annotate(follower_cnt=models.Count("relationships_to", filter=models.Q(relationships_to__relationship_type="follow")))
+            .order_by("?")[:10]
+        )
 
         serializer = BudyRecommendSerializer(recommend_user_list, many=True)
-        category = random_true_category if true_categories else random_category
         response_data = {"users": serializer.data, "category": category}
 
         return Response(response_data, status=status.HTTP_200_OK)

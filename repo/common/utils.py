@@ -1,9 +1,10 @@
 from datetime import timedelta
-from typing import Optional, Tuple, Type
+from typing import Callable, Optional, Tuple, Type
 
-from django.db.models import Model
+from django.db.models import Model, QuerySet
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import Serializer
@@ -93,6 +94,42 @@ def delete(request: Request, pk: int, model: Type[Model]) -> Response:
 
     data.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def get_paginated_response_with_func(request: Request, queryset: QuerySet, serializer_func: Callable) -> Response:
+    """
+    페이지네이션된 응답을 생성하는 매서드 (직렬화 객체 사용)
+
+    Args:
+        request (Request): 클라이언트로부터의 요청 객체
+        queryset (QuerySet): 페이지네이션할 쿼리셋
+        serializer_func (Serializer): 데이터를 직렬화할 직렬화 객체 생성 매서드
+
+    Returns:
+        Response: 페이지네이션된 응답
+    """
+    paginator = PageNumberPagination()
+    data = paginator.paginate_queryset(queryset, request)
+    serialized_data = serializer_func(request, data)
+    return paginator.get_paginated_response(serialized_data)
+
+
+def get_paginated_response_with_class(request: Request, queryset: QuerySet, serializer_class: Type[Serializer]) -> Response:
+    """
+    페이지네이션된 응답을 생성하는 매서드 (직렬화 클래스 사용)
+
+    Args:
+        request (Request): 클라이언트로부터의 요청 객체
+        queryset (QuerySet): 페이지네이션할 쿼리셋
+        serializer_class (Type[Serializer]): 데이터를 직렬화할 직렬화 클래스
+
+    Returns:
+        Response: 페이지네이션된 응답
+    """
+    paginator = PageNumberPagination()
+    data = paginator.paginate_queryset(queryset, request)
+    serialized_data = serializer_class(data, many=True, context={"request": request}).data
+    return paginator.get_paginated_response(serialized_data)
 
 
 def get_time_difference(object_created_at: timezone) -> str:

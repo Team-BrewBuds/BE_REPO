@@ -172,6 +172,7 @@ class BudyRecommendSchema:
                 ],
                 description="Success",
             ),
+            401: OpenApiResponse(description="user not authenticated"),
             404: OpenApiResponse(description="Not Found"),
         },
         tags=[Recommend_Tag],

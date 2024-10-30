@@ -2,16 +2,19 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import status
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from repo.beans.models import Bean, BeanTasteReview
 from repo.common.serializers import PageNumberSerializer
-from repo.common.utils import delete, get_object
+from repo.common.utils import delete, get_object, get_paginated_response_with_class
 from repo.common.view_counter import update_view_count
 from repo.records.models import TastedRecord
-from repo.records.services import get_tasted_record_detail, get_tasted_record_feed
+from repo.records.services import (
+    get_annonymous_tasted_records_feed,
+    get_tasted_record_detail,
+    get_tasted_record_feed,
+)
 from repo.records.tasted_record.serializers import (
     TastedRecordCreateUpdateSerializer,
     TastedRecordDetailSerializer,
@@ -36,6 +39,7 @@ from repo.records.tasted_record.service import update_tasted_record
             Notice:
             - like_cnt에서 likes로 변경
             - comments(댓글 수), is_user_noted(사용자 저장여부) 추가 됨
+            - 비회원일경우 랜덤으로 시음기록을 가져옵니다.
 
             담당자: hwstar1204
         """,
@@ -72,13 +76,13 @@ class TastedRecordListCreateAPIView(APIView):
     """
 
     def get(self, request, *args, **kwargs):
+        user = request.user
+        if not user.is_authenticated:
+            tasted_records = get_annonymous_tasted_records_feed()
+            return get_paginated_response_with_class(request, tasted_records, TastedRecordListSerializer)
+
         tasted_records = get_tasted_record_feed(request, request.user)
-
-        paginator = PageNumberPagination()
-        paginated_tasted_records = paginator.paginate_queryset(tasted_records, request)
-
-        serializer = TastedRecordListSerializer(paginated_tasted_records, many=True, context={"request": request})
-        return paginator.get_paginated_response(serializer.data)
+        return get_paginated_response_with_class(request, tasted_records, TastedRecordListSerializer)
 
     def post(self, request):
         serializer = TastedRecordCreateUpdateSerializer(data=request.data)

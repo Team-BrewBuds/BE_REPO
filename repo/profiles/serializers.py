@@ -109,7 +109,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
 
 class BudyRecommendSerializer(serializers.ModelSerializer):
-    user = UserSimpleSerializer()
+    user = UserSimpleSerializer(source="*")
     follower_cnt = serializers.IntegerField()
 
     class Meta:
