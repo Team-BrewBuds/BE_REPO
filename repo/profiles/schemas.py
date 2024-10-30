@@ -9,6 +9,7 @@ from drf_spectacular.utils import (
 
 from repo.beans.serializers import UserBeanSerializer
 from repo.profiles.serializers import (
+    UserBlockListSerializer,
     UserFollowListSerializer,
     UserProfileSerializer,
     UserUpdateSerializer,
@@ -141,6 +142,23 @@ class FollowListCreateDeleteSchema:
         post=follow_list_create_delete_post_schema,
         delete=follow_list_create_delete_delete_schema,
     )
+
+
+class BlockListSchema:
+    block_list_get_schema = extend_schema(
+        responses={
+            200: UserBlockListSerializer(many=True),
+            401: OpenApiResponse(description="user not authenticated"),
+        },
+        summary="자신의 차단 리스트 조회",
+        description="""
+            사용자의 차단 리스트를 조회합니다.
+            담당자 : hwstar1204
+        """,
+        tags=[Block_Tag],
+    )
+
+    block_list_schema_view = extend_schema_view(get=block_list_get_schema)
 
 
 class BlockListCreateDeleteSchema:

@@ -20,11 +20,12 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from repo.beans.serializers import UserBeanSerializer
-from repo.common.utils import get_first_photo_url
+from repo.common.utils import get_first_photo_url, get_paginated_response_with_class
 from repo.profiles.models import CustomUser, Relationship, UserDetail
 from repo.profiles.schemas import *
 from repo.profiles.serializers import (
     BudyRecommendSerializer,
+    UserBlockListSerializer,
     UserDetailSignupSerializer,
     UserFollowListSerializer,
     UserProfileSerializer,
@@ -456,11 +457,21 @@ class FollowListCreateDeleteAPIView(APIView):
         return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
 
 
+@BlockListSchema.block_list_schema_view
+class BlockListAPIView(APIView):
+
+    def get(self, request):
+        user = request.user
+        if not user.is_authenticated:
+            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        queryset = Relationship.objects.blocking(user)
+        print(queryset.values())
+        return get_paginated_response_with_class(request, queryset, UserBlockListSerializer)
+
+
 @BlockListCreateDeleteSchema.block_list_create_delete_schema_view
 class BlockListCreateDeleteAPIView(APIView):
-
-    def get(self, request, id):
-        pass
 
     def post(self, request, id):
         user = request.user

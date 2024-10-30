@@ -94,6 +94,14 @@ class UserFollowListSerializer(UserSimpleSerializer):
         fields = UserSimpleSerializer.Meta.fields + ["is_following"]
 
 
+class UserBlockListSerializer(serializers.Serializer):
+    user = UserSimpleSerializer(source="to_user")
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        return representation["user"]
+
+
 class UserDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserDetail
