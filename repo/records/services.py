@@ -314,6 +314,12 @@ def get_post_or_tasted_record_detail(object_type, object_id):
     return obj
 
 
+def get_post_or_tasted_record_or_comment(object_type, object_id):
+    model_map = {"post": Post, "tasted_record": TastedRecord, "comment": Comment}
+    model_class = model_map.get(object_type)
+    return get_object_or_404(model_class, pk=object_id)
+
+
 def get_comment_list(object_type, object_id):
     obj = get_post_or_tasted_record_detail(object_type, object_id)
 
