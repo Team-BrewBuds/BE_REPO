@@ -386,17 +386,8 @@ class OtherProfileAPIView(APIView):
         if not request_user.is_authenticated:
             return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        user = CustomUser.objects.get_user_and_user_detail(id=id)
-        data = {
-            "nickname": user.nickname,
-            "profile_image": user.profile_image,
-            "coffee_life": user.user_detail.coffee_life,
-            "follower_cnt": Relationship.objects.followers(user).count(),
-            "following_cnt": Relationship.objects.following(user).count(),
-            "post_cnt": user.post_set.count(),
-            "is_user_following": Relationship.objects.check_relationship(request_user, user, "follow"),
-            "is_user_blocking": Relationship.objects.check_relationship(request_user, user, "block"),
-        }
+        request_user_id, other_user_id = request_user.id, id
+        data = get_other_user_profile(request_user_id, other_user_id)
 
         serializer = UserProfileSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)

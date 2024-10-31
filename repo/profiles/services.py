@@ -20,6 +20,31 @@ def get_user_profile(id):
     return user_profile
 
 
+def get_other_user_profile(request_user_id, other_user_id):
+    from django.db.models import Exists
+
+    user_profile = (
+        CustomUser.objects.filter(id=request_user_id)
+        .select_related("user_detail")
+        .prefetch_related("post_set", "relationships_to__from_user", "relationships_from__to_user")  # followers  # following
+        .annotate(
+            coffee_life=models.F("user_detail__coffee_life"),
+            follower_cnt=models.Count("relationships_to", filter=models.Q(relationships_to__relationship_type="follow")),
+            following_cnt=models.Count("relationships_from", filter=models.Q(relationships_from__relationship_type="follow")),
+            post_cnt=models.Count("post"),
+            is_user_following=Exists(
+                Relationship.objects.filter(from_user_id=request_user_id, to_user_id=other_user_id, relationship_type="follow")
+            ),
+            is_user_blocking=Exists(
+                Relationship.objects.filter(from_user_id=request_user_id, to_user_id=other_user_id, relationship_type="block")
+            ),
+        )
+        .first()
+    )
+
+    return user_profile
+
+
 def get_following_list(user, is_mine):
     """사용자가 팔로우한 유저 리스트 반환"""
     followings = Relationship.objects.following(user).all()
