@@ -28,7 +28,10 @@ Profile_Records_Tag = "profile_records"
 
 class ProfileSchema:
     my_profile_get_schema = extend_schema(
-        responses={200: UserProfileSerializer},
+        responses={
+            200: UserProfileSerializer,
+            401: OpenApiResponse(description="user not authenticated"),
+        },
         summary="자기 프로필 조회",
         description="""
             현재 로그인한 사용자의 프로필을 조회합니다.
@@ -61,6 +64,7 @@ class OtherProfileSchema:
     other_proflie_get_schema = extend_schema(
         responses={
             200: UserProfileSerializer,
+            401: OpenApiResponse(description="user not authenticated"),
             404: OpenApiResponse(description="Not Found"),
         },
         summary="상대 프로필 조회",

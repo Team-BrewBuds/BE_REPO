@@ -342,6 +342,9 @@ class SignupView(APIView):
 class MyProfileAPIView(APIView):
     def get(self, request):
         user = request.user
+        if not user.is_authenticated:
+            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
         data = {
             "nickname": user.nickname,
             "profile_image": user.profile_image,
@@ -383,6 +386,9 @@ class MyProfileAPIView(APIView):
 class OtherProfileAPIView(APIView):
     def get(self, request, id):
         request_user = request.user
+        if not request_user.is_authenticated:
+            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
         user = CustomUser.objects.get_user_and_user_detail(id=id)
         data = {
             "nickname": user.nickname,
