@@ -95,11 +95,9 @@ class UserProfileSerializer(UserSimpleSerializer):
         ]
 
 
-class UserFollowListSerializer(UserSimpleSerializer):
+class UserFollowListSerializer(serializers.Serializer):
+    user = UserSimpleSerializer()
     is_following = serializers.BooleanField()
-
-    class Meta(UserSimpleSerializer.Meta):
-        fields = UserSimpleSerializer.Meta.fields + ["is_following"]
 
 
 class UserBlockListSerializer(serializers.Serializer):

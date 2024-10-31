@@ -33,10 +33,9 @@ from repo.profiles.serializers import (
     UserUpdateSerializer,
 )
 from repo.profiles.services import (
-    get_follower_list,
-    get_following_list,
     get_other_user_profile,
     get_user_profile,
+    get_user_relationships_by_follow_type,
 )
 from repo.records.filters import BeanFilter, TastedRecordFilter
 from repo.records.models import Post
@@ -397,21 +396,24 @@ class OtherProfileAPIView(APIView):
 @FollowListSchema.follow_list_schema_view
 class FollowListAPIView(APIView):
     def get(self, request):
-        page = request.query_params.get("page", 1)
-        follow_type = request.query_params.get("type")  # 쿼리 파라미터로 type을 받음
+        follow_type = request.query_params.get("type")
         user = request.user
 
-        if follow_type == "following":
-            data = get_following_list(user, True)
-        elif follow_type == "follower":
-            data = get_follower_list(user)
-        else:
+        data = get_user_relationships_by_follow_type(user, follow_type)
+        if data is None:
             return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
         paginator = PageNumberPagination()
-        page_obj = paginator.paginate_queryset(data, request)
+        data = paginator.paginate_queryset(data, request)
+        serialized_data = [
+            {
+                "user": relationship.from_user if follow_type == "follower" else relationship.to_user,
+                "is_following": relationship.is_following,
+            }
+            for relationship in data
+        ]
 
-        serializer = UserFollowListSerializer(page_obj, many=True)
+        serializer = UserFollowListSerializer(serialized_data, many=True)
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -421,17 +423,21 @@ class FollowListCreateDeleteAPIView(APIView):
         follow_type = request.query_params.get("type")
         user = get_object_or_404(CustomUser, id=id)
 
-        if follow_type == "following":
-            data = get_following_list(user, False)
-        elif follow_type == "follower":
-            data = get_follower_list(user)
-        else:
+        data = get_user_relationships_by_follow_type(user, follow_type)
+        if data is None:
             return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
         paginator = PageNumberPagination()
-        page_obj = paginator.paginate_queryset(data, request)
+        data = paginator.paginate_queryset(data, request)
+        serialized_data = [
+            {
+                "user": relationship.from_user if follow_type == "follower" else relationship.to_user,
+                "is_following": relationship.is_following,
+            }
+            for relationship in data
+        ]
 
-        serializer = UserFollowListSerializer(page_obj, many=True)
+        serializer = UserFollowListSerializer(serialized_data, many=True)
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, id):

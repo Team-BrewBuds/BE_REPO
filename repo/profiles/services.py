@@ -37,34 +37,40 @@ def get_other_user_profile(request_user_id, other_user_id):
     )
 
 
-def get_following_list(user, is_mine):
+def get_following_list(user):
     """사용자가 팔로우한 유저 리스트 반환"""
-    followings = Relationship.objects.following(user).all()
-    # 자신의 팔로잉은 모두 True로 설정
-    is_following = True if is_mine else Relationship.objects.check_relationship(user, user, "follow")
+    followings = (
+        Relationship.objects.following(user)
+        .select_related("to_user")
+        .annotate(
+            is_following=Exists(
+                Relationship.objects.filter(from_user=user, to_user_id=models.OuterRef("to_user_id"), relationship_type="follow")
+            )
+        )
+    )
 
-    data = [
-        {
-            "id": u.to_user.id,
-            "nickname": u.to_user.nickname,
-            "profile_image": u.to_user.profile_image,
-            "is_following": is_following,
-        }
-        for u in followings
-    ]
-    return data
+    return followings
 
 
 def get_follower_list(user):
     """사용자를 팔로우한 유저 리스트 반환"""
-    followers = Relationship.objects.followers(user).all()
-    data = [
-        {
-            "id": u.from_user.id,
-            "nickname": u.from_user.nickname,
-            "profile_image": u.from_user.profile_image,
-            "is_following": Relationship.objects.check_relationship(user, u.from_user, "follow"),
-        }
-        for u in followers
-    ]
-    return data
+    followers = (
+        Relationship.objects.followers(user)
+        .select_related("from_user")
+        .annotate(
+            is_following=Exists(
+                Relationship.objects.filter(from_user=user, to_user_id=models.OuterRef("from_user_id"), relationship_type="follow")
+            ),
+        )
+    )
+
+    return followers
+
+
+def get_user_relationships_by_follow_type(user, follow_type):
+    if follow_type == "following":
+        return get_following_list(user)
+    elif follow_type == "follower":
+        return get_follower_list(user)
+
+    return None

@@ -8,6 +8,7 @@ from drf_spectacular.utils import (
 )
 
 from repo.beans.serializers import UserBeanSerializer
+from repo.common.serializers import PageNumberSerializer
 from repo.profiles.serializers import (
     UserBlockListSerializer,
     UserFollowListSerializer,
@@ -83,7 +84,7 @@ class OtherProfileSchema:
 
 class FollowListSchema:
     follow_list_get_schema = extend_schema(
-        parameters=[OpenApiParameter(name="type", type=str, enum=["following", "follower"])],
+        parameters=[PageNumberSerializer, OpenApiParameter(name="type", type=str, enum=["following", "follower"])],
         responses={
             200: UserFollowListSerializer(many=True),
             400: OpenApiResponse(description="Bad Request"),
@@ -93,6 +94,7 @@ class FollowListSchema:
         description="""
             사용자의 팔로잉/팔로워 리스트를 조회합니다.
             type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
+            notice : 페이지네이션 query parameter를 사용할 수 있습니다.
             담당자 : hwstar1204
         """,
         tags=[Follow_Tag],
@@ -103,7 +105,7 @@ class FollowListSchema:
 
 class FollowListCreateDeleteSchema:
     follow_list_create_delete_get_schema = extend_schema(
-        parameters=[OpenApiParameter(name="type", type=str, enum=["following", "follower"])],
+        parameters=[PageNumberSerializer, OpenApiParameter(name="type", type=str, enum=["following", "follower"])],
         responses={
             200: UserFollowListSerializer(many=True),
             400: OpenApiResponse(description="Bad Request"),
@@ -113,6 +115,7 @@ class FollowListCreateDeleteSchema:
         description="""
             특정 사용자의 팔로잉/팔로워 리스트를 조회합니다.
             id 파라미터로 사용자의 id를 받고, type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
+            notice : 페이지네이션 query parameter를 사용할 수 있습니다.
             담당자 : hwstar1204
         """,
         tags=[Follow_Tag],
