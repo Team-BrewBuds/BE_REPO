@@ -35,6 +35,7 @@ from repo.profiles.serializers import (
 from repo.profiles.services import (
     get_follower_list,
     get_following_list,
+    get_other_user_profile,
     get_user_profile,
 )
 from repo.records.filters import BeanFilter, TastedRecordFilter
