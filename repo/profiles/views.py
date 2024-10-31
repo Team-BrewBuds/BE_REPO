@@ -32,7 +32,11 @@ from repo.profiles.serializers import (
     UserSignupSerializer,
     UserUpdateSerializer,
 )
-from repo.profiles.services import get_follower_list, get_following_list
+from repo.profiles.services import (
+    get_follower_list,
+    get_following_list,
+    get_user_profile,
+)
 from repo.records.filters import BeanFilter, TastedRecordFilter
 from repo.records.models import Post
 from repo.records.posts.serializers import UserPostSerializer
@@ -345,16 +349,9 @@ class MyProfileAPIView(APIView):
         if not user.is_authenticated:
             return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        data = {
-            "nickname": user.nickname,
-            "profile_image": user.profile_image,
-            "coffee_life": user.user_detail.coffee_life,
-            "follower_cnt": Relationship.objects.followers(user).count(),
-            "following_cnt": Relationship.objects.following(user).count(),
-            "post_cnt": user.post_set.count(),
-        }
+        profile = get_user_profile(user.id)
 
-        serializer = UserProfileSerializer(data)
+        serializer = UserProfileSerializer(profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @transaction.atomic
