@@ -1,5 +1,6 @@
 from django.contrib.auth.models import BaseUserManager
 from django.db import models, transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
 
@@ -33,10 +34,25 @@ class CustomUserManager(BaseUserManager):
 
 class RelationshipManager(models.Manager):
 
+    # 일방향 관계 확인
     def check_relationship(self, from_user, to_user, relationship_type):
         return self.filter(from_user=from_user, to_user=to_user, relationship_type=relationship_type).exists()
 
+    # 양방향 관계 확인
+    def double_check_relationships(self, from_user, to_user, relationship_type):
+        relationship_exists = self.filter(
+            Q(from_user=from_user, to_user=to_user, relationship_type=relationship_type)
+            | Q(from_user=to_user, to_user=from_user, relationship_type=relationship_type)
+        ).exists()
+
+        return relationship_exists
+
     def follow(self, from_user, to_user):
+        # 둘 중 한명이 차단하고 있는 경우 팔로우 불가
+        block_exists = self.double_check_relationships(from_user, to_user, "block")
+        if block_exists:
+            return None, False
+
         relationship, created = self.get_or_create(from_user=from_user, to_user=to_user, relationship_type="follow")
         return relationship, created
 

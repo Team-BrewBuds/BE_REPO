@@ -443,8 +443,10 @@ class FollowListCreateDeleteAPIView(APIView):
         follow_user = get_object_or_404(CustomUser, id=id)
 
         relationship, created = Relationship.objects.follow(user, follow_user)
-        if not created:
-            return Response({"error": "already following"}, status=status.HTTP_409_CONFLICT)
+        if not relationship:
+            return Response({"error": "user is blocking or blocked"}, status=status.HTTP_403_FORBIDDEN)
+        elif not created:
+            return Response({"error": "user is already following"}, status=status.HTTP_409_CONFLICT)
         return Response({"success": "follow"}, status=status.HTTP_201_CREATED)
 
     def delete(self, request, id):
@@ -453,7 +455,7 @@ class FollowListCreateDeleteAPIView(APIView):
 
         is_deleted = Relationship.objects.unfollow(user, following_user)
         if not is_deleted:
-            return Response({"error": "not following"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "user is not following"}, status=status.HTTP_404_NOT_FOUND)
         return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
 
 
@@ -466,7 +468,6 @@ class BlockListAPIView(APIView):
             return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
         queryset = Relationship.objects.blocking(user)
-        print(queryset.values())
         return get_paginated_response_with_class(request, queryset, UserBlockListSerializer)
 
 

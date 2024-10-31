@@ -114,11 +114,13 @@ class FollowListCreateDeleteSchema:
     follow_list_create_delete_post_schema = extend_schema(
         responses={
             201: OpenApiResponse(description="success follow"),
-            409: OpenApiResponse(description="already following"),
+            403: OpenApiResponse(description="user is blocking or blocked"),
+            409: OpenApiResponse(description="user is already following"),
         },
         summary="팔로우",
         description="""
             특정 사용자를 팔로우합니다.
+            notie : 차단 관계에서 팔로우를 시도하면 403 에러가 발생합니다.
             담당자 : hwstar1204
         """,
         tags=[Follow_Tag],
@@ -127,7 +129,7 @@ class FollowListCreateDeleteSchema:
     follow_list_create_delete_delete_schema = extend_schema(
         responses={
             200: OpenApiResponse(description="success unfollow"),
-            404: OpenApiResponse(description="not following"),
+            404: OpenApiResponse(description="user is not following"),
         },
         summary="팔로우 취소",
         description="""
