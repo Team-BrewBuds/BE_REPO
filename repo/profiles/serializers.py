@@ -82,9 +82,17 @@ class UserProfileSerializer(UserSimpleSerializer):
     follower_cnt = serializers.IntegerField()
     post_cnt = serializers.IntegerField()
     is_user_following = serializers.BooleanField(required=False)
+    is_user_blocking = serializers.BooleanField(required=False)
 
     class Meta(UserSimpleSerializer.Meta):
-        fields = UserSimpleSerializer.Meta.fields + ["coffee_life", "following_cnt", "follower_cnt", "post_cnt", "is_user_following"]
+        fields = UserSimpleSerializer.Meta.fields + [
+            "coffee_life",
+            "following_cnt",
+            "follower_cnt",
+            "post_cnt",
+            "is_user_following",
+            "is_user_blocking",
+        ]
 
 
 class UserFollowListSerializer(UserSimpleSerializer):

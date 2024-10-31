@@ -392,6 +392,7 @@ class OtherProfileAPIView(APIView):
             "following_cnt": Relationship.objects.following(user).count(),
             "post_cnt": user.post_set.count(),
             "is_user_following": Relationship.objects.check_relationship(request_user, user, "follow"),
+            "is_user_blocking": Relationship.objects.check_relationship(request_user, user, "block"),
         }
 
         serializer = UserProfileSerializer(data)
