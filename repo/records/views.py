@@ -1,13 +1,17 @@
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from repo.common.serializers import PhotoSerializer
-from repo.common.utils import delete, get_paginated_response_with_func, update
+from repo.common.utils import (
+    delete,
+    get_paginated_response_with_class,
+    get_paginated_response_with_func,
+    update,
+)
 from repo.records.models import Comment, Note, Photo, Post, TastedRecord
 from repo.records.schemas import *
 from repo.records.serializers import CommentSerializer, ReportSerializer
@@ -127,13 +131,10 @@ class CommentApiView(APIView):
     """
 
     def get(self, request, object_type, object_id):
-        comments = get_comment_list(object_type, object_id)
+        user = request.user
+        comments = get_comment_list(object_type, object_id, user)
 
-        paginator = PageNumberPagination()
-        page_obj = paginator.paginate_queryset(comments, request)
-
-        serializer = CommentSerializer(page_obj, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return get_paginated_response_with_class(request, comments, CommentSerializer)
 
     def post(self, request, object_type, object_id):
         """

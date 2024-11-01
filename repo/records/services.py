@@ -49,11 +49,6 @@ def get_serialized_data(request, page_obj_list):
     return obj_list
 
 
-def get_following_users(user):
-    """사용자가 팔로우한 유저 리스트를 가져오는 함수"""
-    return Relationship.objects.following(user.id).values_list("to_user", flat=True)
-
-
 def get_not_viewed_data(request, queryset, cookie_name):
     """조회하지 않은 데이터를 가져오는 함수"""
     return [data for data in queryset if not is_viewed(request, cookie_name=cookie_name, content_id=data.id)]
@@ -126,7 +121,7 @@ def get_following_feed(request, user):
     사용자가 팔로잉한 유저들의 1시간 이내 작성한 시음기록과 게시글을 랜덤순으로 가져오는 함수
     30분이내 조회한 기록, 프라이빗한 시음기록은 제외
     """
-    following_users = get_following_users(user)
+    following_users = Relationship.objects.get_following_users(user.id)
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
     # 1. 팔로우한 유저의 시음기록, 게시글
@@ -157,12 +152,13 @@ def get_common_feed(request, user):
     30분이내 조회한 기록, 프라이빗한 시음기록은 제외
     팔로잉한 유저 기록 제외
     """
-    following_users = get_following_users(user)
+    following_users = Relationship.objects.get_following_users(user.id)
+    block_users = Relationship.objects.get_unique_blocked_users(user.id)
 
     add_filter = {"is_private": False}
-    exclude_filter = {"author__in": following_users}
+    exclude_filter = {"author__in": list(chain(following_users, block_users))}
 
-    # 1. 팔로우하지 않은 유저들의 시음기록, 게시글
+    # 1. 팔로우하지 않고 차단하지 않은 유저들의 시음기록, 게시글
     common_tasted_records = get_tasted_record_feed_queryset(user, add_filter, exclude_filter)
     common_tasted_records_order = common_tasted_records.order_by("-id")
 
@@ -174,8 +170,7 @@ def get_common_feed(request, user):
     not_viewd_posts = get_not_viewed_data(request, common_posts_order, "post_viewed")
 
     # 3. 1 + 2 (최신순 done)
-    combined_data = list(chain(not_viewd_tasted_records, not_viewd_posts))
-
+    combined_data = sorted(chain(not_viewd_tasted_records, not_viewd_posts), key=lambda x: x.created_at, reverse=True)
     return combined_data
 
 
@@ -184,11 +179,14 @@ def get_refresh_feed(user):
     시음기록과 게시글을 랜덤순으로 가져오는 함수
     프라이빗한 시음기록은 제외
     """
+    block_users = Relationship.objects.get_unique_blocked_users(user.id)
+    private_filter = {"is_private": False}
+    block_filter = {"author__in": block_users}
 
-    tasted_records = get_tasted_record_feed_queryset(user, {"is_private": False}, None)
+    tasted_records = get_tasted_record_feed_queryset(user, add_filter=private_filter, exclude_filter=block_filter)
     tasted_records_order = tasted_records.order_by("?")
 
-    posts = get_post_feed_queryset(user, None, None, None)
+    posts = get_post_feed_queryset(user, add_filter=None, exclude_filter=block_filter, subject=None)
     posts_order = posts.order_by("?")
 
     combined_data = list(chain(tasted_records_order, posts_order))
@@ -237,18 +235,22 @@ def annonymous_user_feed():
 
 
 def get_tasted_record_feed(request, user):
-    following_users = get_following_users(user)
+    following_users = Relationship.objects.get_following_users(user.id)
+    block_users = Relationship.objects.get_unique_blocked_users(user.id)
 
     following_users_filter = {"author__in": following_users}
     private_false_filter = {"is_private": False}
     mixin_filter = {**following_users_filter, **private_false_filter}
 
     # 1. 팔로우한 유저의 시음기록
-    followed_tasted_records = get_tasted_record_feed_queryset(user, mixin_filter, None)
+    followed_tasted_records = get_tasted_record_feed_queryset(user, add_filter=mixin_filter, exclude_filter=None)
     followed_tasted_records_order = followed_tasted_records.order_by("-id")
 
-    # 2. 팔로우하지 않은 유저의 시음기록
-    not_followed_tasted_records = get_tasted_record_feed_queryset(user, private_false_filter, following_users_filter)
+    # 2. 팔로우하지 않고 차단하지 않은 유저의 시음기록
+    following_and_block_users_filter = {"author__in": list(chain(following_users, block_users))}
+    not_followed_tasted_records = get_tasted_record_feed_queryset(
+        user, add_filter=private_false_filter, exclude_filter=following_and_block_users_filter
+    )
     not_followed_tasted_records_order = not_followed_tasted_records.order_by("-id")
 
     # 3. 1 + 2 (최신순 done)
@@ -274,15 +276,17 @@ def get_tasted_record_detail(pk):
 
 def get_post_feed(request, user, subject):
     """사용자가 팔로우한 유저와 추가 게시글을 가져오는 함수"""
-    following_users = get_following_users(user)
+    following_users = Relationship.objects.get_following_users(user.id)
+    block_users = Relationship.objects.get_unique_blocked_users(user.id)
 
     # 1. 팔로우한 유저의 게시글
     following_users_filter = {"author__in": following_users}
-    followed_posts = get_post_feed_queryset(user, following_users_filter, None, subject)
+    followed_posts = get_post_feed_queryset(user, add_filter=following_users_filter, exclude_filter=None, subject=subject)
     followed_posts_order = followed_posts.order_by("-id")
 
-    # 2. 팔로우하지 않은 유저의 게시글
-    not_followed_posts = get_post_feed_queryset(user, None, following_users_filter, subject)
+    # 2. 팔로우하지 않고 차단하지않은 유저의 게시글
+    following_and_block_users_filter = {"author__in": list(chain(following_users, block_users))}
+    not_followed_posts = get_post_feed_queryset(user, add_filter=None, exclude_filter=following_and_block_users_filter, subject=subject)
     not_followed_posts_order = not_followed_posts.order_by("-id")
 
     # 3.  1 + 2 (최신순 done)
@@ -305,6 +309,31 @@ def get_post_detail(post_id):
     return post
 
 
+def get_top_subject_weekly_posts(user, subject):
+    """특정 주제의 게시글 중 일주일 안에 조회수 상위 60개를 가져오는 함수"""
+    time_threshold = timezone.now() - timedelta(days=7)
+    top_posts_base = Post.objects.filter(created_at__gte=time_threshold).annotate(
+        likes=Count("like_cnt", distinct=True),
+        comments=Count("comment", distinct=True),
+    )
+
+    if subject:
+        top_posts_base = top_posts_base.filter(subject=subject)
+    if user is None:
+        return top_posts_base.order_by("-view_cnt")[:60]
+
+    block_users = Relationship.objects.get_unique_blocked_users(user.id)
+    top_posts = (
+        top_posts_base.exclude(author__in=block_users)
+        .annotate(
+            is_user_liked=Exists(get_user_liked_post_queryset(user)),
+        )
+        .order_by("-view_cnt")[:60]
+    )
+
+    return top_posts
+
+
 def get_post_or_tasted_record_detail(object_type, object_id):
     if object_type == "post":
         obj = get_object_or_404(Post, pk=object_id)
@@ -320,12 +349,13 @@ def get_post_or_tasted_record_or_comment(object_type, object_id):
     return get_object_or_404(model_class, pk=object_id)
 
 
-def get_comment_list(object_type, object_id):
+def get_comment_list(object_type, object_id, user):
     obj = get_post_or_tasted_record_detail(object_type, object_id)
+    block_users = Relationship.objects.get_unique_blocked_users(user.id)
 
-    comments = obj.comment_set.filter(parent=None).order_by("created_at")
+    comments = obj.comment_set.filter(parent=None).exclude(author__in=block_users).order_by("id")
     for comment in comments:
-        comment.replies_list = comment.replies.all().order_by("created_at")
+        comment.replies_list = comment.replies.exclude(author__in=block_users).order_by("id")
 
     return comments
 

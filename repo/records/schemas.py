@@ -54,6 +54,8 @@ class FeedSchema:
             - like_cnt에서 likes로 변경
             - comments(댓글 수), is_user_noted(사용자 저장여부) 추가 됨
             - 비회원일경우 랜덤으로 시음기록을 가져옵니다. (feed_type 쿼리 파라미터 미사용)
+            - 차단하거나 나를 차단한 사용자의 글은 제외됩니다.
+            - **common에서 시음기록 다음 게시글이 나오는 버그가 해결되어 두 리스트가 섞여서 최신순으로 나옵니다.**
 
             담당자 : hwstar1204
         """,
@@ -173,6 +175,7 @@ class CommentSchema:
             - object_type : "post" 또는 "tasted_record"
             - object_id : 댓글을 처리할 객체의 ID
             - content : 댓글 내용
+            notice : 차단한 사용자의 댓글은 제외됩니다.
             담당자: hwstar1204
         """,
         tags=[Comment_Tag],

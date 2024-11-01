@@ -30,15 +30,11 @@ class PostListSerializer(serializers.ModelSerializer):
 class TopPostSerializer(PostListSerializer):
     """인기 게시글 리스트 조회용"""
 
-    like_cnt = serializers.IntegerField(source="like_cnt.count")
-    comment_cnt = serializers.SerializerMethodField()
-
-    def get_comment_cnt(self, obj):
-        return obj.comment_cnt()
-
-    class Meta:
-        model = Post
-        fields = ["id", "author", "title", "content", "subject", "tag", "photos", "like_cnt", "comment_cnt", "is_user_liked"]
+    def get_fields(self):
+        fields = super().get_fields()
+        for field in ["is_user_noted", "like_cnt", "tasted_records"]:
+            fields.pop(field, None)
+        return fields
 
 
 class PostCreateUpdateSerializer(serializers.ModelSerializer):

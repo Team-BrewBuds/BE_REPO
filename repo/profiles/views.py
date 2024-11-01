@@ -20,18 +20,23 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from repo.beans.serializers import UserBeanSerializer
-from repo.common.utils import get_first_photo_url
+from repo.common.utils import get_first_photo_url, get_paginated_response_with_class
 from repo.profiles.models import CustomUser, Relationship, UserDetail
 from repo.profiles.schemas import *
 from repo.profiles.serializers import (
     BudyRecommendSerializer,
+    UserBlockListSerializer,
     UserDetailSignupSerializer,
     UserFollowListSerializer,
     UserProfileSerializer,
     UserSignupSerializer,
     UserUpdateSerializer,
 )
-from repo.profiles.services import get_follower_list, get_following_list
+from repo.profiles.services import (
+    get_other_user_profile,
+    get_user_profile,
+    get_user_relationships_by_follow_type,
+)
 from repo.records.filters import BeanFilter, TastedRecordFilter
 from repo.records.models import Post
 from repo.records.posts.serializers import UserPostSerializer
@@ -341,16 +346,12 @@ class SignupView(APIView):
 class MyProfileAPIView(APIView):
     def get(self, request):
         user = request.user
-        data = {
-            "nickname": user.nickname,
-            "profile_image": user.profile_image,
-            "coffee_life": user.user_detail.coffee_life,
-            "follower_cnt": Relationship.objects.followers(user).count(),
-            "following_cnt": Relationship.objects.following(user).count(),
-            "post_cnt": user.post_set.count(),
-        }
+        if not user.is_authenticated:
+            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        serializer = UserProfileSerializer(data)
+        profile = get_user_profile(user.id)
+
+        serializer = UserProfileSerializer(profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @transaction.atomic
@@ -382,16 +383,11 @@ class MyProfileAPIView(APIView):
 class OtherProfileAPIView(APIView):
     def get(self, request, id):
         request_user = request.user
-        user = CustomUser.objects.get_user_and_user_detail(id=id)
-        data = {
-            "nickname": user.nickname,
-            "profile_image": user.profile_image,
-            "coffee_life": user.user_detail.coffee_life,
-            "follower_cnt": Relationship.objects.followers(user).count(),
-            "following_cnt": Relationship.objects.following(user).count(),
-            "post_cnt": user.post_set.count(),
-            "is_user_following": Relationship.objects.check_relationship(request_user, user, "follow"),
-        }
+        if not request_user.is_authenticated:
+            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        request_user_id, other_user_id = request_user.id, id
+        data = get_other_user_profile(request_user_id, other_user_id)
 
         serializer = UserProfileSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -400,21 +396,24 @@ class OtherProfileAPIView(APIView):
 @FollowListSchema.follow_list_schema_view
 class FollowListAPIView(APIView):
     def get(self, request):
-        page = request.query_params.get("page", 1)
-        follow_type = request.query_params.get("type")  # 쿼리 파라미터로 type을 받음
+        follow_type = request.query_params.get("type")
         user = request.user
 
-        if follow_type == "following":
-            data = get_following_list(user, True)
-        elif follow_type == "follower":
-            data = get_follower_list(user)
-        else:
+        data = get_user_relationships_by_follow_type(user, follow_type)
+        if data is None:
             return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
         paginator = PageNumberPagination()
-        page_obj = paginator.paginate_queryset(data, request)
+        data = paginator.paginate_queryset(data, request)
+        serialized_data = [
+            {
+                "user": relationship.from_user if follow_type == "follower" else relationship.to_user,
+                "is_following": relationship.is_following,
+            }
+            for relationship in data
+        ]
 
-        serializer = UserFollowListSerializer(page_obj, many=True)
+        serializer = UserFollowListSerializer(serialized_data, many=True)
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -424,17 +423,21 @@ class FollowListCreateDeleteAPIView(APIView):
         follow_type = request.query_params.get("type")
         user = get_object_or_404(CustomUser, id=id)
 
-        if follow_type == "following":
-            data = get_following_list(user, False)
-        elif follow_type == "follower":
-            data = get_follower_list(user)
-        else:
+        data = get_user_relationships_by_follow_type(user, follow_type)
+        if data is None:
             return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
         paginator = PageNumberPagination()
-        page_obj = paginator.paginate_queryset(data, request)
+        data = paginator.paginate_queryset(data, request)
+        serialized_data = [
+            {
+                "user": relationship.from_user if follow_type == "follower" else relationship.to_user,
+                "is_following": relationship.is_following,
+            }
+            for relationship in data
+        ]
 
-        serializer = UserFollowListSerializer(page_obj, many=True)
+        serializer = UserFollowListSerializer(serialized_data, many=True)
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, id):
@@ -442,18 +445,54 @@ class FollowListCreateDeleteAPIView(APIView):
         follow_user = get_object_or_404(CustomUser, id=id)
 
         relationship, created = Relationship.objects.follow(user, follow_user)
-        if not created:
-            return Response({"error": "already following"}, status=status.HTTP_409_CONFLICT)
+        if not relationship:
+            return Response({"error": "user is blocking or blocked"}, status=status.HTTP_403_FORBIDDEN)
+        elif not created:
+            return Response({"error": "user is already following"}, status=status.HTTP_409_CONFLICT)
         return Response({"success": "follow"}, status=status.HTTP_201_CREATED)
 
     def delete(self, request, id):
         user = request.user
         following_user = get_object_or_404(CustomUser, id=id)
 
-        relationship, deleted = Relationship.objects.unfollow(user, following_user)
-        if not deleted:
-            return Response({"error": "not following"}, status=status.HTTP_404_NOT_FOUND)
+        is_deleted = Relationship.objects.unfollow(user, following_user)
+        if not is_deleted:
+            return Response({"error": "user is not following"}, status=status.HTTP_404_NOT_FOUND)
         return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
+
+
+@BlockListSchema.block_list_schema_view
+class BlockListAPIView(APIView):
+
+    def get(self, request):
+        user = request.user
+        if not user.is_authenticated:
+            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        queryset = Relationship.objects.blocking(user)
+        return get_paginated_response_with_class(request, queryset, UserBlockListSerializer)
+
+
+@BlockListCreateDeleteSchema.block_list_create_delete_schema_view
+class BlockListCreateDeleteAPIView(APIView):
+
+    def post(self, request, id):
+        user = request.user
+        target_user = get_object_or_404(CustomUser, id=id)
+
+        relationship, created = Relationship.objects.block(user, target_user)
+        if not created:
+            return Response({"error": "User is already blocked"}, status=status.HTTP_409_CONFLICT)
+        return Response({"success": "block"}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, id):
+        user = request.user
+        block_user = get_object_or_404(CustomUser, id=id)
+
+        is_deleted = Relationship.objects.unblock(user, block_user)
+        if not is_deleted:
+            return Response({"error": "User is not blocking"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"success": "unblock"}, status=status.HTTP_200_OK)
 
 
 @BudyRecommendSchema.budy_recommend_schema_view
