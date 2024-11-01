@@ -170,8 +170,7 @@ def get_common_feed(request, user):
     not_viewd_posts = get_not_viewed_data(request, common_posts_order, "post_viewed")
 
     # 3. 1 + 2 (최신순 done)
-    combined_data = list(chain(not_viewd_tasted_records, not_viewd_posts))
-
+    combined_data = sorted(chain(not_viewd_tasted_records, not_viewd_posts), key=lambda x: x.created_at, reverse=True)
     return combined_data
 
 
