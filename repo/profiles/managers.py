@@ -84,8 +84,7 @@ class RelationshipManager(models.Manager):
         return self.filter(to_user=user_id, relationship_type="follow")
 
     def get_following_users(self, user_id):
-        following_users = self.filter(from_user=user_id, relationship_type="follow").values_list("to_user", flat=True)
-        return following_users
+        return self.filter(from_user=user_id, relationship_type="follow").values_list("to_user", flat=True)
 
     def blocking(self, user_id):  # 차단한 사용자
         return self.filter(from_user=user_id, relationship_type="block")
@@ -95,9 +94,10 @@ class RelationshipManager(models.Manager):
 
     def get_unique_blocked_users(self, user_id):
         """내가 차단하거나 나를 차단한 사용자 리스트 조회"""
-        block_relationships = self.filter(Q(from_user=user_id) | Q(to_user=user_id), relationship_type="block").values_list(
-            "from_user", "to_user"
-        )
-        block_users = [to_user if from_user == user_id else from_user for from_user, to_user in block_relationships]
-        unique_block_users = set(block_users)
+        block_relationships = self.filter(Q(from_user=user_id) | Q(to_user=user_id), relationship_type="block")
+        blocking_users = list(block_relationships.values_list("to_user", flat=True))
+        blocked_users = list(block_relationships.values_list("from_user", flat=True))
+        unique_block_users = list(set(blocking_users + blocked_users))
+        unique_block_users.remove(user_id)
+
         return unique_block_users
