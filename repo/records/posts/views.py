@@ -9,7 +9,6 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 from rest_framework import status
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -21,6 +20,7 @@ from repo.records.services import (
     get_annonymous_posts_feed,
     get_post_detail,
     get_post_feed,
+    get_top_subject_weekly_posts,
 )
 
 
@@ -235,9 +235,14 @@ class TopSubjectPostsAPIView(APIView):
         responses={200: TopPostSerializer},
         summary="인기 게시글 조회",
         description="""
-            홈 [전체] - 주제별 조회수 상위 12개 인기 게시글 조회 API
+            홈 [전체] - 주제별 조회수 상위 60개 인기 게시글 조회 API
             - 정렬: 조회수
             - 페이지네이션 적용
+
+            notice:
+            - 필드명 변경 (like_cnt -> likes, comment_cnt -> comments)
+            - 필드 추가 (created_at, view_cnt)
+            - 차단 유저의 게시글은 제외합니다.
 
             담당자 : hwstar1204
         """,
@@ -271,16 +276,12 @@ class TopSubjectPostsAPIView(APIView):
         ],
     )
     def get(self, request):
+        user = request.user
         subject = request.query_params.get("subject")
 
         subject_mapping = dict(Post.SUBJECT_TYPE_CHOICES)
         subject_value = subject_mapping.get(subject, None)
 
         # TODO 캐시 적용
-        posts = Post.objects.get_top_subject_weekly_posts(subject_value)
-
-        paginator = PageNumberPagination()
-        paginated_posts = paginator.paginate_queryset(posts, request)
-
-        serializer = TopPostSerializer(paginated_posts, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        posts = get_top_subject_weekly_posts(user, subject_value)
+        return get_paginated_response_with_class(request, posts, TopPostSerializer)
