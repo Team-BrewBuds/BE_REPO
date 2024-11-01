@@ -54,6 +54,7 @@ class FeedSchema:
             - like_cnt에서 likes로 변경
             - comments(댓글 수), is_user_noted(사용자 저장여부) 추가 됨
             - 비회원일경우 랜덤으로 시음기록을 가져옵니다. (feed_type 쿼리 파라미터 미사용)
+            - 차단하거나 나를 차단한 사용자의 글은 제외됩니다.
 
             담당자 : hwstar1204
         """,

@@ -153,11 +153,12 @@ def get_common_feed(request, user):
     팔로잉한 유저 기록 제외
     """
     following_users = Relationship.objects.get_following_users(user.id)
+    block_users = Relationship.objects.get_unique_blocked_users(user.id)
 
     add_filter = {"is_private": False}
-    exclude_filter = {"author__in": following_users}
+    exclude_filter = {"author__in": list(chain(following_users, block_users))}
 
-    # 1. 팔로우하지 않은 유저들의 시음기록, 게시글
+    # 1. 팔로우하지 않고 차단하지 않은 유저들의 시음기록, 게시글
     common_tasted_records = get_tasted_record_feed_queryset(user, add_filter, exclude_filter)
     common_tasted_records_order = common_tasted_records.order_by("-id")
 
