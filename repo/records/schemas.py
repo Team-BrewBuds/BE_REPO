@@ -173,6 +173,7 @@ class CommentSchema:
             - object_type : "post" 또는 "tasted_record"
             - object_id : 댓글을 처리할 객체의 ID
             - content : 댓글 내용
+            notice : 차단한 사용자의 댓글은 제외됩니다.
             담당자: hwstar1204
         """,
         tags=[Comment_Tag],

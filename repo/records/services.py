@@ -320,12 +320,13 @@ def get_post_or_tasted_record_or_comment(object_type, object_id):
     return get_object_or_404(model_class, pk=object_id)
 
 
-def get_comment_list(object_type, object_id):
+def get_comment_list(object_type, object_id, user):
     obj = get_post_or_tasted_record_detail(object_type, object_id)
+    block_users = Relationship.objects.get_unique_blocked_users(user.id)
 
-    comments = obj.comment_set.filter(parent=None).order_by("created_at")
+    comments = obj.comment_set.filter(parent=None).exclude(author__in=block_users).order_by("id")
     for comment in comments:
-        comment.replies_list = comment.replies.all().order_by("created_at")
+        comment.replies_list = comment.replies.exclude(author__in=block_users).order_by("id")
 
     return comments
 
