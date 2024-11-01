@@ -179,11 +179,14 @@ def get_refresh_feed(user):
     시음기록과 게시글을 랜덤순으로 가져오는 함수
     프라이빗한 시음기록은 제외
     """
+    block_users = Relationship.objects.get_unique_blocked_users(user.id)
+    private_filter = {"is_private": False}
+    block_filter = {"author__in": block_users}
 
-    tasted_records = get_tasted_record_feed_queryset(user, {"is_private": False}, None)
+    tasted_records = get_tasted_record_feed_queryset(user, add_filter=private_filter, exclude_filter=block_filter)
     tasted_records_order = tasted_records.order_by("?")
 
-    posts = get_post_feed_queryset(user, None, None, None)
+    posts = get_post_feed_queryset(user, add_filter=None, exclude_filter=block_filter, subject=None)
     posts_order = posts.order_by("?")
 
     combined_data = list(chain(tasted_records_order, posts_order))
