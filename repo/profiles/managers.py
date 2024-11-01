@@ -83,6 +83,10 @@ class RelationshipManager(models.Manager):
     def followers(self, user_id):  # 나를 팔로우한 사용자
         return self.filter(to_user=user_id, relationship_type="follow")
 
+    def get_following_users(self, user_id):
+        following_users = self.filter(from_user=user_id, relationship_type="follow").values_list("to_user", flat=True)
+        return following_users
+
     def blocking(self, user_id):  # 차단한 사용자
         return self.filter(from_user=user_id, relationship_type="block")
 

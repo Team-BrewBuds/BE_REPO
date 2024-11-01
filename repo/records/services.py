@@ -49,11 +49,6 @@ def get_serialized_data(request, page_obj_list):
     return obj_list
 
 
-def get_following_users(user):
-    """사용자가 팔로우한 유저 리스트를 가져오는 함수"""
-    return Relationship.objects.following(user.id).values_list("to_user", flat=True)
-
-
 def get_not_viewed_data(request, queryset, cookie_name):
     """조회하지 않은 데이터를 가져오는 함수"""
     return [data for data in queryset if not is_viewed(request, cookie_name=cookie_name, content_id=data.id)]
@@ -126,7 +121,7 @@ def get_following_feed(request, user):
     사용자가 팔로잉한 유저들의 1시간 이내 작성한 시음기록과 게시글을 랜덤순으로 가져오는 함수
     30분이내 조회한 기록, 프라이빗한 시음기록은 제외
     """
-    following_users = get_following_users(user)
+    following_users = Relationship.objects.get_following_users(user.id)
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
     # 1. 팔로우한 유저의 시음기록, 게시글
@@ -157,7 +152,7 @@ def get_common_feed(request, user):
     30분이내 조회한 기록, 프라이빗한 시음기록은 제외
     팔로잉한 유저 기록 제외
     """
-    following_users = get_following_users(user)
+    following_users = Relationship.objects.get_following_users(user.id)
 
     add_filter = {"is_private": False}
     exclude_filter = {"author__in": following_users}
@@ -237,7 +232,7 @@ def annonymous_user_feed():
 
 
 def get_tasted_record_feed(request, user):
-    following_users = get_following_users(user)
+    following_users = Relationship.objects.get_following_users(user.id)
 
     following_users_filter = {"author__in": following_users}
     private_false_filter = {"is_private": False}
@@ -274,15 +269,17 @@ def get_tasted_record_detail(pk):
 
 def get_post_feed(request, user, subject):
     """사용자가 팔로우한 유저와 추가 게시글을 가져오는 함수"""
-    following_users = get_following_users(user)
+    following_users = Relationship.objects.get_following_users(user.id)
+    block_users = Relationship.objects.get_unique_blocked_users(user.id)
 
     # 1. 팔로우한 유저의 게시글
     following_users_filter = {"author__in": following_users}
     followed_posts = get_post_feed_queryset(user, following_users_filter, None, subject)
     followed_posts_order = followed_posts.order_by("-id")
 
-    # 2. 팔로우하지 않은 유저의 게시글
-    not_followed_posts = get_post_feed_queryset(user, None, following_users_filter, subject)
+    # 2. 팔로우하지 않고 차단하지않은 유저의 게시글
+    following_and_block_users_filter = {"author__in": following_users + block_users}
+    not_followed_posts = get_post_feed_queryset(user, None, following_and_block_users_filter, subject)
     not_followed_posts_order = not_followed_posts.order_by("-id")
 
     # 3.  1 + 2 (최신순 done)

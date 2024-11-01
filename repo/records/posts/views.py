@@ -96,7 +96,7 @@ class PostListCreateAPIView(APIView):
         subject_mapping = dict(Post.SUBJECT_TYPE_CHOICES)
         subject_value = subject_mapping.get(subject, None)
 
-        posts = get_post_feed(request, request.user, subject_value)
+        posts = get_post_feed(request, user, subject_value)
         return get_paginated_response_with_class(request, posts, PostListSerializer)
 
     def post(self, request):
