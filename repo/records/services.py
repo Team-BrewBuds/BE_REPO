@@ -233,17 +233,21 @@ def annonymous_user_feed():
 
 def get_tasted_record_feed(request, user):
     following_users = Relationship.objects.get_following_users(user.id)
+    block_users = Relationship.objects.get_unique_blocked_users(user.id)
 
     following_users_filter = {"author__in": following_users}
     private_false_filter = {"is_private": False}
     mixin_filter = {**following_users_filter, **private_false_filter}
 
     # 1. 팔로우한 유저의 시음기록
-    followed_tasted_records = get_tasted_record_feed_queryset(user, mixin_filter, None)
+    followed_tasted_records = get_tasted_record_feed_queryset(user, add_filter=mixin_filter, exclude_filter=None)
     followed_tasted_records_order = followed_tasted_records.order_by("-id")
 
-    # 2. 팔로우하지 않은 유저의 시음기록
-    not_followed_tasted_records = get_tasted_record_feed_queryset(user, private_false_filter, following_users_filter)
+    # 2. 팔로우하지 않고 차단하지 않은 유저의 시음기록
+    following_and_block_users_filter = {"author__in": list(chain(following_users, block_users))}
+    not_followed_tasted_records = get_tasted_record_feed_queryset(
+        user, add_filter=private_false_filter, exclude_filter=following_and_block_users_filter
+    )
     not_followed_tasted_records_order = not_followed_tasted_records.order_by("-id")
 
     # 3. 1 + 2 (최신순 done)
@@ -274,12 +278,12 @@ def get_post_feed(request, user, subject):
 
     # 1. 팔로우한 유저의 게시글
     following_users_filter = {"author__in": following_users}
-    followed_posts = get_post_feed_queryset(user, following_users_filter, None, subject)
+    followed_posts = get_post_feed_queryset(user, add_filter=following_users_filter, exclude_filter=None, subject=subject)
     followed_posts_order = followed_posts.order_by("-id")
 
     # 2. 팔로우하지 않고 차단하지않은 유저의 게시글
-    following_and_block_users_filter = {"author__in": following_users + block_users}
-    not_followed_posts = get_post_feed_queryset(user, None, following_and_block_users_filter, subject)
+    following_and_block_users_filter = {"author__in": list(chain(following_users, block_users))}
+    not_followed_posts = get_post_feed_queryset(user, add_filter=None, exclude_filter=following_and_block_users_filter, subject=subject)
     not_followed_posts_order = not_followed_posts.order_by("-id")
 
     # 3.  1 + 2 (최신순 done)
