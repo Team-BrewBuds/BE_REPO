@@ -243,6 +243,7 @@ class TopSubjectPostsAPIView(APIView):
             - 필드명 변경 (like_cnt -> likes, comment_cnt -> comments)
             - 필드 추가 (created_at, view_cnt)
             - 차단 유저의 게시글은 제외합니다.
+            - 비회원일 경우 예외 처리합니다. (subject 쿼리 파라미터 미사용)
 
             담당자 : hwstar1204
         """,
@@ -283,5 +284,9 @@ class TopSubjectPostsAPIView(APIView):
         subject_value = subject_mapping.get(subject, None)
 
         # TODO 캐시 적용
+        if not user.is_authenticated:
+            posts = get_top_subject_weekly_posts(None, subject_value)
+            return get_paginated_response_with_class(request, posts, TopPostSerializer)
+
         posts = get_top_subject_weekly_posts(user, subject_value)
         return get_paginated_response_with_class(request, posts, TopPostSerializer)

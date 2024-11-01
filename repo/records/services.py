@@ -311,23 +311,27 @@ def get_post_detail(post_id):
 
 def get_top_subject_weekly_posts(user, subject):
     """특정 주제의 게시글 중 일주일 안에 조회수 상위 60개를 가져오는 함수"""
-    block_users = Relationship.objects.get_unique_blocked_users(user.id)
     time_threshold = timezone.now() - timedelta(days=7)
-
-    top_posts = (
-        Post.objects.filter(created_at__gte=time_threshold)
-        .exclude(author__in=block_users)
-        .annotate(
-            is_user_liked=Exists(get_user_liked_post_queryset(user)),
-            likes=Count("like_cnt", distinct=True),
-            comments=Count("comment", distinct=True),
-        )
+    top_posts_base = Post.objects.filter(created_at__gte=time_threshold).annotate(
+        likes=Count("like_cnt", distinct=True),
+        comments=Count("comment", distinct=True),
     )
 
     if subject:
-        top_posts = top_posts.filter(subject=subject)
+        top_posts_base = top_posts_base.filter(subject=subject)
+    if user is None:
+        return top_posts_base.order_by("-view_cnt")[:60]
 
-    return top_posts.order_by("-view_cnt")[:60]
+    block_users = Relationship.objects.get_unique_blocked_users(user.id)
+    top_posts = (
+        top_posts_base.exclude(author__in=block_users)
+        .annotate(
+            is_user_liked=Exists(get_user_liked_post_queryset(user)),
+        )
+        .order_by("-view_cnt")[:60]
+    )
+
+    return top_posts
 
 
 def get_post_or_tasted_record_detail(object_type, object_id):
