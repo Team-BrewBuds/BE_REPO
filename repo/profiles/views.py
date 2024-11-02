@@ -560,7 +560,7 @@ class UserTastedRecordListView(generics.ListAPIView):
     serializer_class = UserTastedRecordSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = TastedRecordFilter
-    ordering_fields = ["-created_at", "-taste_review__star"]
+    ordering_fields = ["-created_at", "-taste_review__star", "-likes"]
 
     def get_queryset(self):
         user_id = self.kwargs.get("id")
