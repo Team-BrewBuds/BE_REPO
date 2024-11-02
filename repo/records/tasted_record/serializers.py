@@ -84,10 +84,11 @@ class UserTastedRecordSerializer(serializers.ModelSerializer):
     bean_name = serializers.CharField(source="bean.name")
     star = serializers.FloatField(source="taste_review.star")
     photo_url = serializers.SerializerMethodField()
+    likes = serializers.IntegerField()
 
     def get_photo_url(self, obj):
         return get_first_photo_url(obj)
 
     class Meta:
         model = TastedRecord
-        fields = ["id", "bean_name", "star", "photo_url"]
+        fields = ["id", "bean_name", "star", "photo_url", "likes"]
