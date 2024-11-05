@@ -50,6 +50,29 @@ def bean():
 
 
 @pytest.fixture
+def create_beans():
+    Bean.objects.bulk_create(
+        [
+            Bean(
+                name=f"Test Bean {i}",
+                bean_type="single",
+                is_decaf=False,
+                origin_country="Test origin Country",
+                extraction="Espresso",
+                roast_point=3,
+                process="Washed",
+                region="Yirgacheffe",
+                bev_type=True,
+                roastery="Test Roastery",
+                variety="Heirloom",
+            )
+            for i in range(30)
+        ]
+    )
+    Bean.objects.create(name="Special Bean", bean_type="blend", is_decaf=True)
+
+
+@pytest.fixture
 def bean_taste_review():
     return BeanTasteReview.objects.create(flavor="Test Flavor", body=3, acidity=3, bitterness=3, sweetness=3, star=3, place="Test Place")
 
