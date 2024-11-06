@@ -15,21 +15,52 @@ def api_client():
 
 
 @pytest.fixture
-def user():
-    return CustomUser.objects.create(
-        nickname="testuser", login_type="naver", email="user@example.com", profile_image="http://example.com/profile.jpg"
-    )
+def unauthenticated_user(api_client):
+    return api_client
 
 
 @pytest.fixture
-def following_user(user):
-    user2 = CustomUser.objects.create(
-        nickname="testuser2", login_type="kakao", email="following_user@example.com", profile_image="http://example.com/profile.jpg"
+def user(api_client):
+    user = CustomUser.objects.create(
+        nickname="testuser", login_type="naver", email="user@example.com", profile_image="http://example.com/profile.jpg"
+    )
+    UserDetail.objects.create(
+        user=user,
+        introduction="Test Introduction",
+        profile_link="http://example.com",
+        coffee_life=UserDetail.default_coffee_life(),
+        preferred_bean_taste=UserDetail.default_taste(),
+        is_certificated=False,
     )
 
-    Relationship.objects.create(from_user=user2, to_user=user, relationship_type="follow")
+    api_client.force_authenticate(user=user)
+    return user
 
-    return user2
+
+@pytest.fixture
+def other_user():
+    other_user = CustomUser.objects.create(
+        nickname="other_user", login_type="kakao", email="other@example.com", profile_image="http://example.com/profile.jpg"
+    )
+    UserDetail.objects.create(
+        user=other_user,
+        introduction="Test Introduction",
+        profile_link="http://example.com",
+        coffee_life=UserDetail.default_coffee_life(),
+        preferred_bean_taste=UserDetail.default_taste(),
+        is_certificated=False,
+    )
+    return other_user
+
+
+@pytest.fixture
+def following(user, other_user):
+    Relationship.objects.create(from_user=user, to_user=other_user, relationship_type="follow")
+
+
+@pytest.fixture
+def follower(user, other_user):
+    Relationship.objects.create(from_user=other_user, to_user=user, relationship_type="follow")
 
 
 @pytest.fixture
@@ -156,3 +187,8 @@ def multiple_users_with_coffee_life():
         )
         users.append(user)
     return users
+
+
+@pytest.fixture
+def create_posts_20(user):
+    return [Post.objects.create(author=user, title=f"Test Post {i}", content=f"Test Content {i}", subject="normal") for i in range(20)]
