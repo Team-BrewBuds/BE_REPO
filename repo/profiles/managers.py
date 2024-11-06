@@ -31,6 +31,27 @@ class CustomUserManager(BaseUserManager):
     def get_user_and_user_detail(self, id):
         return get_object_or_404(self.select_related("user_detail"), id=id)
 
+    def set_user(self, user, validated_data):
+        for field in validated_data:
+            setattr(user, field, validated_data[field])
+        user.save()
+
+        return user
+
+
+class UserDetailManager(models.Manager):
+
+    def get_user_detail(self, user):
+        return self.get(user=user)
+
+    def set_user_detail(self, user, validated_data):
+        user_detail = self.get_user_detail(user)
+        for field in validated_data:
+            setattr(user_detail, field, validated_data[field])
+
+        user_detail.save()
+        return user_detail
+
 
 class RelationshipManager(models.Manager):
 

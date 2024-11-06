@@ -360,22 +360,16 @@ class MyProfileAPIView(APIView):
         if not user.is_authenticated:
             return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+        serializer = UserUpdateSerializer(data=request.data, partial=True)
         if serializer.is_valid():
-            fields = ["nickname", "profile_image"]
-            for field in fields:
-                setattr(user, field, serializer.validated_data.get(field, getattr(user, field)))
-            user.save()
+            # TODO profile_image 처리 따로 빼기 (ImageField 처리)
+            user_validated_data = serializer.validated_data
+            user_detail_validated_data = user_validated_data.pop("user_detail", {})
 
-            user_detail_data = serializer.validated_data.get("user_detail", None)
-            if user_detail_data:
-                user_detail, created = UserDetail.objects.get_or_create(user=user)
-                fields = ["introduction", "profile_link", "coffee_life", "preferred_bean_taste", "is_certificated"]
-                for field in fields:
-                    setattr(user_detail, field, user_detail_data.get(field, getattr(user_detail, field)))
-                user_detail.save()
+            CustomUser.objects.set_user(user, user_validated_data)
+            UserDetail.objects.set_user_detail(user, user_detail_validated_data)
 
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(UserUpdateSerializer(user).data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
