@@ -140,7 +140,7 @@ class NoteSchema:
         },
         summary="노트 생성",
         description="""
-            object_type : "post" 또는 "tasted_record"
+            object_type : "post" 또는 "tasted_record" 또는 "bean"
             object_id : 노트를 처리할 객체의 ID
 
             담당자: hwstar1204
@@ -155,7 +155,7 @@ class NoteSchema:
         },
         summary="노트 삭제",
         description="""
-            object_type : "post" 또는 "tasted_record"
+            object_type : "post" 또는 "tasted_record" 또는 "bean"
             object_id : 노트를 처리할 객체의 ID
 
             담당자: hwstar1204
