@@ -361,16 +361,18 @@ class MyProfileAPIView(APIView):
             return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
         serializer = UserUpdateSerializer(data=request.data, partial=True)
-        if serializer.is_valid():
-            # TODO profile_image 처리 따로 빼기 (ImageField 처리)
-            user_validated_data = serializer.validated_data
-            user_detail_validated_data = user_validated_data.pop("user_detail", {})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        # TODO profile_image 처리 따로 빼기 (ImageField 처리)
+        user_validated_data = serializer.validated_data
+        user_detail_validated_data = user_validated_data.pop("user_detail", {})
+        try:
             CustomUser.objects.set_user(user, user_validated_data)
             UserDetail.objects.set_user_detail(user, user_detail_validated_data)
-
-            return Response(UserUpdateSerializer(user).data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(UserUpdateSerializer(user).data, status=status.HTTP_200_OK)
 
 
 @OtherProfileSchema.other_proflie_schema_view
