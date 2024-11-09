@@ -3,6 +3,7 @@ from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from repo.profiles.models import CustomUser, UserDetail
+from tests.factorys import CustomUserFactory
 
 
 @pytest.fixture
@@ -59,11 +60,22 @@ def create_user_detail():
     return _create_user_detail
 
 
+# @pytest.fixture
+# def authenticated_client(api_client, create_user):
+#     def _authenticated_client(user=None):
+#         if user is None:
+#             user = create_user()
+#         refresh = RefreshToken.for_user(user)
+#         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+#         return api_client, user
+
+#     return _authenticated_client
+
+
 @pytest.fixture
-def authenticated_client(api_client, create_user):
-    def _authenticated_client(user=None):
-        if user is None:
-            user = create_user()
+def authenticated_client(api_client):
+    def _authenticated_client():
+        user = CustomUserFactory()
         refresh = RefreshToken.for_user(user)
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
         return api_client, user

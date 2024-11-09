@@ -97,6 +97,7 @@ class BeanTasteReviewFactory(DjangoModelFactory):
 class TastedRecordFactory(DjangoModelFactory):
     class Meta:
         model = TastedRecord
+        skip_postgeneration_save = True
 
     author = factory.SubFactory(CustomUserFactory)
     bean = factory.SubFactory(BeanFactory)
@@ -107,6 +108,18 @@ class TastedRecordFactory(DjangoModelFactory):
     created_at = factory.Faker("date_time_this_year")
     tag = factory.LazyFunction(lambda: ",".join(fake.words(3)))
 
+    @factory.post_generation
+    def like_cnt(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for user in extracted:
+                self.like_cnt.add(user)
+        else:
+            for _ in range(random.randint(0, 10)):
+                self.like_cnt.add(CustomUserFactory())
+
 
 class PostFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -116,7 +129,7 @@ class PostFactory(factory.django.DjangoModelFactory):
     author = factory.SubFactory(CustomUserFactory)
     title = factory.LazyFunction(lambda: fake.sentence())
     content = factory.LazyFunction(lambda: fake.text())
-    subject = factory.Iterator(["일반", "카페", "원두", "정보", "질문", "고민", "장비"])
+    subject = factory.Iterator(["normal", "cafe", "bean", "info", "question", "worry", "gear"])
     view_cnt = factory.LazyFunction(lambda: fake.random_int(min=0, max=1000))
     created_at = factory.Faker("date_time_this_year")
     tag = factory.LazyFunction(lambda: ",".join(fake.words(3)))
@@ -134,6 +147,7 @@ class PostFactory(factory.django.DjangoModelFactory):
 class PhotoFactory(DjangoModelFactory):
     class Meta:
         model = Photo
+        skip_postgeneration_save = True
 
     photo_url = factory.django.ImageField()
     created_at = factory.Faker("date_time_this_year")
@@ -185,7 +199,7 @@ class NoteFactory(factory.django.DjangoModelFactory):
     bean = None
 
     @factory.post_generation
-    def related_object(self, create, _, **kwargs):
+    def related_object(self, create, extracted, **kwargs):
         if not create:
             return
 
