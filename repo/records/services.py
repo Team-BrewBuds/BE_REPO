@@ -367,7 +367,6 @@ def get_comment(comment_id):
 
 def get_user_posts_by_subject(user, subject):
     """사용자가 작성한 주제별 게시글 리스트를 가져오는 함수"""
-
     subject_filter = Q(subject=subject) if subject != "all" else Q()
     posts = (
         user.post_set.filter(subject_filter)
@@ -397,13 +396,12 @@ def get_user_saved_beans(user):
     """사용자가 저장한 원두 리스트와 관련된 bean 및 평균 평점을 가져오는 함수 (찜한 원두 리스트 정보)"""
 
     saved_beans = (
-        Bean.objects.filter(note__author=user)  # 사용자가 저장한 원두
-        .prefetch_related("tastedrecord_set__taste_review")  # tasted_record 관련된 taste_review
+        Bean.objects.filter(note__author=user)
+        .prefetch_related("tastedrecord_set__taste_review")
         .annotate(
-            avg_star=Coalesce(  # 평균 평점 계산, null일 경우 0으로 설정
-                Avg("tastedrecord__taste_review__star"), 0, output_field=FloatField()
-            ),
+            avg_star=Coalesce(Avg("tastedrecord__taste_review__star"), 0, output_field=FloatField()),
             tasted_records_cnt=Count("tastedrecord"),  # 시음기록 개수 계산
         )
+        .values("id", "name", "origin_country", "roast_point", "avg_star", "tasted_records_cnt")
     )
     return saved_beans
