@@ -33,8 +33,8 @@ class TastedRecord(models.Model):
 class Post(models.Model):
     # fmt: off
     SUBJECT_TYPE_CHOICES = (
-        ("일반", "normal"), ("카페", "cafe"), ("원두", "bean"),
-        ("정보", "info"), ("질문", "question"), ("고민", "worry"), ("장비", "gear"),
+        ("normal", "일반"), ("cafe", "카페"), ("bean", "원두"),
+        ("info", "정보"), ("question", "질문"), ("worry", "고민"), ("gear", "장비"),
     )
     # fmt: on
 
