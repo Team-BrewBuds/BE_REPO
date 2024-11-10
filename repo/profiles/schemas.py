@@ -260,9 +260,10 @@ class UserPostListSchema:
             ),
         ],
         summary="유저 게시글 조회",
-        description="특정 사용자의 게시글을 주제별로 조회합니다.",
+        description="특정 사용자의 게시글을 주제별로 조회합니다. (정렬 기준: 최신순)",
         responses={
             200: UserPostSerializer(many=True),
+            400: OpenApiResponse(description="Invalid subject parameter"),
             404: OpenApiResponse(description="Not Found"),
         },
         tags=[Profile_Records_Tag],

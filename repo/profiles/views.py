@@ -538,10 +538,17 @@ class BudyRecommendAPIView(APIView):
 @UserPostListSchema.user_post_list_schema_view
 class UserPostListAPIView(APIView):
     def get(self, request, id):
-        subject = request.query_params.get("subject", "전체")
-        subject_choice = dict(Post.SUBJECT_TYPE_CHOICES).get(subject)
-        user = get_object_or_404(CustomUser, id=id)
+        subject = request.query_params.get("subject", None)
+        valid_subjects = {kor: eng for eng, kor in Post.SUBJECT_TYPE_CHOICES}
 
+        if subject is None:
+            subject_choice = "all"
+        elif subject not in valid_subjects:
+            return Response({"error": "Invalid subject parameter"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            subject_choice = valid_subjects[subject]
+
+        user = get_object_or_404(CustomUser, id=id)
         posts = get_user_posts_by_subject(user, subject_choice)
 
         paginator = PageNumberPagination()
