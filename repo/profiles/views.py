@@ -396,18 +396,20 @@ class FollowListAPIView(APIView):
         follow_type = request.query_params.get("type")
         user = request.user
 
-        data = get_user_relationships_by_follow_type(user, follow_type)
-        if data is None:
+        if follow_type not in ["following", "follower"]:
             return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
+        relationships = get_user_relationships_by_follow_type(user, follow_type)
+
         paginator = PageNumberPagination()
-        data = paginator.paginate_queryset(data, request)
+        relationships = paginator.paginate_queryset(relationships, request)
+
         serialized_data = [
             {
                 "user": relationship.from_user if follow_type == "follower" else relationship.to_user,
                 "is_following": relationship.is_following,
             }
-            for relationship in data
+            for relationship in relationships
         ]
 
         serializer = UserFollowListSerializer(serialized_data, many=True)
