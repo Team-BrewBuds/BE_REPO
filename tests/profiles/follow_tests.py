@@ -148,3 +148,123 @@ class TestFollowListAPIView:
 
         # Then
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+class TestFollowListCreateDeleteAPIView:
+    """
+    팔로우 관계 조회/생성/삭제 API 테스트
+    """
+
+    def test_create_following_relationship_success(self, authenticated_client):
+        """
+        팔로잉 관계 생성 성공 테스트
+        """
+        # Given
+        api_client, user = authenticated_client()
+        target_user = CustomUserFactory()
+        url = f"/profiles/{target_user.id}/follow/"
+
+        # When
+        response = api_client.post(url)
+
+        # Then
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["success"] == "follow"
+
+    def test_create_follower_relationship_success(self, authenticated_client):
+        """
+        팔로워 관계 생성 성공 테스트
+        """
+        # Given
+        api_client1, user1 = authenticated_client()
+        api_client2, user2 = authenticated_client()
+        url = f"/profiles/{user1.id}/follow/"
+
+        # When
+        response = api_client2.post(url)
+
+        # Then
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["success"] == "follow"
+
+    def test_delete_following_relationship_success(self, authenticated_client):
+        """
+        팔로잉 관계 삭제 성공 테스트
+        """
+        # Given
+        api_client, user = authenticated_client()
+        target_user = CustomUserFactory()
+        RelationshipFactory(from_user=user, to_user=target_user, relationship_type="follow")
+        url = f"/profiles/{target_user.id}/follow/"
+
+        # When
+        response = api_client.delete(url)
+
+        # Then
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] == "unfollow"
+
+    def test_delete_follower_relationship_success(self, authenticated_client):
+        """
+        팔로워 관계 삭제 성공 테스트
+        """
+        # Given
+        api_client1, user1 = authenticated_client()
+        api_client2, user2 = authenticated_client()
+        RelationshipFactory(from_user=user2, to_user=user1, relationship_type="follow")
+        url = f"/profiles/{user1.id}/follow/"
+
+        # When
+        response = api_client2.delete(url)
+
+        # Then
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] == "unfollow"
+
+    def test_get_follow_relationship_blocked_user_403(self, authenticated_client):
+        """
+        팔로잉/팔로워 관계 조회 시 차단 관계인 경우 403 에러 반환 테스트
+        """
+        # Given
+        api_client, user = authenticated_client()
+        blocked_user = CustomUserFactory()
+        RelationshipFactory(from_user=user, to_user=blocked_user, relationship_type="block")
+        url = f"/profiles/{blocked_user.id}/follow/"
+
+        # When
+        response = api_client.post(url)
+
+        # Then
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.data["error"] == "user is blocking or blocked"
+
+    def test_get_follow_relationship_not_found_user_404(self, authenticated_client, non_existent_user_id):
+        """
+        팔로잉/팔로워 관계 조회 시 존재하지 않는 사용자인 경우 404 에러 반환 테스트
+        """
+        # Given
+        api_client, user = authenticated_client()
+        url = f"/profiles/{non_existent_user_id}/follow/"
+
+        # When
+        response = api_client.get(url)
+
+        # Then
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_create_follow_relationship_already_following_409(self, authenticated_client):
+        """
+        이미 팔로우 중인 사용자를 다시 팔로우할 때 409 에러 반환 테스트
+        """
+        # Given
+        api_client, user = authenticated_client()
+        target_user = CustomUserFactory()
+        RelationshipFactory(from_user=user, to_user=target_user, relationship_type="follow")
+        url = f"/profiles/{target_user.id}/follow/"
+
+        # When
+        response = api_client.post(url)
+
+        # Then
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.data["error"] == "user is already following"
