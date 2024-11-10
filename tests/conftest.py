@@ -81,3 +81,8 @@ def authenticated_client(api_client):
         return api_client, user
 
     return _authenticated_client
+
+
+@pytest.fixture
+def non_existent_user_id():
+    return CustomUserFactory.create().id + 9999
