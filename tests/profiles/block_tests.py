@@ -1,6 +1,7 @@
 import pytest
 from rest_framework import status
 
+from repo.profiles.models import Relationship
 from tests.factorys import CustomUserFactory, RelationshipFactory
 
 pytestmark = pytest.mark.django_db
@@ -77,3 +78,82 @@ class TestBlockListAPIView:
 
         # Then
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+class TestBlockListCreateDeleteAPIView:
+    """
+    차단 관계 생성 및 삭제 API 테스트
+    작성한 테스트 케이스
+    - [일반] 차단 관계 생성 성공 테스트
+    - [일반] 차단 관계 삭제 성공 테스트
+    - [예외] 차단 관계가 이미 존재하는 경우 409 에러 반환 테스트
+    - [예외] 차단 관계가 존재하지 않는 경우 404 에러 반환 테스트
+    """
+
+    def test_create_block_success(self, authenticated_client):
+        """
+        차단 관계 생성 성공 테스트
+        """
+        # Given
+        api_client, user = authenticated_client()
+        target_user = CustomUserFactory()
+        url = f"/profiles/{target_user.id}/block/"
+
+        # When
+        response = api_client.post(url)
+
+        # Then
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["success"] == "block"
+        assert Relationship.objects.filter(from_user=user, to_user=target_user, relationship_type="block").exists()
+
+    def test_delete_block_success(self, authenticated_client):
+        """
+        차단 관계 삭제 성공 테스트
+        """
+        # Given
+        api_client, user = authenticated_client()
+        blocked_user = CustomUserFactory()
+        RelationshipFactory(from_user=user, to_user=blocked_user, relationship_type="block")
+        url = f"/profiles/{blocked_user.id}/block/"
+
+        # When
+        response = api_client.delete(url)
+
+        # Then
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] == "unblock"
+        assert not Relationship.objects.filter(from_user=user, to_user=blocked_user, relationship_type="block").exists()
+
+    def test_create_block_conflict_409(self, authenticated_client):
+        """
+        차단 관계가 이미 존재하는 경우 409 에러 반환 테스트
+        """
+        # Given
+        api_client, user = authenticated_client()
+        blocked_user = CustomUserFactory()
+        RelationshipFactory(from_user=user, to_user=blocked_user, relationship_type="block")
+        url = f"/profiles/{blocked_user.id}/block/"
+
+        # When
+        response = api_client.post(url)
+
+        # Then
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.data["error"] == "User is already blocked"
+
+    def test_delete_block_not_found_404(self, authenticated_client):
+        """
+        차단 관계가 존재하지 않는 경우 404 에러 반환 테스트
+        """
+        # Given
+        api_client, user = authenticated_client()
+        non_blocked_user = CustomUserFactory()
+        url = f"/profiles/{non_blocked_user.id}/block/"
+
+        # When
+        response = api_client.delete(url)
+
+        # Then
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data["error"] == "User is not blocking"
