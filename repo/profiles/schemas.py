@@ -168,6 +168,7 @@ class BlockListSchema:
         summary="자신의 차단 리스트 조회",
         description="""
             사용자의 차단 리스트를 조회합니다.
+            notice : 정렬 기준은 최근 차단 관계 설정 순입니다.
             담당자 : hwstar1204
         """,
         tags=[Block_Tag],

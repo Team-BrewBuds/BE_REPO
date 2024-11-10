@@ -468,7 +468,7 @@ class BlockListAPIView(APIView):
         if not user.is_authenticated:
             return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        queryset = Relationship.objects.blocking(user)
+        queryset = Relationship.objects.blocking(user).order_by("-id")
         return get_paginated_response_with_class(request, queryset, UserBlockListSerializer)
 
 
