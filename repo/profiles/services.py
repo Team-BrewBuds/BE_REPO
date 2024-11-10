@@ -64,8 +64,8 @@ def get_follower_list(user):
 
 def get_user_relationships_by_follow_type(user, follow_type):
     if follow_type == "following":
-        return get_following_list(user)
+        return get_following_list(user).order_by("-id")
     elif follow_type == "follower":
-        return get_follower_list(user)
+        return get_follower_list(user).order_by("-id")
 
     return None

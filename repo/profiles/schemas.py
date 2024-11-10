@@ -97,7 +97,7 @@ class FollowListSchema:
         description="""
             사용자의 팔로잉/팔로워 리스트를 조회합니다.
             type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
-            notice : 페이지네이션 query parameter를 사용할 수 있습니다.
+            notice : 페이지네이션 query parameter를 사용할 수 있습니다, 정렬 기준은 최근 관계 설정 순입니다.
             담당자 : hwstar1204
         """,
         tags=[Follow_Tag],
