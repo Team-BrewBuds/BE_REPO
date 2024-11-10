@@ -7,7 +7,8 @@ from allauth.socialaccount.providers.naver import views as naver_view
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
-from django.db import models, transaction
+from django.db import transaction
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
@@ -525,7 +526,8 @@ class BudyRecommendAPIView(APIView):
             CustomUser.objects.select_related("user_detail")
             .only("user_detail__coffee_life")
             .filter(user_detail__coffee_life__contains={category: True})
-            .annotate(follower_cnt=models.Count("relationships_to", filter=models.Q(relationships_to__relationship_type="follow")))
+            .exclude(id=user.id)
+            .annotate(follower_cnt=Count("relationships_to", filter=Q(relationships_to__relationship_type="follow")))
             .order_by("?")[:10]
         )
 
