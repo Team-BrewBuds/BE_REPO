@@ -9,6 +9,8 @@ def base_user_profile_query(id):
     following_cnt = Relationship.objects.following(id).count()
 
     return CustomUser.objects.select_related("user_detail").annotate(
+        introduction=F("user_detail__introduction"),
+        profile_link=F("user_detail__profile_link"),
         coffee_life=F("user_detail__coffee_life"),
         following_cnt=Value(follower_cnt),
         follower_cnt=Value(following_cnt),

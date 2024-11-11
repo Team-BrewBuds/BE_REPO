@@ -77,6 +77,8 @@ class UserSimpleSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(UserSimpleSerializer):
+    introduction = serializers.CharField(required=False, default="")
+    profile_link = serializers.CharField(required=False, default="")
     coffee_life = serializers.JSONField()
     following_cnt = serializers.IntegerField()
     follower_cnt = serializers.IntegerField()
@@ -86,6 +88,8 @@ class UserProfileSerializer(UserSimpleSerializer):
 
     class Meta(UserSimpleSerializer.Meta):
         fields = UserSimpleSerializer.Meta.fields + [
+            "introduction",
+            "profile_link",
             "coffee_life",
             "following_cnt",
             "follower_cnt",
