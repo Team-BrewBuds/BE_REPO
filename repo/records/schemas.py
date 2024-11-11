@@ -323,8 +323,10 @@ class ReportSchema:
     report_post_schema = extend_schema(
         request=ReportSerializer,
         responses={
+            200: OpenApiResponse(description="duplicate report"),
             201: ReportSerializer,
             400: OpenApiResponse(description="Bad Request"),
+            401: OpenApiResponse(description="Unauthorized"),
             404: OpenApiResponse(description="Not Found"),
         },
         summary="신고하기",

@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -12,7 +13,7 @@ from repo.common.utils import (
     get_paginated_response_with_func,
     update,
 )
-from repo.records.models import Comment, Note, Photo, Post, TastedRecord
+from repo.records.models import Comment, Note, Photo, Post, Report, TastedRecord
 from repo.records.schemas import *
 from repo.records.serializers import CommentSerializer, ReportSerializer
 from repo.records.services import (
@@ -242,20 +243,32 @@ class ImageApiView(APIView):
 class ReportApiView(APIView):
     @transaction.atomic
     def post(self, request):
-        serializer = ReportSerializer(data=request.data)
-        if serializer.is_valid():
-            object_type = serializer.validated_data["object_type"]
-            object_id = serializer.validated_data["object_id"]
+        # 1. 인증 확인
+        if not request.user.is_authenticated:
+            return Response({"error": "로그인이 필요한 서비스입니다."}, status=status.HTTP_401_UNAUTHORIZED)
 
-            target_object = get_post_or_tasted_record_or_comment(object_type, object_id)
-            target_aurhor = target_object.author
+        # 2. 중복 신고 확인
+        if Report.objects.filter(
+            author=request.user, object_type=request.data.get("object_type"), object_id=request.data.get("object_id")
+        ).exists():
+            return Response({"message": "이미 신고한 컨텐츠입니다."}, status=status.HTTP_200_OK)
 
-            serializer.save(author=request.user, object_type=object_type, object_id=object_id, reason=serializer.validated_data["reason"])
-            response_data = serializer.data
-            response_data["target_author"] = target_aurhor.nickname
+        # 3. 데이터 유효성 검증
+        serializer = ReportSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
 
-            # email send logic (신고사유, 신고 대상 내용, 신고 대상 작성자 정보, 신고자 정보)
-            # send_report_email()
+        # 4. 신고 대상 객체 존재 여부 확인
+        try:
+            target_object = get_post_or_tasted_record_or_comment(
+                serializer.validated_data["object_type"], serializer.validated_data["object_id"]
+            )
+        except Http404:
+            return Response({"error": "신고할 컨텐츠가 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": f"잘못된 신고 대상 타입입니다: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-            return Response(response_data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # 5. 신고 생성 및 응답
+        report = serializer.save(author=request.user)
+        response_data = serializer.data
+        response_data["target_author"] = target_object.author.nickname
+        return Response(response_data, status=status.HTTP_201_CREATED)
