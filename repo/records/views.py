@@ -90,7 +90,6 @@ class LikeApiView(APIView):
         return Response({"detail": "like deleted"}, status=status.HTTP_204_NO_CONTENT)
 
 
-# TODO NoteAPI, NoteDetailAPI 통합 가능
 @NoteSchema.note_schema_view
 class NoteApiView(APIView):
     def post(self, request, object_type, object_id):
