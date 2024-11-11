@@ -13,7 +13,7 @@ from repo.common.utils import (
     get_paginated_response_with_func,
     update,
 )
-from repo.records.models import Comment, Note, Photo, Post, Report, TastedRecord
+from repo.records.models import Comment, Note, Photo, Report
 from repo.records.schemas import *
 from repo.records.serializers import CommentSerializer, ReportSerializer
 from repo.records.services import (
@@ -54,21 +54,12 @@ class FeedAPIView(APIView):
 @LikeSchema.like_schema_view
 class LikeApiView(APIView):
 
-    def get_valid_object(self, object_type, object_id):
-        model_map = {"post": Post, "tasted_record": TastedRecord, "comment": Comment}
-        model_class = model_map.get(object_type)
-
-        if not model_class:
-            raise ValueError("Invalid object type.")
-
-        return get_object_or_404(model_class, pk=object_id)
-
     def post(self, request, object_type, object_id):
         user_id = request.user.id
         if not request.user.is_authenticated:
             return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        obj = self.get_valid_object(object_type, object_id)
+        obj = get_post_or_tasted_record_or_comment(object_type, object_id)
 
         if user_id in obj.like_cnt.values_list("id", flat=True):
             return Response({"detail": "like already exists"}, status=status.HTTP_409_CONFLICT)
@@ -81,7 +72,7 @@ class LikeApiView(APIView):
         if not request.user.is_authenticated:
             return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        obj = self.get_valid_object(object_type, object_id)
+        obj = get_post_or_tasted_record_or_comment(object_type, object_id)
 
         if user_id not in obj.like_cnt.values_list("id", flat=True):
             return Response({"detail": "like not found"}, status=status.HTTP_404_NOT_FOUND)
