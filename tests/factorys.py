@@ -168,6 +168,7 @@ class PhotoFactory(DjangoModelFactory):
 class CommentFactory(DjangoModelFactory):
     class Meta:
         model = Comment
+        skip_postgeneration_save = True
 
     author = factory.SubFactory(CustomUserFactory)
     content = factory.LazyFunction(lambda: fake.text())
@@ -234,3 +235,14 @@ class ReportFactory(DjangoModelFactory):
             self.object_id = CommentFactory().id
         else:
             self.object_id = TastedRecordFactory().id
+
+
+class ContentObjectFactory:
+    @staticmethod
+    def create_content_object(object_type):
+        if object_type == "post":
+            return PostFactory()
+        elif object_type == "tasted_record":
+            return TastedRecordFactory()
+        elif object_type == "comment":
+            return CommentFactory()
