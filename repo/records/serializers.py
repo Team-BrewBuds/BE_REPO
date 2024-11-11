@@ -3,6 +3,7 @@ from rest_framework import serializers
 from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import Comment, Note, Post, Report, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
+from repo.records.services import get_post_or_tasted_record_or_comment
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
@@ -81,13 +82,18 @@ class ReportSerializer(serializers.ModelSerializer):
     target_author = serializers.CharField(read_only=True)
 
     def validate(self, data):
-        # 필수 항목 검사
-        if "object_type" not in data or "object_id" not in data:
-            raise serializers.ValidationError("신고 대상 타입과 ID는 필수 항목입니다.")
-        if "reason" not in data:
-            raise serializers.ValidationError("신고 사유는 필수입니다.")
-        if data["object_type"] not in ["post", "tasted_record", "comment"]:
+        required_fields = ["object_type", "object_id", "reason"]
+        for field in required_fields:
+            if field not in data:
+                raise serializers.ValidationError(f"{field}는 필수 항목입니다.")
+
+        valid_object_types = ["post", "tasted_record", "comment"]
+        if data["object_type"] not in valid_object_types:
             raise serializers.ValidationError("유효하지 않은 신고 대상 타입입니다.")
+
+        target_object = get_post_or_tasted_record_or_comment(data["object_type"], data["object_id"])
+        if target_object.author == self.context["request"].user:
+            raise serializers.ValidationError("자기 자신의 컨텐츠는 신고할 수 없습니다.")
 
         return data
 

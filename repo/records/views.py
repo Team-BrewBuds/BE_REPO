@@ -248,9 +248,10 @@ class ReportApiView(APIView):
             return Response({"error": "로그인이 필요한 서비스입니다."}, status=status.HTTP_401_UNAUTHORIZED)
 
         # 2. 중복 신고 확인
-        if Report.objects.filter(
-            author=request.user, object_type=request.data.get("object_type"), object_id=request.data.get("object_id")
-        ).exists():
+        object_type = request.data.get("object_type")
+        object_id = request.data.get("object_id")
+
+        if Report.objects.filter(author=request.user, object_type=object_type, object_id=object_id).exists():
             return Response({"message": "이미 신고한 컨텐츠입니다."}, status=status.HTTP_200_OK)
 
         # 3. 데이터 유효성 검증
@@ -259,9 +260,7 @@ class ReportApiView(APIView):
 
         # 4. 신고 대상 객체 존재 여부 확인
         try:
-            target_object = get_post_or_tasted_record_or_comment(
-                serializer.validated_data["object_type"], serializer.validated_data["object_id"]
-            )
+            target_object = get_post_or_tasted_record_or_comment(object_type, object_id)
         except Http404:
             return Response({"error": "신고할 컨텐츠가 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
