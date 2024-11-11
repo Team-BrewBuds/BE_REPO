@@ -146,20 +146,6 @@ class Report(models.Model):
     status = models.CharField(max_length=50, choices=ReportStatus.choices, default=ReportStatus.PENDING, verbose_name="신고 처리 상태")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="신고 일자")
 
-    def clean(self):
-        model_map = {
-            self.ReportObjectType.POST: Post,
-            self.ReportObjectType.COMMENT: Comment,
-            self.ReportObjectType.TASTED_RECORD: TastedRecord,
-        }
-        model = model_map.get(self.ReportObjectType(self.object_type))
-        if not model or not model.objects.filter(id=self.object_id).exists():
-            raise ValueError(f"{self.get_object_type_display()}이(가) 존재하지 않습니다.")
-
-    def save(self, *args, **kwargs):
-        self.clean()
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return f"Report: {self.id} - {self.get_status_display()}"
 

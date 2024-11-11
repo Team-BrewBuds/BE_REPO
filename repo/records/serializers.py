@@ -81,8 +81,14 @@ class ReportSerializer(serializers.ModelSerializer):
     target_author = serializers.CharField(read_only=True)
 
     def validate(self, data):
-        report = Report(**data)
-        report.clean()
+        # 필수 항목 검사
+        if "object_type" not in data or "object_id" not in data:
+            raise serializers.ValidationError("신고 대상 타입과 ID는 필수 항목입니다.")
+        if "reason" not in data:
+            raise serializers.ValidationError("신고 사유는 필수입니다.")
+        if data["object_type"] not in ["post", "tasted_record", "comment"]:
+            raise serializers.ValidationError("유효하지 않은 신고 대상 타입입니다.")
+
         return data
 
     class Meta:
