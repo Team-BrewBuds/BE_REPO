@@ -44,12 +44,11 @@ def delete_photo_from_s3(photo_url: str) -> None:
     Args:
         photo_url: 삭제할 이미지 URL
     """
-
-    s3 = boto3.client("s3", aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
-    s3_key = f"{AwsMediaStorage.location}/{photo_url.name}"
-
     try:
+        s3 = boto3.client("s3", aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
+        s3_key = f"{AwsMediaStorage.location}/{photo_url.name}"
+
         s3.delete_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=s3_key)
     except Exception as e:
-        print(f"Failed to delete {s3_key} from S3: {e}")
+        raise e
     return None

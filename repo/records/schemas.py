@@ -300,21 +300,31 @@ class ImageSchema:
     image_delete_schema = extend_schema(
         parameters=[
             OpenApiParameter(
-                name="photo_id",
-                description="삭제할 사진의 ID 목록 (쿼리 파라미터로 여러 개의 photo_id 전달)",
-                required=True,
-                type={"type": "array", "items": {"type": "integer"}},
-            )
+                name="object_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description="사진 삭제할 객체의 ID(PK)",
+            ),
+            OpenApiParameter(
+                name="object_type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="사진 삭제할 객체의 타입",
+                enum=["post", "tasted_record"],
+            ),
         ],
         responses={
             204: OpenApiResponse(description="성공적으로 삭제됨"),
-            400: OpenApiResponse(description="잘못된 요청 (photo_id 누락 또는 잘못된 형식)"),
-            404: OpenApiResponse(description="해당 ID의 사진을 찾을 수 없음"),
+            400: OpenApiResponse(description="잘못된 요청 (object_id, object_type 누락 또는 잘못된 형식)"),
+            404: OpenApiResponse(description="해당 객체의 사진을 찾을 수 없음"),
             500: OpenApiResponse(description="서버 에러"),
         },
         summary="이미지 삭제 API",
-        description="여러 개의 이미지를 삭제하는 API. 삭제할 이미지의 ID를 쿼리 파라미터로 전달하면 해당 이미지가 삭제됩니다.",
-        tags=[Image_Tag],
+        description="""
+            삭제할 객체의 이미지들을 삭제하는 API.
+            삭제할 객체 타입과 해당 객체의 ID를 쿼리 파라미터로 전달하면 해당 이미지들이 삭제됩니다.
+        """,
+        tags=[Photo_Tag],
     )
 
     image_schema_view = extend_schema_view(post=image_post_schema, delete=image_delete_schema)

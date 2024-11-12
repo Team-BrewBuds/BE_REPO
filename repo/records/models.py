@@ -85,10 +85,10 @@ class Photo(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="업로드 일자")
 
     def delete(self, *args, **kwargs):
-        if settings.STORAGES["default"]["BACKEND"] == "repo.common.bucket.AwsMediaStorage":
-            delete_photo_from_s3(self.photo_url)  # S3에서 삭제
-        else:
+        if settings.DEBUG:
             self.photo_url.delete(save=False)  # 로컬에서 삭제
+        else:
+            delete_photo_from_s3(self.photo_url)  # S3에서 삭제
         super().delete(*args, **kwargs)
 
     def __str__(self):
