@@ -4,13 +4,10 @@ import boto3
 from django.conf import settings
 from storages.backends.s3boto3 import S3Boto3Storage, S3StaticStorage
 
-
-# 장고 MEDIA 파일을 다루는 각종 설정을 커스텀할 수 있습니다.
-#  - "media" 폴더에 저장되도록 location 설정을 해줍니다.
-#  - "public-read" 권한으로 업로드되도록 default_acl 설정을 해줍니다.
-class AwsMediaStorage(S3Boto3Storage):
-    location = "media"
-    default_acl = "public-read"
+if not settings.DEBUG:
+    AWS_S3_ACCESS_KEY_ID = settings.AWS_S3_ACCESS_KEY_ID
+    AWS_S3_SECRET_ACCESS_KEY = settings.AWS_S3_SECRET_ACCESS_KEY
+    AWS_STORAGE_BUCKET_NAME = settings.AWS_STORAGE_BUCKET_NAME
 
 
 # 장고 STATIC 파일을 다루는 각종 설정을 커스텀할 수 있습니다.
@@ -21,21 +18,61 @@ class AwsStaticStorage(S3StaticStorage):
     default_acl = "public-read"
 
 
-def photo_upload_to(instance, filename):
+# 장고 MEDIA 파일을 다루는 각종 설정을 커스텀할 수 있습니다.
+#  - "media" 폴더에 저장되도록 location 설정을 해줍니다.
+#  - "public-read" 권한으로 업로드되도록 default_acl 설정을 해줍니다.
+class AwsMediaStorage(S3Boto3Storage):
+    location = "media"
+    default_acl = "public-read"
+
+    def _save(self, name, content):
+        """
+        장고 MEDIA 파일을 S3에 업로드하는 함수
+        Args:
+            name: 업로드할 파일 이름
+            content: 업로드할 파일 내용
+        Returns:
+            str: 업로드된 파일 이름
+        """
+
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=AWS_S3_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_S3_SECRET_ACCESS_KEY,
+        )
+
+        content.seek(0)
+
+        file_name = name.split("/")[-1]  # 파일명
+
+        try:
+            s3.put_object(
+                Bucket=AWS_STORAGE_BUCKET_NAME,
+                Key=f"{self.location}/{name}",
+                Body=content,
+                ContentType=content.content_type,
+                Metadata={"is-representative": str(file_name.startswith("main_")).lower()},  # 'true' or 'false'
+                ACL="public-read",
+            )
+            return name
+        except Exception as e:
+            raise e
+
+
+def create_unique_filename(filename, is_main=False):
     """
-    이미지 저장 경로 결정 함수
+    고유한 이미지 이름 생성 함수
     Args:
-        instance: 관련 모델 인스턴스
-        filename: 업로드 파일명
 
     Returns:
-        str: 저장 경로
+        str: 고유한 이미지 이름
     """
-
     ext = filename.split(".")[-1]  # 파일 확장자
     unique_id = uuid.uuid4()
 
-    return f"others/{unique_id}.{ext}"
+    if is_main:
+        return f"main_{unique_id}.{ext}"
+    return f"{unique_id}.{ext}"
 
 
 def delete_photo_from_s3(photo_url: str) -> None:

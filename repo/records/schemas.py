@@ -15,7 +15,7 @@ Feed_Tag = "Feed"
 Like_Tage = "Like"
 Note_Tag = "Note"
 Comment_Tag = "Comment"
-Image_Tag = "Image"
+Photo_Tag = "Photo"
 Report_TAG = "Report"
 
 
@@ -257,8 +257,23 @@ class CommentDetailSchema:
     )
 
 
-class ImageSchema:
-    image_post_schema = extend_schema(
+class PhotoSchema:
+    photo_post_schema = extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="object_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description="사진 업로드할 객체의 ID (PK)",
+            ),
+            OpenApiParameter(
+                name="object_type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="사진 업로드할 객체의 타입",
+                enum=["post", "tasted_record"],
+            ),
+        ],
         request={
             "multipart/form-data": {
                 "type": "object",
@@ -293,11 +308,19 @@ class ImageSchema:
             400: OpenApiResponse(description="잘못된 데이터 형식 또는 유효성 검증 실패"),
         },
         summary="이미지 업로드 API",
-        description="여러 개의 이미지를 업로드하는 API. 업로드된 이미지는 고유 ID와 S3 URL로 반환됩니다.",
-        tags=[Image_Tag],
+        description="""
+            여러 개의 이미지를 업로드하는 API. 업로드된 이미지는 고유 ID와 S3 URL로 반환됩니다.
+            notice:
+            - 대표 사진은 요청 데이터의 첫 번째 이미지로 설정됩니다.
+            - 대표 사진의 파일명은 main_로 변경됩니다.
+            대표 사진 여부 판단요소:
+            - 사진명이 main_ 으로 시작합니다.
+            - 해당 사진 헤더의 메타데이터에 x-amz-meta-is-representative = true 입니다.
+        """,
+        tags=[Photo_Tag],
     )
 
-    image_delete_schema = extend_schema(
+    photo_delete_schema = extend_schema(
         parameters=[
             OpenApiParameter(
                 name="object_id",
@@ -327,7 +350,7 @@ class ImageSchema:
         tags=[Photo_Tag],
     )
 
-    image_schema_view = extend_schema_view(post=image_post_schema, delete=image_delete_schema)
+    photo_schema_view = extend_schema_view(post=photo_post_schema, delete=photo_delete_schema)
 
 
 class ReportSchema:
