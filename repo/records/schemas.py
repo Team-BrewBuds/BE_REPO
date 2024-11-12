@@ -284,6 +284,7 @@ class ImageSchema:
                         "properties": {
                             "id": {"type": "integer", "example": 123},
                             "photo_url": {"type": "string", "example": "https://s3.amazonaws.com/bucket_name/uploads" "/photo1.jpg"},
+                            "is_representative": {"type": "boolean", "example": True},
                         },
                     },
                 },

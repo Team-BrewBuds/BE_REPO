@@ -69,9 +69,19 @@ class Post(models.Model):
 
 
 class Photo(models.Model):
+    @staticmethod
+    def get_upload_path(instance, filename):
+        """업로드 경로를 동적으로 설정하는 함수"""
+
+        if instance.post:
+            return f"records/post/{instance.post.id}/{filename}"
+        elif instance.tasted_record:
+            return f"records/tasted_record/{instance.tasted_record.id}/{filename}"
+        return f"records/{filename}"
+
     post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 게시글")
     tasted_record = models.ForeignKey(TastedRecord, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 시음 기록")
-    photo_url = models.ImageField(upload_to="records/", null=True, blank=True, verbose_name="사진")
+    photo_url = models.ImageField(upload_to=get_upload_path, null=True, blank=True, verbose_name="사진")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="업로드 일자")
 
     def delete(self, *args, **kwargs):
