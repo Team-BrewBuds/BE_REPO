@@ -1,8 +1,6 @@
-from django.conf import settings
 from django.db import models
 
 from repo.beans.models import Bean, BeanTasteReview
-from repo.common.bucket import delete_photo_from_s3
 from repo.profiles.models import CustomUser
 from repo.records.managers import NoteManagers, PostManagers
 
@@ -83,13 +81,6 @@ class Photo(models.Model):
     tasted_record = models.ForeignKey(TastedRecord, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 시음 기록")
     photo_url = models.ImageField(upload_to=get_upload_path, null=True, blank=True, verbose_name="사진")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="업로드 일자")
-
-    def delete(self, *args, **kwargs):
-        if settings.DEBUG:
-            self.photo_url.delete(save=False)  # 로컬에서 삭제
-        else:
-            delete_photo_from_s3(self.photo_url)  # S3에서 삭제
-        super().delete(*args, **kwargs)
 
     def __str__(self):
         return f"Photo: {self.id}"

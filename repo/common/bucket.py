@@ -4,6 +4,8 @@ import boto3
 from django.conf import settings
 from storages.backends.s3boto3 import S3Boto3Storage, S3StaticStorage
 
+from repo.profiles.models import CustomUser
+
 DEBUG = settings.DEBUG
 
 if not DEBUG:
@@ -77,14 +79,14 @@ def create_unique_filename(filename, is_main=False):
     return f"{unique_id}.{ext}"
 
 
-def delete_photo_from_s3(photo_url: str) -> None:
+def delete_photo(photo_url: str) -> None:
     """
     S3에서 이미지 삭제 함수
     Args:
         photo_url: 삭제할 이미지 URL
     """
     try:
-        s3 = boto3.client("s3", aws_access_key_id=settings.AWS_ACCESS_KEY_ID, aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
+        s3 = boto3.client("s3", aws_access_key_id=AWS_S3_ACCESS_KEY_ID, aws_secret_access_key=AWS_S3_SECRET_ACCESS_KEY)
         s3_key = f"{AwsMediaStorage.location}/{photo_url.name}"
 
         s3.delete_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=s3_key)
@@ -93,11 +95,57 @@ def delete_photo_from_s3(photo_url: str) -> None:
     return None
 
 
-def delete_profile_image(user):
-    if user.profile_image:
+def delete_photos(object) -> None:
+    """
+    S3에서 여러 이미지를 한 번에 삭제하는 함수
+    Args:
+        object: 삭제할 이미지를 포함하는 객체
+    """
+    if not object.photo_set.exists():
+        return None
+
+    photos = object.photo_set.all()
+    try:
         if DEBUG:
-            user.profile_image.delete(save=False)
+            for photo in photos:
+                photo.photo_url.delete()
+            photos.delete()
         else:
-            delete_photo_from_s3(user.profile_image)
-        user.profile_image = None
-        user.save()
+            s3 = boto3.client("s3", aws_access_key_id=AWS_S3_ACCESS_KEY_ID, aws_secret_access_key=AWS_S3_SECRET_ACCESS_KEY)
+
+            # S3에서 삭제할 객체 목록 생성
+            objects = [{"Key": f"{AwsMediaStorage.location}/{photo.photo_url.name}"} for photo in photos]
+
+            objects_to_delete = {
+                "Objects": objects,
+                "Quiet": True,  # 삭제 결과 메시지를 간소화
+            }
+
+            # 일괄 삭제 요청
+            s3.delete_objects(Bucket=AWS_STORAGE_BUCKET_NAME, Delete=objects_to_delete)
+            photos.delete()
+
+    except Exception as e:
+        raise e
+    return None
+
+
+def delete_profile_photo(user: CustomUser) -> None:
+    """
+    프로필 이미지 삭제 함수
+    Args:
+        user: 프로필 이미지를 삭제할 유저
+    """
+    if not user.profile_image:
+        return None
+
+    try:
+        if DEBUG:
+            user.profile_image.delete()
+        else:
+            delete_photo(user.profile_image)
+            user.profile_image = None
+            user.save(update_fields=["profile_image"])
+    except Exception as e:
+        raise e
+    return None

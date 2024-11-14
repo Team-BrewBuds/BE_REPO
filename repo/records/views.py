@@ -7,7 +7,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.common.bucket import create_unique_filename, delete_profile_image
+from repo.common.bucket import (
+    create_unique_filename,
+    delete_photos,
+    delete_profile_photo,
+)
 from repo.common.utils import (
     delete,
     get_paginated_response_with_class,
@@ -192,17 +196,20 @@ class CommentDetailAPIView(APIView):
 
 @PhotoSchema.photo_schema_view
 class PhotoApiView(APIView):
+    permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request, object_type, object_id):
         files = request.FILES.getlist("photo_url")
         if not files:
             return Response({"error": "photo_url is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        obj = get_post_or_tasted_record_detail(object_type, object_id)
-        photos = []
-
         try:
+            obj = get_post_or_tasted_record_detail(object_type, object_id)
+
+            delete_photos(obj)  # 기존 사진 삭제
+
+            photos = []
+
             for i, file in enumerate(files):
                 if i == 0:
                     file.name = create_unique_filename(file.name, is_main=True)
@@ -231,8 +238,7 @@ class PhotoApiView(APIView):
             return Response(data, status=status.HTTP_201_CREATED)
         except Exception as e:
             # 업로드 실패 시 이미 저장된 사진들 삭제
-            for photo in photos:
-                photo.delete()
+            delete_photos(obj)
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, object_type, object_id):
@@ -240,16 +246,8 @@ class PhotoApiView(APIView):
         if not obj:
             return Response({"error": "object not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if object_type == "post":
-            photos = obj.photo_set.all()
-        elif object_type == "tasted_record":
-            photos = obj.photo_set.all()
-        else:
-            return Response({"error": "invalid object_type"}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            for photo in photos:
-                photo.delete()
+            delete_photos(obj)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -270,7 +268,7 @@ class ProfilePhotoAPIView(APIView):
 
         try:
             # 기존 프로필 이미지가 있다면 삭제
-            delete_profile_image(request.user)
+            delete_profile_photo(request.user)
 
             request.user.profile_image = file
             request.user.save(update_fields=["profile_image"])
@@ -282,7 +280,7 @@ class ProfilePhotoAPIView(APIView):
 
     def delete(self, request):
         try:
-            delete_profile_image(request.user)
+            delete_profile_photo(request.user)
 
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
