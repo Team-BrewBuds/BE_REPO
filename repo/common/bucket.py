@@ -4,7 +4,9 @@ import boto3
 from django.conf import settings
 from storages.backends.s3boto3 import S3Boto3Storage, S3StaticStorage
 
-if not settings.DEBUG:
+DEBUG = settings.DEBUG
+
+if not DEBUG:
     AWS_S3_ACCESS_KEY_ID = settings.AWS_S3_ACCESS_KEY_ID
     AWS_S3_SECRET_ACCESS_KEY = settings.AWS_S3_SECRET_ACCESS_KEY
     AWS_STORAGE_BUCKET_NAME = settings.AWS_STORAGE_BUCKET_NAME
@@ -89,3 +91,13 @@ def delete_photo_from_s3(photo_url: str) -> None:
     except Exception as e:
         raise e
     return None
+
+
+def delete_profile_image(user):
+    if user.profile_image:
+        if DEBUG:
+            user.profile_image.delete(save=False)
+        else:
+            delete_photo_from_s3(user.profile_image)
+        user.profile_image = None
+        user.save()

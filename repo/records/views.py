@@ -3,10 +3,11 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.common.bucket import create_unique_filename
+from repo.common.bucket import create_unique_filename, delete_profile_image
 from repo.common.utils import (
     delete,
     get_paginated_response_with_class,
@@ -253,6 +254,39 @@ class PhotoApiView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@ProfilePhotoSchema.profile_photo_schema_view
+class ProfilePhotoAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        if "photo_url" not in request.FILES:
+            return Response({"error": "photo_url is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        file = request.FILES["photo_url"]
+        file.name = create_unique_filename(file.name, is_main=True)
+
+        try:
+            # 기존 프로필 이미지가 있다면 삭제
+            delete_profile_image(request.user)
+
+            request.user.profile_image = file
+            request.user.save(update_fields=["profile_image"])
+
+            return Response({"profile_image": request.user.profile_image.url}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request):
+        try:
+            delete_profile_image(request.user)
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @ReportSchema.report_schema_view
