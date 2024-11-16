@@ -3,10 +3,15 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.common.serializers import PhotoSerializer
+from repo.common.bucket import (
+    create_unique_filename,
+    delete_photos,
+    delete_profile_photo,
+)
 from repo.common.utils import (
     delete,
     get_paginated_response_with_class,
@@ -189,44 +194,97 @@ class CommentDetailAPIView(APIView):
         return delete(request, id, Comment)
 
 
-@ImageSchema.image_schema_view
-class ImageApiView(APIView):
+@PhotoSchema.photo_schema_view
+class PhotoApiView(APIView):
+    permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
 
-    def post(self, request):
+    def post(self, request, object_type, object_id):
         files = request.FILES.getlist("photo_url")
         if not files:
             return Response({"error": "photo_url is required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            obj = get_post_or_tasted_record_detail(object_type, object_id)
 
-        serializer = PhotoSerializer(data=[{"photo_url": file} for file in files], many=True)
-        if serializer.is_valid():
-            photos = serializer.save()
-            for photo in photos:
+            delete_photos(obj)  # 기존 사진 삭제
+
+            photos = []
+
+            for i, file in enumerate(files):
+                if i == 0:
+                    file.name = create_unique_filename(file.name, is_main=True)
+                else:
+                    file.name = create_unique_filename(file.name)
+
+                if object_type == "post":
+                    photo = Photo(post=obj, photo_url=file)
+                elif object_type == "tasted_record":
+                    photo = Photo(tasted_record=obj, photo_url=file)
+                else:
+                    raise ValueError("invalid object_type")
+
                 photo.save()
+                photos.append(photo)
 
-            data = [{"id": photo.id, "photo_url": photo.photo_url.url} for photo in photos]
+            data = [
+                {
+                    "id": photo.id,
+                    "photo_url": photo.photo_url.url,
+                    "is_representative": photo.photo_url.name.split("/")[-1].startswith("main_"),
+                }
+                for photo in photos
+            ]
 
             return Response(data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # 업로드 실패 시 이미 저장된 사진들 삭제
+            delete_photos(obj)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def delete(self, request):
-        photo_ids = request.query_params.getlist("photo_id")
-        if not photo_ids:
-            return Response({"error": "photo_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    def delete(self, request, object_type, object_id):
+        obj = get_post_or_tasted_record_detail(object_type, object_id)
+        if not obj:
+            return Response({"error": "object not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        photos = Photo.objects.filter(id__in=photo_ids)
-        if not photos.exists():
-            return Response({"error": "photo not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        delete_cnt = 0
         try:
-            for photo in photos:
-                photo.delete()
-                delete_cnt += 1
+            delete_photos(obj)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(f"{delete_cnt} photos deleted successfully", status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@ProfilePhotoSchema.profile_photo_schema_view
+class ProfilePhotoAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        if "photo_url" not in request.FILES:
+            return Response({"error": "photo_url is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        file = request.FILES["photo_url"]
+        file.name = create_unique_filename(file.name, is_main=True)
+
+        try:
+            # 기존 프로필 이미지가 있다면 삭제
+            delete_profile_photo(request.user)
+
+            request.user.profile_image = file
+            request.user.save(update_fields=["profile_image"])
+
+            return Response({"profile_image": request.user.profile_image.url}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request):
+        try:
+            delete_profile_photo(request.user)
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @ReportSchema.report_schema_view

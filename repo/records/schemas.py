@@ -15,7 +15,7 @@ Feed_Tag = "Feed"
 Like_Tage = "Like"
 Note_Tag = "Note"
 Comment_Tag = "Comment"
-Image_Tag = "Image"
+Photo_Tag = "Photo"
 Report_TAG = "Report"
 
 
@@ -257,8 +257,23 @@ class CommentDetailSchema:
     )
 
 
-class ImageSchema:
-    image_post_schema = extend_schema(
+class PhotoSchema:
+    photo_post_schema = extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="object_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description="사진 업로드할 객체의 ID (PK)",
+            ),
+            OpenApiParameter(
+                name="object_type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="사진 업로드할 객체의 타입",
+                enum=["post", "tasted_record"],
+            ),
+        ],
         request={
             "multipart/form-data": {
                 "type": "object",
@@ -284,6 +299,7 @@ class ImageSchema:
                         "properties": {
                             "id": {"type": "integer", "example": 123},
                             "photo_url": {"type": "string", "example": "https://s3.amazonaws.com/bucket_name/uploads" "/photo1.jpg"},
+                            "is_representative": {"type": "boolean", "example": True},
                         },
                     },
                 },
@@ -292,31 +308,101 @@ class ImageSchema:
             400: OpenApiResponse(description="잘못된 데이터 형식 또는 유효성 검증 실패"),
         },
         summary="이미지 업로드 API",
-        description="여러 개의 이미지를 업로드하는 API. 업로드된 이미지는 고유 ID와 S3 URL로 반환됩니다.",
-        tags=[Image_Tag],
+        description="""
+            여러 개의 이미지를 업로드하는 API. 업로드된 이미지는 고유 ID와 S3 URL로 반환됩니다.
+            notice:
+            - 대표 사진은 요청 데이터의 첫 번째 이미지로 설정됩니다.
+            - 대표 사진의 파일명은 main_로 변경됩니다.
+            대표 사진 여부 판단요소:
+            - 사진명이 main_ 으로 시작합니다.
+            - 해당 사진 헤더의 메타데이터에 x-amz-meta-is-representative = true 입니다.
+        """,
+        tags=[Photo_Tag],
     )
 
-    image_delete_schema = extend_schema(
+    photo_delete_schema = extend_schema(
         parameters=[
             OpenApiParameter(
-                name="photo_id",
-                description="삭제할 사진의 ID 목록 (쿼리 파라미터로 여러 개의 photo_id 전달)",
-                required=True,
-                type={"type": "array", "items": {"type": "integer"}},
-            )
+                name="object_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description="사진 삭제할 객체의 ID(PK)",
+            ),
+            OpenApiParameter(
+                name="object_type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="사진 삭제할 객체의 타입",
+                enum=["post", "tasted_record"],
+            ),
         ],
         responses={
             204: OpenApiResponse(description="성공적으로 삭제됨"),
-            400: OpenApiResponse(description="잘못된 요청 (photo_id 누락 또는 잘못된 형식)"),
-            404: OpenApiResponse(description="해당 ID의 사진을 찾을 수 없음"),
+            400: OpenApiResponse(description="잘못된 요청 (object_id, object_type 누락 또는 잘못된 형식)"),
+            404: OpenApiResponse(description="해당 객체의 사진을 찾을 수 없음"),
             500: OpenApiResponse(description="서버 에러"),
         },
         summary="이미지 삭제 API",
-        description="여러 개의 이미지를 삭제하는 API. 삭제할 이미지의 ID를 쿼리 파라미터로 전달하면 해당 이미지가 삭제됩니다.",
-        tags=[Image_Tag],
+        description="""
+            삭제할 객체의 이미지들을 삭제하는 API.
+            삭제할 객체 타입과 해당 객체의 ID를 쿼리 파라미터로 전달하면 해당 이미지들이 삭제됩니다.
+        """,
+        tags=[Photo_Tag],
     )
 
-    image_schema_view = extend_schema_view(post=image_post_schema, delete=image_delete_schema)
+    photo_schema_view = extend_schema_view(post=photo_post_schema, delete=photo_delete_schema)
+
+
+class ProfilePhotoSchema:
+    profile_photo_post_schema = extend_schema(
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "photo_url": {
+                        "type": "string",
+                        "format": "binary",
+                        "description": "프로필 이미지 파일",
+                    }
+                },
+                "required": ["photo_url"],
+            }
+        },
+        responses={
+            201: OpenApiResponse(
+                response={
+                    "type": "object",
+                    "properties": {
+                        "photo_url": {"type": "string", "example": "https://s3.amazonaws.com/bucket_name/profiles/main_uuid.jpg"}
+                    },
+                },
+                description="프로필 이미지 업로드 성공",
+            ),
+            400: OpenApiResponse(description="잘못된 요청"),
+            401: OpenApiResponse(description="인증되지 않은 사용자"),
+            500: OpenApiResponse(description="서버 에러"),
+        },
+        summary="프로필 이미지 업로드 API",
+        description="""
+            사용자의 프로필 이미지를 업로드하는 API
+            notice:
+            - 기존 프로필 이미지가 있다면 삭제됩니다. (수정시 기존 사진 삭제 후 업로드)
+        """,
+        tags=[Photo_Tag],
+    )
+
+    profile_photo_delete_schema = extend_schema(
+        responses={
+            204: OpenApiResponse(description="프로필 이미지 삭제 성공"),
+            401: OpenApiResponse(description="인증되지 않은 사용자"),
+            500: OpenApiResponse(description="서버 에러"),
+        },
+        summary="프로필 이미지 삭제 API",
+        description="사용자의 프로필 이미지를 삭제하는 API",
+        tags=[Photo_Tag],
+    )
+
+    profile_photo_schema_view = extend_schema_view(post=profile_photo_post_schema, delete=profile_photo_delete_schema)
 
 
 class ReportSchema:
