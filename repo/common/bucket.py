@@ -90,9 +90,14 @@ def delete_photo(photo_url: str) -> None:
         s3_key = f"{AwsMediaStorage.location}/{photo_url.name}"
 
         s3.delete_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=s3_key)
-    except Exception as e:
-        raise e
-    return None
+    except (Boto3Error, OSError, Exception) as e:
+        error_msg = {
+            Boto3Error: "S3 삭제 중 오류가 발생했습니다",
+            OSError: "파일 시스템 작업 중 오류가 발생했습니다",
+            Exception: "이미지 삭제 중 예기치 않은 오류가 발생했습니다",
+        }.get(type(e), "알 수 없는 오류가 발생했습니다")
+
+        raise type(e)(f"{error_msg}: {str(e)}") from e
 
 
 def delete_photos(object) -> None:
@@ -124,7 +129,6 @@ def delete_photos(object) -> None:
             s3.delete_objects(Bucket=AWS_STORAGE_BUCKET_NAME, Delete=objects_to_delete)  # 일괄 삭제 요청
             photos.delete()
 
-            return None
     except (Boto3Error, OSError, Exception) as e:
         error_msg = {
             Boto3Error: "S3 삭제 중 오류가 발생했습니다",
@@ -155,4 +159,3 @@ def delete_profile_photo(user: CustomUser) -> None:
             user.save(update_fields=["profile_image"])
     except Exception as e:
         raise e
-    return None
