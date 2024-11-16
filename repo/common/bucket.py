@@ -1,6 +1,7 @@
 import uuid
 
 import boto3
+from boto3.exceptions import Boto3Error
 from django.conf import settings
 from storages.backends.s3boto3 import S3Boto3Storage, S3StaticStorage
 
@@ -8,10 +9,9 @@ from repo.profiles.models import CustomUser
 
 DEBUG = settings.DEBUG
 
-if not DEBUG:
-    AWS_S3_ACCESS_KEY_ID = settings.AWS_S3_ACCESS_KEY_ID
-    AWS_S3_SECRET_ACCESS_KEY = settings.AWS_S3_SECRET_ACCESS_KEY
-    AWS_STORAGE_BUCKET_NAME = settings.AWS_STORAGE_BUCKET_NAME
+AWS_S3_ACCESS_KEY_ID = getattr(settings, "AWS_S3_ACCESS_KEY_ID", None)
+AWS_S3_SECRET_ACCESS_KEY = getattr(settings, "AWS_S3_SECRET_ACCESS_KEY", None)
+AWS_STORAGE_BUCKET_NAME = getattr(settings, "AWS_STORAGE_BUCKET_NAME", None)
 
 
 # 장고 STATIC 파일을 다루는 각종 설정을 커스텀할 수 있습니다.
@@ -121,13 +121,20 @@ def delete_photos(object) -> None:
                 "Quiet": True,  # 삭제 결과 메시지를 간소화
             }
 
-            # 일괄 삭제 요청
-            s3.delete_objects(Bucket=AWS_STORAGE_BUCKET_NAME, Delete=objects_to_delete)
+            s3.delete_objects(Bucket=AWS_STORAGE_BUCKET_NAME, Delete=objects_to_delete)  # 일괄 삭제 요청
             photos.delete()
 
-    except Exception as e:
-        raise e
-    return None
+            return None
+    except (Boto3Error, OSError, Exception) as e:
+        error_msg = {
+            Boto3Error: "S3 삭제 중 오류가 발생했습니다",
+            OSError: "파일 시스템 작업 중 오류가 발생했습니다",
+            Exception: "이미지 삭제 중 예기치 않은 오류가 발생했습니다",
+        }.get(type(e), "알 수 없는 오류가 발생했습니다")
+
+        for photo in photos:  # 에러 발생시 롤백 처리
+            photo.save()
+        raise type(e)(f"{error_msg}: {str(e)}") from e
 
 
 def delete_profile_photo(user: CustomUser) -> None:

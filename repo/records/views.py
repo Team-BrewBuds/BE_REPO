@@ -12,6 +12,12 @@ from repo.common.bucket import (
     delete_photos,
     delete_profile_photo,
 )
+from repo.common.serializers import (
+    ObjectSerializer,
+    PhotoDetailSerializer,
+    PhotoUpdateSerializer,
+    PhotoUploadSerializer,
+)
 from repo.common.utils import (
     delete,
     get_paginated_response_with_class,
@@ -199,59 +205,83 @@ class PhotoApiView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
 
-    def post(self, request, object_type, object_id):
-        files = request.FILES.getlist("photo_url")
-        if not files:
-            return Response({"error": "photo_url is required"}, status=status.HTTP_400_BAD_REQUEST)
+    @transaction.atomic
+    def post(self, request):
+        """임시 사진 업로드 API"""
+        serializer = PhotoUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        files = serializer.validated_data["photo_url"]
         try:
-            obj = get_post_or_tasted_record_detail(object_type, object_id)
-
-            delete_photos(obj)  # 기존 사진 삭제
-
-            photos = []
-
+            photos = []  # 업로드할 사진 목록
             for i, file in enumerate(files):
-                if i == 0:
-                    file.name = create_unique_filename(file.name, is_main=True)
-                else:
-                    file.name = create_unique_filename(file.name)
-
-                if object_type == "post":
-                    photo = Photo(post=obj, photo_url=file)
-                elif object_type == "tasted_record":
-                    photo = Photo(tasted_record=obj, photo_url=file)
-                else:
-                    raise ValueError("invalid object_type")
-
+                file.name = create_unique_filename(file.name, is_main=(i == 0))
+                photo = Photo(photo_url=file)
                 photo.save()
                 photos.append(photo)
 
-            data = [
-                {
-                    "id": photo.id,
-                    "photo_url": photo.photo_url.url,
-                    "is_representative": photo.photo_url.name.split("/")[-1].startswith("main_"),
-                }
-                for photo in photos
-            ]
-
-            return Response(data, status=status.HTTP_201_CREATED)
+            return Response(PhotoDetailSerializer(photos, many=True).data, status=status.HTTP_201_CREATED)
         except Exception as e:
-            # 업로드 실패 시 이미 저장된 사진들 삭제
-            delete_photos(obj)
+            delete_photos(photos)
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def delete(self, request, object_type, object_id):
-        obj = get_post_or_tasted_record_detail(object_type, object_id)
-        if not obj:
-            return Response({"error": "object not found"}, status=status.HTTP_404_NOT_FOUND)
+    @transaction.atomic
+    def put(self, request):
+        """사진 수정 API (기존 사진 삭제 후 새로운 사진 업로드)"""
+        serializer = PhotoUpdateSerializer(
+            data={
+                "photo_url": request.FILES.getlist("photo_url"),
+                "object_type": request.query_params.get("object_type"),
+                "object_id": request.query_params.get("object_id"),
+            }
+        )
+        serializer.is_valid(raise_exception=True)
+
+        files = serializer.validated_data["photo_url"]
+        object_type = serializer.validated_data["object_type"]
+        object_id = serializer.validated_data["object_id"]
 
         try:
-            delete_photos(obj)
+            obj = get_post_or_tasted_record_detail(object_type, object_id)  # 객체 존재 여부 확인
+
+            delete_photos(obj)  # 기존 사진 삭제
+
+            photos = []  # 업로드할 사진 목록
+            for i, file in enumerate(files):
+                file.name = create_unique_filename(file.name, is_main=(i == 0))
+                photo = Photo(**{object_type: obj, "photo_url": file})
+                photo.save()
+                photos.append(photo)
+
+            return Response(PhotoDetailSerializer(photos, many=True).data, status=status.HTTP_200_OK)
+        except ValueError:
+            return Response({"error": "invalid object_type"}, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+            return Response({"error": "object not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    @transaction.atomic
+    def delete(self, request):
+        """사진 삭제 API"""
+        serializer = ObjectSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+
+        object_type = serializer.validated_data["object_type"]
+        object_id = serializer.validated_data["object_id"]
+
+        try:
+            obj = get_post_or_tasted_record_detail(object_type, object_id)
+
+            delete_photos(obj)
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ValueError:
+            return Response({"error": "invalid object_type"}, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+            return Response({"error": "object not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @ProfilePhotoSchema.profile_photo_schema_view

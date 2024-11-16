@@ -339,6 +339,8 @@ def get_post_or_tasted_record_detail(object_type, object_id):
         obj = get_object_or_404(Post, pk=object_id)
     elif object_type == "tasted_record":
         obj = get_object_or_404(TastedRecord, pk=object_id)
+    else:
+        raise ValueError("invalid object_type")
 
     return obj
 
