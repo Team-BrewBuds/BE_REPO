@@ -199,17 +199,64 @@ class PhotoApiView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
 
-    def post(self, request, object_type, object_id):
+    @transaction.atomic
+    def post(self, request):
+        """임시 사진 업로드 API"""
+        files = request.FILES.getlist("photo_url")
+        # TODO: 파일 크기, 형식 등의 검증
+
+        if not files:
+            return Response({"error": "photo_url is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            photos = []
+            for i, file in enumerate(files):
+                if i == 0:
+                    file.name = create_unique_filename(file.name, is_main=True)
+                else:
+                    file.name = create_unique_filename(file.name)
+
+                photo = Photo(photo_url=file)
+                photo.save()
+                photos.append(photo)
+
+            data = [
+                {
+                    "id": photo.id,
+                    "photo_url": photo.photo_url.url,
+                    "is_representative": photo.photo_url.name.split("/")[-1].startswith("main_"),
+                }
+                for photo in photos
+            ]
+
+            return Response(data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            for photo in photos:
+                if photo.photo_url:
+                    photo.photo_url.delete()
+                photo.delete()
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @transaction.atomic
+    def put(self, request):
+        """사진 수정 API (기존 사진 삭제 후 새로운 사진 업로드)"""
+        object_type = request.query_params.get("object_type")
+        object_id = request.query_params.get("object_id")
+
+        obj = get_post_or_tasted_record_detail(object_type, object_id)
+        if not obj:
+            return Response({"error": "object not found"}, status=status.HTTP_404_NOT_FOUND)
+
         files = request.FILES.getlist("photo_url")
         if not files:
             return Response({"error": "photo_url is required"}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            obj = get_post_or_tasted_record_detail(object_type, object_id)
+            old_photos = list(obj.photos.all())  # 기존 사진 백업
 
             delete_photos(obj)  # 기존 사진 삭제
 
-            photos = []
-
+            photos = []  # 결과적으로 저장될 사진 리스트
             for i, file in enumerate(files):
                 if i == 0:
                     file.name = create_unique_filename(file.name, is_main=True)
@@ -235,13 +282,19 @@ class PhotoApiView(APIView):
                 for photo in photos
             ]
 
-            return Response(data, status=status.HTTP_201_CREATED)
+            return Response(data, status=status.HTTP_200_OK)
+
         except Exception as e:
-            # 업로드 실패 시 이미 저장된 사진들 삭제
-            delete_photos(obj)
+            for photo in old_photos:  # 업로드 실패 시 기존 사진 복구
+                photo.save()
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def delete(self, request, object_type, object_id):
+    @transaction.atomic
+    def delete(self, request):
+        """사진 삭제 API"""
+        object_type = request.query_params.get("object_type")
+        object_id = request.query_params.get("object_id")
+
         obj = get_post_or_tasted_record_detail(object_type, object_id)
         if not obj:
             return Response({"error": "object not found"}, status=status.HTTP_404_NOT_FOUND)

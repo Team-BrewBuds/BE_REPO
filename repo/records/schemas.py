@@ -259,21 +259,6 @@ class CommentDetailSchema:
 
 class PhotoSchema:
     photo_post_schema = extend_schema(
-        parameters=[
-            OpenApiParameter(
-                name="object_id",
-                type=OpenApiTypes.INT,
-                location=OpenApiParameter.PATH,
-                description="사진 업로드할 객체의 ID (PK)",
-            ),
-            OpenApiParameter(
-                name="object_type",
-                type=OpenApiTypes.STR,
-                location=OpenApiParameter.PATH,
-                description="사진 업로드할 객체의 타입",
-                enum=["post", "tasted_record"],
-            ),
-        ],
         request={
             "multipart/form-data": {
                 "type": "object",
@@ -320,18 +305,80 @@ class PhotoSchema:
         tags=[Photo_Tag],
     )
 
+    photo_put_schema = extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="object_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="사진을 수정할 객체의 ID (PK)",
+            ),
+            OpenApiParameter(
+                name="object_type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="사진을 수정할 객체의 타입",
+                enum=["post", "tasted_record"],
+            ),
+        ],
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "photo_url": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "binary",
+                        },
+                        "description": "새로운 이미지 파일 리스트",
+                    }
+                },
+                "required": ["photo_url"],
+            }
+        },
+        responses={
+            200: OpenApiResponse(
+                response={
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "integer", "example": 123},
+                            "photo_url": {"type": "string", "example": "https://s3.amazonaws.com/bucket_name/uploads/photo1.jpg"},
+                            "is_representative": {"type": "boolean", "example": True},
+                        },
+                    },
+                },
+                description="이미지 수정 성공",
+            ),
+            400: OpenApiResponse(description="잘못된 데이터 형식"),
+            403: OpenApiResponse(description="권한 없음"),
+            404: OpenApiResponse(description="객체를 찾을 수 없음"),
+            500: OpenApiResponse(description="서버 에러"),
+        },
+        summary="이미지 수정 API",
+        description="""
+            게시글이나 시음기록에 등록된 사진을 수정하는 API입니다.
+            - 기존 사진은 모두 삭제되고 새로운 사진으로 대체됩니다.
+            - 첫 번째 사진이 대표 사진으로 설정됩니다.
+            - 작성자만 수정할 수 있습니다.
+        """,
+        tags=[Photo_Tag],
+    )
+
     photo_delete_schema = extend_schema(
         parameters=[
             OpenApiParameter(
                 name="object_id",
                 type=OpenApiTypes.INT,
-                location=OpenApiParameter.PATH,
+                location=OpenApiParameter.QUERY,
                 description="사진 삭제할 객체의 ID(PK)",
             ),
             OpenApiParameter(
                 name="object_type",
                 type=OpenApiTypes.STR,
-                location=OpenApiParameter.PATH,
+                location=OpenApiParameter.QUERY,
                 description="사진 삭제할 객체의 타입",
                 enum=["post", "tasted_record"],
             ),
@@ -350,7 +397,7 @@ class PhotoSchema:
         tags=[Photo_Tag],
     )
 
-    photo_schema_view = extend_schema_view(post=photo_post_schema, delete=photo_delete_schema)
+    photo_schema_view = extend_schema_view(post=photo_post_schema, put=photo_put_schema, delete=photo_delete_schema)
 
 
 class ProfilePhotoSchema:
