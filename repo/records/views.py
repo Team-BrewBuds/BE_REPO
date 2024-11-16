@@ -296,10 +296,10 @@ class ProfilePhotoAPIView(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
-        if "photo_url" not in request.FILES:
-            return Response({"error": "photo_url is required"}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = PhotoUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        file = request.FILES["photo_url"]
+        file = serializer.validated_data["photo_url"][0]
         file.name = create_unique_filename(file.name, is_main=True)
 
         try:
@@ -309,7 +309,7 @@ class ProfilePhotoAPIView(APIView):
             request.user.profile_image = file
             request.user.save(update_fields=["profile_image"])
 
-            return Response({"profile_image": request.user.profile_image.url}, status=status.HTTP_201_CREATED)
+            return Response({"photo_url": request.user.profile_image.url}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
