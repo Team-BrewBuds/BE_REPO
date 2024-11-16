@@ -30,8 +30,27 @@ class PhotoDetailSerializer(PhotoSerializer):
 
 
 class PhotoUploadSerializer(serializers.Serializer):
+
+    class PhotoField(serializers.ImageField):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.max_length = 5 * 1024 * 1024  # 5MB 제한
+            self.error_messages.update(
+                {
+                    "invalid_image": "업로드한 파일이 이미지가 아니거나 손상된 이미지입니다 .",
+                }
+            )
+
     photo_url = serializers.ListField(
-        child=serializers.ImageField(), required=True, max_length=10, error_messages={"required": "photo_url은 필수 필드입니다."}
+        child=PhotoField(),
+        required=True,
+        min_length=1,
+        max_length=10,
+        error_messages={
+            "required": "photo_url은 필수 필드입니다.",
+            "max_length": "최대 10개의 이미지만 업로드할 수 있습니다.",
+            "min_length": "최소 1개의 이미지를 업로드해야 합니다.",
+        },
     )
 
 
