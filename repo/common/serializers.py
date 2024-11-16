@@ -12,6 +12,24 @@ class PageNumberSerializer(serializers.Serializer):
         return value
 
 
+class PhotoField(serializers.ImageField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_size = 5 * 1024 * 1024  # 5MB 제한
+        self.error_messages.update(
+            {
+                "max_size": "최대 5MB의 이미지만 업로드할 수 있습니다.",
+                "invalid_image": "업로드한 파일이 이미지가 아니거나 손상된 이미지입니다 .",
+            }
+        )
+
+    def to_internal_value(self, data):
+        file_obj = super().to_internal_value(data)
+        if file_obj.size > self.max_size:
+            raise serializers.ValidationError(self.error_messages["max_size"])
+        return file_obj
+
+
 class PhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Photo
@@ -30,17 +48,6 @@ class PhotoDetailSerializer(PhotoSerializer):
 
 
 class PhotoUploadSerializer(serializers.Serializer):
-
-    class PhotoField(serializers.ImageField):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.max_length = 5 * 1024 * 1024  # 5MB 제한
-            self.error_messages.update(
-                {
-                    "invalid_image": "업로드한 파일이 이미지가 아니거나 손상된 이미지입니다 .",
-                }
-            )
-
     photo_url = serializers.ListField(
         child=PhotoField(),
         required=True,
