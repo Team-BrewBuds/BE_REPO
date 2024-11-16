@@ -542,24 +542,16 @@ class BudyRecommendAPIView(APIView):
 @UserPostListSchema.user_post_list_schema_view
 class UserPostListAPIView(APIView):
     def get(self, request, id):
-        subject = request.query_params.get("subject", None)
-        valid_subjects = {kor: eng for eng, kor in Post.SUBJECT_TYPE_CHOICES}
+        subject = request.query_params.get("subject", "all")
+        valid_subjects = list(dict(Post.SUBJECT_TYPE_CHOICES).keys()) + ["all"]
 
-        if subject is None:
-            subject_choice = "all"
-        elif subject not in valid_subjects:
+        if subject not in valid_subjects:
             return Response({"error": "Invalid subject parameter"}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            subject_choice = valid_subjects[subject]
 
-        user = get_object_or_404(CustomUser, id=id)
-        posts = get_user_posts_by_subject(user, subject_choice)
+        user = get_object_or_404(CustomUser, pk=id)
+        posts = get_user_posts_by_subject(user, subject)
 
-        paginator = PageNumberPagination()
-        paginated_posts = paginator.paginate_queryset(posts, request)
-
-        serializer = UserPostSerializer(paginated_posts, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return get_paginated_response_with_class(request, posts, UserPostSerializer)
 
 
 @UserTastedRecordListSchema.user_tasted_record_list_schema_view
@@ -603,8 +595,4 @@ class UserNoteAPIView(APIView):
             note.photo_url = get_first_photo_url(note.post if note.post else note.tasted_record)
             notes_with_photos.append(note)
 
-        paginator = PageNumberPagination()
-        paginated_notes = paginator.paginate_queryset(notes_with_photos, request)
-
-        serializer = UserNoteSerializer(paginated_notes, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return get_paginated_response_with_class(request, notes_with_photos, UserNoteSerializer)

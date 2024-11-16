@@ -46,6 +46,7 @@ class TestUserPostListAPIView:
         response = api_client.get(url)
 
         # Then
+        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 3
 
@@ -64,24 +65,24 @@ class TestUserPostListAPIView:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 0
 
-    @pytest.mark.parametrize("subject", ["일반", "카페", "원두", "정보", "질문", "고민", "장비"])
+    @pytest.mark.parametrize("subject", list(dict(Post.SUBJECT_TYPE_CHOICES).keys()))
     def test_get_user_post_list_by_subject_success(self, authenticated_client, subject):
         """
         주제별 게시글 리스트 조회 성공 테스트
         """
         # Given
         api_client, user = authenticated_client()
-        # 주제 매핑 딕셔너리 생성 (예: '일반' -> 'normal')
-        subject_mapping = {kor: eng for eng, kor in Post.SUBJECT_TYPE_CHOICES}
 
-        # 현재 주제에 해당하는 영문 코드 가져오기
-        current_subject = subject_mapping.get(subject)
+        # 주제 리스트 생성
+        remaining_subjects = list(dict(Post.SUBJECT_TYPE_CHOICES).keys())
 
-        # 현재 주제를 제외한 나머지 주제들의 영문 코드 리스트 생성
-        remaining_subjects = list(subject_mapping.values())
-        remaining_subjects.remove(current_subject)
+        # 현재 주제를 제외한 나머지 주제들의 리스트 생성
+        remaining_subjects.remove(subject)
 
-        [PostFactory(author=user, subject=current_subject) for _ in range(3)]
+        # 현재 주제에 해당하는 게시글 3개 생성
+        [PostFactory(author=user, subject=subject) for _ in range(3)]
+
+        # 나머지 주제에 해당하는 게시글 2개 생성
         [PostFactory(author=user, subject=random.choice(remaining_subjects)) for _ in range(2)]
 
         url = f"/profiles/{user.id}/posts/?subject={subject}"
@@ -94,7 +95,7 @@ class TestUserPostListAPIView:
         assert response.data["count"] == 3
 
         for post in response.data["results"]:
-            assert post["subject"] == current_subject
+            assert post["subject"] == subject
 
     def test_get_user_post_list_by_invalid_subject(self, authenticated_client):
         """
