@@ -6,7 +6,7 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
-from repo.common.serializers import PageNumberSerializer
+from repo.common.serializers import PageNumberSerializer, PhotoDetailSerializer
 from repo.records.posts.serializers import PostListSerializer
 from repo.records.serializers import CommentSerializer, ReportSerializer
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
@@ -276,21 +276,10 @@ class PhotoSchema:
             }
         },
         responses={
-            201: OpenApiResponse(
-                response={
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "integer", "example": 123},
-                            "photo_url": {"type": "string", "example": "https://s3.amazonaws.com/bucket_name/uploads" "/photo1.jpg"},
-                            "is_representative": {"type": "boolean", "example": True},
-                        },
-                    },
-                },
-                description="이미지 업로드 성공",
-            ),
+            201: PhotoDetailSerializer,
             400: OpenApiResponse(description="잘못된 데이터 형식 또는 유효성 검증 실패"),
+            403: OpenApiResponse(description="권한 없음"),
+            500: OpenApiResponse(description="서버 에러"),
         },
         summary="이미지 업로드 API",
         description="""
@@ -338,21 +327,8 @@ class PhotoSchema:
             }
         },
         responses={
-            200: OpenApiResponse(
-                response={
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "integer", "example": 123},
-                            "photo_url": {"type": "string", "example": "https://s3.amazonaws.com/bucket_name/uploads/photo1.jpg"},
-                            "is_representative": {"type": "boolean", "example": True},
-                        },
-                    },
-                },
-                description="이미지 수정 성공",
-            ),
-            400: OpenApiResponse(description="잘못된 데이터 형식"),
+            200: PhotoDetailSerializer,
+            400: OpenApiResponse(description="잘못된 데이터 형식 또는 유효성 검증 실패"),
             403: OpenApiResponse(description="권한 없음"),
             404: OpenApiResponse(description="객체를 찾을 수 없음"),
             500: OpenApiResponse(description="서버 에러"),
@@ -385,14 +361,16 @@ class PhotoSchema:
         ],
         responses={
             204: OpenApiResponse(description="성공적으로 삭제됨"),
-            400: OpenApiResponse(description="잘못된 요청 (object_id, object_type 누락 또는 잘못된 형식)"),
+            400: OpenApiResponse(description="잘못된 데이터 형식 또는 유효성 검증 실패"),
+            403: OpenApiResponse(description="권한 없음"),
             404: OpenApiResponse(description="해당 객체의 사진을 찾을 수 없음"),
             500: OpenApiResponse(description="서버 에러"),
         },
         summary="이미지 삭제 API",
         description="""
             삭제할 객체의 이미지들을 삭제하는 API.
-            삭제할 객체 타입과 해당 객체의 ID를 쿼리 파라미터로 전달하면 해당 이미지들이 삭제됩니다.
+            - 삭제할 객체 타입과 해당 객체의 ID를 쿼리 파라미터로 전달하면 해당 이미지들이 삭제됩니다.
+            - 작성자만 삭제할 수 있습니다.
         """,
         tags=[Photo_Tag],
     )
