@@ -1,4 +1,8 @@
+import io
+
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -86,3 +90,20 @@ def authenticated_client(api_client):
 @pytest.fixture
 def non_existent_user_id():
     return CustomUserFactory.create().id + 9999
+
+
+@pytest.fixture
+def create_test_image():
+    file = io.BytesIO()  # 메모리에서 테스트용 이미지 생성
+    image = Image.new("RGB", (100, 100), "white")
+    image.save(file, "JPEG")
+    file.seek(0)
+
+    test_image = SimpleUploadedFile(name="test.jpeg", content=file.getvalue(), content_type="image/jpeg")
+
+    return test_image
+
+
+@pytest.fixture(autouse=True)
+def debug_setting(settings):
+    settings.DEBUG = True
