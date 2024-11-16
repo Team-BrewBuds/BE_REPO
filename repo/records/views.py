@@ -244,6 +244,9 @@ class PhotoApiView(APIView):
         try:
             obj = get_post_or_tasted_record_detail(object_type, object_id)  # 객체 존재 여부 확인
 
+            if obj.author != request.user:  # 작성자 권한 체크
+                return Response({"error": "권한이 없습니다"}, status=status.HTTP_403_FORBIDDEN)
+
             delete_photos(obj)  # 기존 사진 삭제
 
             photos = []  # 업로드할 사진 목록
@@ -272,6 +275,9 @@ class PhotoApiView(APIView):
 
         try:
             obj = get_post_or_tasted_record_detail(object_type, object_id)
+
+            if obj.author != request.user:  # 작성자 권한 체크
+                return Response({"error": "권한이 없습니다"}, status=status.HTTP_403_FORBIDDEN)
 
             delete_photos(obj)
 
