@@ -9,10 +9,9 @@ from repo.profiles.models import CustomUser
 
 DEBUG = settings.DEBUG
 
-if not DEBUG:
-    AWS_S3_ACCESS_KEY_ID = settings.AWS_S3_ACCESS_KEY_ID
-    AWS_S3_SECRET_ACCESS_KEY = settings.AWS_S3_SECRET_ACCESS_KEY
-    AWS_STORAGE_BUCKET_NAME = settings.AWS_STORAGE_BUCKET_NAME
+AWS_S3_ACCESS_KEY_ID = getattr(settings, "AWS_S3_ACCESS_KEY_ID", None)
+AWS_S3_SECRET_ACCESS_KEY = getattr(settings, "AWS_S3_SECRET_ACCESS_KEY", None)
+AWS_STORAGE_BUCKET_NAME = getattr(settings, "AWS_STORAGE_BUCKET_NAME", None)
 
 
 # 장고 STATIC 파일을 다루는 각종 설정을 커스텀할 수 있습니다.
