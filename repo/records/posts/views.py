@@ -100,6 +100,10 @@ class PostListCreateAPIView(APIView):
         return get_paginated_response_with_class(request, posts, PostListSerializer)
 
     def post(self, request):
+        user = request.user
+        if not user.is_authenticated:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+
         serializer = PostCreateUpdateSerializer(data=request.data)
         if serializer.is_valid():
             with transaction.atomic():
