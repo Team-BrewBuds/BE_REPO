@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from repo.common.serializers import PageNumberSerializer
-from repo.common.utils import delete, get_object, get_paginated_response_with_class
+from repo.common.utils import delete, get_paginated_response_with_class
 from repo.common.view_counter import update_view_count
 from repo.records.posts.serializers import *
 from repo.records.services import (
@@ -74,7 +74,7 @@ from repo.records.services import (
     ),
     post=extend_schema(
         request=PostCreateUpdateSerializer,
-        responses={201: PostCreateUpdateSerializer, 400: OpenApiResponse(description="Bad Request")},
+        responses={201: PostDetailSerializer, 400: OpenApiResponse(description="Bad Request")},
         summary="게시글 생성",
         description="""
             단일 게시글을 생성합니다. (사진과 시음기록은 함께 등록할 수 없습니다.)
@@ -86,6 +86,11 @@ from repo.records.services import (
 class PostListCreateAPIView(APIView):
     """게시글 리스트 조회, 생성 API"""
 
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated()]
+        return []
+
     def get(self, request):
         user = request.user
         if not user.is_authenticated:
@@ -94,16 +99,11 @@ class PostListCreateAPIView(APIView):
 
         subject = request.query_params.get("subject")
         subject_mapping = dict(Post.SUBJECT_TYPE_CHOICES)
-        subject_value = subject_mapping.get(subject, None)
 
         posts = get_post_feed(request, user, subject_value)
         return get_paginated_response_with_class(request, posts, PostListSerializer)
 
     def post(self, request):
-        user = request.user
-        if not user.is_authenticated:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
-
         serializer = PostCreateUpdateSerializer(data=request.data)
         if serializer.is_valid():
             with transaction.atomic():
@@ -112,7 +112,7 @@ class PostListCreateAPIView(APIView):
                     title=serializer.validated_data["title"],
                     content=serializer.validated_data["content"],
                     subject=serializer.validated_data["subject"],
-                    tag=serializer.validated_data["tag"],
+                    tag=serializer.validated_data.get("tag", None),
                 )
 
                 tasted_records = serializer.validated_data.get("tasted_records", [])
@@ -121,7 +121,8 @@ class PostListCreateAPIView(APIView):
                 photos = serializer.validated_data.get("photos", [])
                 post.photo_set.set(photos)
 
-            return Response(PostCreateUpdateSerializer(post).data, status=status.HTTP_201_CREATED)
+            # return Response(PostCreateUpdateSerializer(post).data, status=status.HTTP_201_CREATED)
+            return Response(PostDetailSerializer(post).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -177,15 +178,15 @@ class PostDetailApiView(APIView):
     """
 
     def get(self, request, pk):
-        _, response = get_object(pk, Post)
-        if response:
-            return response
+        post = get_object_or_404(Post, pk=pk)
+        post_detail = get_post_detail(post.id)
 
-        post = get_post_detail(pk)
-        instance, response = update_view_count(request, post, Response(), "post_viewed")
+        # 쿠키 기반 조회수 업데이트
+        response = update_view_count(request, post_detail, Response(), "post_viewed")
+        response.data = PostDetailSerializer(post_detail).data
+        response.status_code = status.HTTP_200_OK
 
-        serializer = PostDetailSerializer(instance, context={"request": request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return response
 
     def put(self, request, pk):
         post = get_object_or_404(Post, pk=pk)

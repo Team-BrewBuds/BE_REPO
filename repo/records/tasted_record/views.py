@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from repo.beans.models import Bean, BeanTasteReview
 from repo.common.serializers import PageNumberSerializer
-from repo.common.utils import delete, get_object, get_paginated_response_with_class
+from repo.common.utils import delete, get_paginated_response_with_class
 from repo.common.view_counter import update_view_count
 from repo.records.models import TastedRecord
 from repo.records.services import (
@@ -172,17 +172,14 @@ class TastedRecordDetailApiView(APIView):
     """
 
     def get(self, request, pk):
-        _, response = get_object(pk, TastedRecord)
-        if response:
-            return response
+        tasted_record = get_object_or_404(TastedRecord, pk=pk)
+        tasted_record_detail = get_tasted_record_detail(tasted_record.id)
 
-        tasted_record = get_tasted_record_detail(pk)
+        # 쿠키 기반 조회수 업데이트
+        response = update_view_count(request, tasted_record_detail, Response(), "tasted_record_viewed")
+        response.data = TastedRecordDetailSerializer(tasted_record_detail, context={"request": request}).data
+        response.status_code = status.HTTP_200_OK
 
-        instance, response = update_view_count(request, tasted_record, Response(), "tasted_record_viewed")
-
-        serializer = TastedRecordDetailSerializer(instance, context={"request": request})
-        response.data = serializer.data
-        response.status = status.HTTP_200_OK
         return response
 
     def put(self, request, pk):
