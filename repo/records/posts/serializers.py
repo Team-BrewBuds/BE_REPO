@@ -14,6 +14,7 @@ class PostListSerializer(serializers.ModelSerializer):
     photos = PhotoSerializer(many=True, source="photo_set", read_only=True)
     tasted_records = TastedRecordInPostSerializer("tasted_records", many=True, read_only=True)
     created_at = serializers.SerializerMethodField()
+    subject = serializers.CharField(source="get_subject_display")
     likes = serializers.IntegerField()
     comments = serializers.IntegerField()
     is_user_liked = serializers.BooleanField()
@@ -55,6 +56,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
     photos = PhotoSerializer(many=True, source="photo_set")
     tasted_records = TastedRecordInPostSerializer("post.tasted_records", many=True)
 
+    subject = serializers.CharField(source="get_subject_display")
     like_cnt = serializers.IntegerField(source="like_cnt.count")
     is_user_liked = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
@@ -77,6 +79,7 @@ class UserPostSerializer(serializers.ModelSerializer):
     """특정 사용자의 게시글 리스트 조회용"""
 
     author = serializers.CharField(source="author.nickname", read_only=True)
+    subject = serializers.CharField(source="get_subject_display")
     represent_post_photo = serializers.SerializerMethodField()
     tasted_records_photo = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
