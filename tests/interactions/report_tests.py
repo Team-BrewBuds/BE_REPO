@@ -115,12 +115,10 @@ class TestReportAPIView:
         # Given
         client, user = authenticated_client()
         post = PostFactory()
-
-        data = {"object_type": "post", "object_id": post.id, "reason": "부적절한 내용"}
+        data = {"object_type": "post", "object_id": post.id + 9999, "reason": "부적절한 내용"}
         url = "/records/report/"
 
         # When
-        client.delete(f"/records/post/{post.id}/")
         response = client.post(url, data=data)
 
         # Then

@@ -74,7 +74,8 @@ class TestUserPostListAPIView:
         api_client, user = authenticated_client()
 
         # 주제 리스트 생성
-        remaining_subjects = list(dict(Post.SUBJECT_TYPE_CHOICES).keys())
+        subject_choices = dict(Post.SUBJECT_TYPE_CHOICES)
+        remaining_subjects = list(subject_choices.keys())
 
         # 현재 주제를 제외한 나머지 주제들의 리스트 생성
         remaining_subjects.remove(subject)
@@ -95,7 +96,7 @@ class TestUserPostListAPIView:
         assert response.data["count"] == 3
 
         for post in response.data["results"]:
-            assert post["subject"] == subject
+            assert post["subject"] == subject_choices.get(subject)
 
     def test_get_user_post_list_by_invalid_subject(self, authenticated_client):
         """

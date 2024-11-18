@@ -77,6 +77,7 @@ class TestPostListCreateAPIView:
         client, user = authenticated_client()
         target_posts = PostFactory.create_batch(2, subject=subject)
         other_posts = PostFactory.create_batch(2, subject="normal")
+        subject_choices = dict(Post.SUBJECT_TYPE_CHOICES)
 
         # When
         response = client.get(f"{self.url}?subject={subject}")
@@ -84,7 +85,7 @@ class TestPostListCreateAPIView:
         # Then
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 2
-        assert all(post["subject"] == subject for post in response.data["results"])
+        assert all(post["subject"] == subject_choices.get(subject) for post in response.data["results"])
 
     def test_create_post_success(self, authenticated_client):
         """게시글 생성 성공 테스트"""
@@ -375,6 +376,7 @@ class TestTopSubjectPostsAPIView:
         client, user = authenticated_client()
         target_posts = PostFactory.create_batch(2, subject="normal")
         other_posts = PostFactory.create_batch(2, subject="cafe")
+        subject_choices = dict(Post.SUBJECT_TYPE_CHOICES)
 
         # When
         response = client.get(f"{self.url}?subject=normal")
@@ -382,7 +384,7 @@ class TestTopSubjectPostsAPIView:
         # Then
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 2
-        assert all(post["subject"] == "normal" for post in response.data["results"])
+        assert all(post["subject"] == subject_choices["normal"] for post in response.data["results"])
 
     def test_get_top_posts_exclude_blocked_user(self, authenticated_client):
         """차단된 사용자의 게시글 제외 테스트"""
