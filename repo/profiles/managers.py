@@ -133,6 +133,8 @@ class RelationshipManager(models.Manager):
         blocking_users = list(block_relationships.values_list("to_user", flat=True))
         blocked_users = list(block_relationships.values_list("from_user", flat=True))
         unique_block_users = list(set(blocking_users + blocked_users))
-        unique_block_users.remove(user_id)
+
+        if user_id in unique_block_users:
+            unique_block_users.remove(user_id)
 
         return unique_block_users

@@ -57,12 +57,16 @@ class PostDetailSerializer(serializers.ModelSerializer):
 
     like_cnt = serializers.IntegerField(source="like_cnt.count")
     is_user_liked = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
 
     def get_is_user_liked(self, obj):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             return obj.like_cnt.filter(id=request.user.id).exists()
         return False
+
+    def get_created_at(self, obj):
+        return get_time_difference(obj.created_at)
 
     class Meta:
         model = Post
