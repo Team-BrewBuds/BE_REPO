@@ -121,7 +121,7 @@ class TastedRecordFactory(DjangoModelFactory):
                 self.like_cnt.add(CustomUserFactory())
 
 
-class PostFactory(factory.django.DjangoModelFactory):
+class PostFactory(DjangoModelFactory):
     class Meta:
         model = Post
         skip_postgeneration_save = True
@@ -188,7 +188,7 @@ class CommentFactory(DjangoModelFactory):
             self.tasted_record = TastedRecordFactory()
 
 
-class NoteFactory(factory.django.DjangoModelFactory):
+class NoteFactory(DjangoModelFactory):
     class Meta:
         model = Note
         skip_postgeneration_save = True
