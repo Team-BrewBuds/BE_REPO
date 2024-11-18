@@ -2,12 +2,13 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.beans.models import Bean, BeanTasteReview
+from repo.common.permissions import IsOwnerOrReadOnly
 from repo.common.serializers import PageNumberSerializer
-from repo.common.utils import delete, get_paginated_response_with_class
+from repo.common.utils import get_paginated_response_with_class
 from repo.common.view_counter import update_view_count
 from repo.records.models import TastedRecord
 from repo.records.services import (
@@ -20,7 +21,10 @@ from repo.records.tasted_record.serializers import (
     TastedRecordDetailSerializer,
     TastedRecordListSerializer,
 )
-from repo.records.tasted_record.service import update_tasted_record
+from repo.records.tasted_record.service import (
+    create_tasted_record,
+    update_tasted_record,
+)
 
 
 @extend_schema_view(
@@ -75,41 +79,32 @@ class TastedRecordListCreateAPIView(APIView):
     담당자 : hwstar1204
     """
 
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
     def get(self, request, *args, **kwargs):
+        serializer_class = TastedRecordListSerializer
         user = request.user
         if not user.is_authenticated:
             tasted_records = get_annonymous_tasted_records_feed()
-            return get_paginated_response_with_class(request, tasted_records, TastedRecordListSerializer)
+            return get_paginated_response_with_class(request, tasted_records, serializer_class)
 
         tasted_records = get_tasted_record_feed(request, request.user)
-        return get_paginated_response_with_class(request, tasted_records, TastedRecordListSerializer)
+        return get_paginated_response_with_class(request, tasted_records, serializer_class)
 
     def post(self, request):
         serializer = TastedRecordCreateUpdateSerializer(data=request.data)
-        if serializer.is_valid():
+        serializer.is_valid(raise_exception=True)
+
+        try:
             with transaction.atomic():
-                bean_data = serializer.validated_data["bean"]
-                bean, created = Bean.objects.get_or_create(**bean_data)
-                if created:
-                    bean.is_user_created = True
-                    bean.save()
+                tasted_record = create_tasted_record(request.user, serializer.validated_data)
+                response_serializer = TastedRecordDetailSerializer(tasted_record, context={"request": request})
 
-                taste_review_data = serializer.validated_data["taste_review"]
-                taste_review = BeanTasteReview.objects.create(**taste_review_data)
-
-                tasted_record = TastedRecord.objects.create(
-                    author=request.user,
-                    bean=bean,
-                    taste_review=taste_review,
-                    content=serializer.validated_data["content"],
-                )
-
-                photos = serializer.validated_data.get("photos", [])
-                tasted_record.photo_set.set(photos)
-
-            response_serializer = TastedRecordCreateUpdateSerializer(tasted_record)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except PermissionError as e:
+            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @extend_schema_view(
@@ -171,36 +166,49 @@ class TastedRecordDetailApiView(APIView):
     담당자 : hwstar1204
     """
 
-    def get(self, request, pk):
+    permission_classes = [IsOwnerOrReadOnly]
+    serializer_class = TastedRecordCreateUpdateSerializer
+    response_serializer_class = TastedRecordDetailSerializer
+
+    def get_object(self, pk):
         tasted_record = get_object_or_404(TastedRecord, pk=pk)
+        self.check_object_permissions(self.request, tasted_record)
+        return tasted_record
+
+    def get(self, request, pk):
+        tasted_record = self.get_object(pk)
         tasted_record_detail = get_tasted_record_detail(tasted_record.id)
 
         # 쿠키 기반 조회수 업데이트
         response = update_view_count(request, tasted_record_detail, Response(), "tasted_record_viewed")
-        response.data = TastedRecordDetailSerializer(tasted_record_detail, context={"request": request}).data
+        response.data = self.response_serializer_class(tasted_record_detail, context={"request": request}).data
         response.status_code = status.HTTP_200_OK
 
         return response
 
     def put(self, request, pk):
-        instance = get_object_or_404(TastedRecord, pk=pk)
-        return self._handle_update(request, instance, partial=False)
+        tasted_record = self.get_object(pk)
+        serializer = self.serializer_class(tasted_record, data=request.data, partial=False)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            updated_tasted_record = update_tasted_record(tasted_record, serializer.validated_data)
+
+        response_serializer = self.response_serializer_class(updated_tasted_record, context={"request": request})
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request, pk):
-        instance = get_object_or_404(TastedRecord, pk=pk)
-        return self._handle_update(request, instance, partial=True)
+        tasted_record = self.get_object(pk)
+        serializer = self.serializer_class(tasted_record, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
 
-    def _handle_update(self, request, instance, partial):
-        serializer = TastedRecordCreateUpdateSerializer(instance, data=request.data, partial=partial)
-        if serializer.is_valid():
+        with transaction.atomic():
+            updated_tasted_record = update_tasted_record(tasted_record, serializer.validated_data)
 
-            validated_data = serializer.validated_data
-
-            instance = update_tasted_record(instance, validated_data)
-
-            response_serializer = TastedRecordCreateUpdateSerializer(instance)
-            return Response(response_serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        response_serializer = self.response_serializer_class(updated_tasted_record, context={"request": request})
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
-        return delete(request, pk, TastedRecord)
+        tasted_record = self.get_object(pk)
+        tasted_record.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -1,6 +1,27 @@
-from django.db import transaction
+from ..models import Bean, BeanTasteReview, TastedRecord
 
-from ..models import Bean, BeanTasteReview
+
+def create_tasted_record(user, validated_data):
+    bean_data = validated_data["bean"]
+    bean, created = Bean.objects.get_or_create(**bean_data)
+    if created:
+        bean.is_user_created = True
+        bean.save()
+
+    taste_review_data = validated_data["taste_review"]
+    taste_review = BeanTasteReview.objects.create(**taste_review_data)
+
+    tasted_record = TastedRecord.objects.create(
+        author=user,
+        bean=bean,
+        taste_review=taste_review,
+        content=validated_data["content"],
+    )
+
+    photos = validated_data.get("photos", [])
+    tasted_record.photo_set.set(photos)
+
+    return tasted_record
 
 
 def update_bean(instance, bean_data):
@@ -36,7 +57,6 @@ def update_other_fields(instance, validated_data):
     instance.save()
 
 
-@transaction.atomic
 def update_tasted_record(instance, validated_data):
     """TastedRecord 객체를 트랜잭션으로 업데이트"""
     update_bean(instance, validated_data.pop("bean", None))
