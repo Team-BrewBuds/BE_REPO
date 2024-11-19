@@ -111,7 +111,6 @@ class TestMyProfileAPIView:
 
         # Then
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        print(response.data)
         assert response.data["nickname"][0] == "사용자 with this 닉네임 already exists."  # msg from db
         assert response.data["nickname"][0].code == "unique"
 

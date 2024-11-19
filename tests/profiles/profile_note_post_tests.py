@@ -46,7 +46,6 @@ class TestUserPostListAPIView:
         response = api_client.get(url)
 
         # Then
-        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] == 3
 

@@ -103,7 +103,6 @@ class TestPhotoUpdateAPI:
         )
 
         # Then
-        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         assert Photo.objects.first().photo_url.name is not None
 
@@ -227,7 +226,6 @@ class TestProfilePhotoAPIView:
         response = client.post(f"{self.url}", {"photo_url": image}, format="multipart")
 
         # Then
-        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert "photo_url" in response.data
         user.refresh_from_db()

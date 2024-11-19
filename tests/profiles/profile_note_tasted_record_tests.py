@@ -83,8 +83,6 @@ class TestUserTastedRecordListAPIView:
         beans = [BeanFactory() for _ in range(3)]
         tasted_reviews = [BeanTasteReviewFactory(star=i + 1) for i in range(3)]
         tasted_records = [TastedRecordFactory(author=user, bean=beans[i], taste_review=tasted_reviews[i]) for i in range(3)]
-        for r in tasted_records:
-            print(r.like_cnt.all())
 
         # When
         url = f"/profiles/{user.id}/tasted-records/?ordering={ordering}"
