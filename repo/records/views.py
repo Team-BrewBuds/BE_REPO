@@ -3,7 +3,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -12,6 +12,7 @@ from repo.common.bucket import (
     delete_photos,
     delete_profile_photo,
 )
+from repo.common.permissions import IsOwnerOrReadOnly
 from repo.common.serializers import (
     ObjectSerializer,
     PhotoDetailSerializer,
@@ -22,14 +23,12 @@ from repo.common.utils import (
     delete,
     get_paginated_response_with_class,
     get_paginated_response_with_func,
-    update,
 )
-from repo.records.models import Comment, Note, Photo, Report
+from repo.records.models import Comment, Note, Photo, Post, Report, TastedRecord
 from repo.records.schemas import *
 from repo.records.serializers import CommentSerializer, ReportSerializer
 from repo.records.services import (
     annonymous_user_feed,
-    get_comment,
     get_comment_list,
     get_common_feed,
     get_following_feed,
@@ -132,11 +131,17 @@ class CommentApiView(APIView):
     담당자: hwstar1204
     """
 
-    def get(self, request, object_type, object_id):
-        user = request.user
-        comments = get_comment_list(object_type, object_id, user)
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
-        return get_paginated_response_with_class(request, comments, CommentSerializer)
+    def get(self, request, object_type, object_id):
+        try:
+            comments = get_comment_list(object_type, object_id, request.user)
+
+            return get_paginated_response_with_class(request, comments, CommentSerializer)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+            return Response({"error": "object not found"}, status=status.HTTP_404_NOT_FOUND)
 
     def post(self, request, object_type, object_id):
         """
@@ -151,45 +156,62 @@ class CommentApiView(APIView):
 
         담당자: hwstar1204
         """
-        user = request.user
-        content = request.data.get("content")
-        parent = request.data.get("parent")
-
-        if not content:
-            return Response({"error": "content is required"}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = CommentSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
 
         obj = get_post_or_tasted_record_detail(object_type, object_id)
 
-        parent_comment = get_comment(parent) if parent else None
-
         comment_data = {
-            "author": user,
-            "content": content,
-            "parent": parent_comment,
-            "post": obj if object_type == "post" else None,
-            "tasted_record": obj if object_type == "tasted_record" else None,
+            "author": request.user,
+            "content": serializer.validated_data.get("content"),
+            "parent": serializer.validated_data.get("parent", None),
         }
 
-        Comment.objects.create(**comment_data)
+        if isinstance(obj, Post):
+            comment_data["post"] = obj
+        elif isinstance(obj, TastedRecord):
+            comment_data["tasted_record"] = obj
 
-        return Response(status=status.HTTP_200_OK)
+        comment = Comment.objects.create(**comment_data)
+        return Response(CommentSerializer(comment).data, status=status.HTTP_200_OK)
 
 
 @CommentDetailSchema.comment_detail_schema_view
 class CommentDetailAPIView(APIView):
-    def get(self, request, id):
-        comment = get_comment(id)
-        comment_serializer = CommentSerializer(comment)
-        return Response(comment_serializer.data, status=status.HTTP_200_OK)
+    """
+    댓글 상세 조회 API
+    Args:
+        - id : 댓글의 ID
+    Returns:
+        - status: 200
 
-    def put(self, request, id):
-        return update(request, id, Comment, CommentSerializer, False)
+    담당자: hwstar1204
+    """
+
+    permission_classes = [IsOwnerOrReadOnly]
+
+    def get_object(self, id):
+        comment = get_object_or_404(Comment, pk=id)
+        self.check_object_permissions(self.request, comment)
+        return comment
+
+    def get(self, request, id):
+        comment = self.get_object(id)
+        comment.replies_list = comment.replies.all()
+        serializer = CommentSerializer(comment, context={"request": request})
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request, id):
-        return update(request, id, Comment, CommentSerializer, True)
+        comment = self.get_object(id)
+        serializer = CommentSerializer(comment, data=request.data, context={"request": request}, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, id):
-        comment = get_object_or_404(Comment, pk=id)
+        comment = self.get_object(id)
 
         if comment.parent is None:  # soft delete
             comment.is_deleted = True
