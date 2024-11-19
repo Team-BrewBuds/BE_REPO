@@ -7,7 +7,8 @@ from allauth.socialaccount.providers.naver import views as naver_view
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
-from django.db import models, transaction
+from django.db import transaction
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
@@ -360,23 +361,19 @@ class MyProfileAPIView(APIView):
         if not user.is_authenticated:
             return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
-        if serializer.is_valid():
-            fields = ["nickname", "profile_image"]
-            for field in fields:
-                setattr(user, field, serializer.validated_data.get(field, getattr(user, field)))
-            user.save()
+        serializer = UserUpdateSerializer(data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            user_detail_data = serializer.validated_data.get("user_detail", None)
-            if user_detail_data:
-                user_detail, created = UserDetail.objects.get_or_create(user=user)
-                fields = ["introduction", "profile_link", "coffee_life", "preferred_bean_taste", "is_certificated"]
-                for field in fields:
-                    setattr(user_detail, field, user_detail_data.get(field, getattr(user_detail, field)))
-                user_detail.save()
-
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # TODO profile_image 처리 따로 빼기 (ImageField 처리)
+        user_validated_data = serializer.validated_data
+        user_detail_validated_data = user_validated_data.pop("user_detail", {})
+        try:
+            CustomUser.objects.set_user(user, user_validated_data)
+            UserDetail.objects.set_user_detail(user, user_detail_validated_data)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(UserUpdateSerializer(user).data, status=status.HTTP_200_OK)
 
 
 @OtherProfileSchema.other_proflie_schema_view
@@ -399,18 +396,20 @@ class FollowListAPIView(APIView):
         follow_type = request.query_params.get("type")
         user = request.user
 
-        data = get_user_relationships_by_follow_type(user, follow_type)
-        if data is None:
+        if follow_type not in ["following", "follower"]:
             return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
+        relationships = get_user_relationships_by_follow_type(user, follow_type)
+
         paginator = PageNumberPagination()
-        data = paginator.paginate_queryset(data, request)
+        relationships = paginator.paginate_queryset(relationships, request)
+
         serialized_data = [
             {
                 "user": relationship.from_user if follow_type == "follower" else relationship.to_user,
                 "is_following": relationship.is_following,
             }
-            for relationship in data
+            for relationship in relationships
         ]
 
         serializer = UserFollowListSerializer(serialized_data, many=True)
@@ -469,7 +468,7 @@ class BlockListAPIView(APIView):
         if not user.is_authenticated:
             return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        queryset = Relationship.objects.blocking(user)
+        queryset = Relationship.objects.blocking(user).order_by("-id")
         return get_paginated_response_with_class(request, queryset, UserBlockListSerializer)
 
 
@@ -529,7 +528,8 @@ class BudyRecommendAPIView(APIView):
             CustomUser.objects.select_related("user_detail")
             .only("user_detail__coffee_life")
             .filter(user_detail__coffee_life__contains={category: True})
-            .annotate(follower_cnt=models.Count("relationships_to", filter=models.Q(relationships_to__relationship_type="follow")))
+            .exclude(id=user.id)
+            .annotate(follower_cnt=Count("relationships_to", filter=Q(relationships_to__relationship_type="follow")))
             .order_by("?")[:10]
         )
 
@@ -542,17 +542,16 @@ class BudyRecommendAPIView(APIView):
 @UserPostListSchema.user_post_list_schema_view
 class UserPostListAPIView(APIView):
     def get(self, request, id):
-        subject = request.query_params.get("subject", "전체")
-        subject_choice = dict(Post.SUBJECT_TYPE_CHOICES).get(subject)
-        user = get_object_or_404(CustomUser, id=id)
+        subject = request.query_params.get("subject", "all")
+        valid_subjects = list(dict(Post.SUBJECT_TYPE_CHOICES).keys()) + ["all"]
 
-        posts = get_user_posts_by_subject(user, subject_choice)
+        if subject not in valid_subjects:
+            return Response({"error": "Invalid subject parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
-        paginator = PageNumberPagination()
-        paginated_posts = paginator.paginate_queryset(posts, request)
+        user = get_object_or_404(CustomUser, pk=id)
+        posts = get_user_posts_by_subject(user, subject)
 
-        serializer = UserPostSerializer(paginated_posts, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return get_paginated_response_with_class(request, posts, UserPostSerializer)
 
 
 @UserTastedRecordListSchema.user_tasted_record_list_schema_view
@@ -596,8 +595,4 @@ class UserNoteAPIView(APIView):
             note.photo_url = get_first_photo_url(note.post if note.post else note.tasted_record)
             notes_with_photos.append(note)
 
-        paginator = PageNumberPagination()
-        paginated_notes = paginator.paginate_queryset(notes_with_photos, request)
-
-        serializer = UserNoteSerializer(paginated_notes, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return get_paginated_response_with_class(request, notes_with_photos, UserNoteSerializer)

@@ -53,6 +53,9 @@ class ProfileSchema:
         description="""
             현재 로그인한 사용자의 프로필을 수정합니다.
             닉네임, 프로필 이미지, 소개, 프로필 링크, 커피 생활 방식, 선호하는 커피 맛, 자격증 여부를 수정합니다.
+            notice : 닉네임 유효성 검사 추가
+            - 중복, 공백 불가
+            - 2 ~ 12자의 한글 또는 숫자
             담당자 : hwstar1204
         """,
         tags=[Profile_Tag],
@@ -94,7 +97,7 @@ class FollowListSchema:
         description="""
             사용자의 팔로잉/팔로워 리스트를 조회합니다.
             type 파라미터로 팔로잉/팔로워 리스트를 구분합니다.
-            notice : 페이지네이션 query parameter를 사용할 수 있습니다.
+            notice : 페이지네이션 query parameter를 사용할 수 있습니다, 정렬 기준은 최근 관계 설정 순입니다.
             담당자 : hwstar1204
         """,
         tags=[Follow_Tag],
@@ -165,6 +168,7 @@ class BlockListSchema:
         summary="자신의 차단 리스트 조회",
         description="""
             사용자의 차단 리스트를 조회합니다.
+            notice : 정렬 기준은 최근 차단 관계 설정 순입니다.
             담당자 : hwstar1204
         """,
         tags=[Block_Tag],
@@ -257,9 +261,10 @@ class UserPostListSchema:
             ),
         ],
         summary="유저 게시글 조회",
-        description="특정 사용자의 게시글을 주제별로 조회합니다.",
+        description="특정 사용자의 게시글을 주제별로 조회합니다. (정렬 기준: 최신순)",
         responses={
             200: UserPostSerializer(many=True),
+            400: OpenApiResponse(description="Invalid subject parameter"),
             404: OpenApiResponse(description="Not Found"),
         },
         tags=[Profile_Records_Tag],

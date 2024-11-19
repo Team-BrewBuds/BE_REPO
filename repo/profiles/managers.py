@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth.models import BaseUserManager
 from django.db import models, transaction
 from django.db.models import Q
@@ -30,6 +32,39 @@ class CustomUserManager(BaseUserManager):
 
     def get_user_and_user_detail(self, id):
         return get_object_or_404(self.select_related("user_detail"), id=id)
+
+    def validate_nickname(self, nickname):
+        if not nickname or not nickname.strip():
+            raise ValueError("닉네임은 공백일 수 없습니다.")
+
+        if not re.match(r"^[가-힣a-zA-Z0-9]{2,12}$", nickname):
+            raise ValueError("닉네임은 2 ~ 12자의 한글, 영어, 숫자 중 하나 이상으로 구성되어야 합니다.")
+
+        # 닉네임 중복은 model에서 unique 제약조건 검사
+        return nickname
+
+    def set_user(self, user, validated_data):
+        if "nickname" in validated_data:
+            validated_data["nickname"] = self.validate_nickname(validated_data["nickname"])
+
+        for field in validated_data:
+            setattr(user, field, validated_data[field])
+        user.save()
+        return user
+
+
+class UserDetailManager(models.Manager):
+
+    def get_user_detail(self, user):
+        return self.get(user=user)
+
+    def set_user_detail(self, user, validated_data):
+        user_detail = self.get_user_detail(user)
+        for field in validated_data:
+            setattr(user_detail, field, validated_data[field])
+
+        user_detail.save()
+        return user_detail
 
 
 class RelationshipManager(models.Manager):
@@ -98,6 +133,8 @@ class RelationshipManager(models.Manager):
         blocking_users = list(block_relationships.values_list("to_user", flat=True))
         blocked_users = list(block_relationships.values_list("from_user", flat=True))
         unique_block_users = list(set(blocking_users + blocked_users))
-        unique_block_users.remove(user_id)
+
+        if user_id in unique_block_users:
+            unique_block_users.remove(user_id)
 
         return unique_block_users
