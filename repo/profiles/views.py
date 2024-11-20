@@ -345,11 +345,10 @@ class SignupView(APIView):
 
 @ProfileSchema.my_profile_schema_view
 class MyProfileAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         user = request.user
-        if not user.is_authenticated:
-            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
-
         profile = get_user_profile(user.id)
 
         serializer = UserProfileSerializer(profile)
@@ -358,9 +357,6 @@ class MyProfileAPIView(APIView):
     @transaction.atomic
     def patch(self, request):
         user = request.user
-        if not user.is_authenticated:
-            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
-
         serializer = UserUpdateSerializer(data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -378,10 +374,10 @@ class MyProfileAPIView(APIView):
 
 @OtherProfileSchema.other_proflie_schema_view
 class OtherProfileAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, id):
         request_user = request.user
-        if not request_user.is_authenticated:
-            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
         request_user_id, other_user_id = request_user.id, id
         data = get_other_user_profile(request_user_id, other_user_id)
@@ -392,6 +388,8 @@ class OtherProfileAPIView(APIView):
 
 @FollowListSchema.follow_list_schema_view
 class FollowListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         follow_type = request.query_params.get("type")
         user = request.user
@@ -418,6 +416,8 @@ class FollowListAPIView(APIView):
 
 @FollowListCreateDeleteSchema.follow_list_create_delete_schema_view
 class FollowListCreateDeleteAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, id):
         follow_type = request.query_params.get("type")
         user = get_object_or_404(CustomUser, id=id)
@@ -462,18 +462,17 @@ class FollowListCreateDeleteAPIView(APIView):
 
 @BlockListSchema.block_list_schema_view
 class BlockListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
-        if not user.is_authenticated:
-            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
-
         queryset = Relationship.objects.blocking(user).order_by("-id")
         return get_paginated_response_with_class(request, queryset, UserBlockListSerializer)
 
 
 @BlockListCreateDeleteSchema.block_list_create_delete_schema_view
 class BlockListCreateDeleteAPIView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, id):
         user = request.user
@@ -510,11 +509,10 @@ class BudyRecommendAPIView(APIView):
     담당자: hwtar1204
     """
 
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         user = request.user
-        if not user.is_authenticated:
-            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
-
         user_detail = get_object_or_404(UserDetail, user=user)
         coffee_life_helper = user_detail.get_coffee_life_helper()
         true_categories = coffee_life_helper.get_true_categories()

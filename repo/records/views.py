@@ -64,13 +64,12 @@ class FeedAPIView(APIView):
 @LikeSchema.like_schema_view
 class LikeApiView(APIView):
 
-    def post(self, request, object_type, object_id):
-        user_id = request.user.id
-        if not request.user.is_authenticated:
-            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+    permission_classes = [IsAuthenticated]
 
+    def post(self, request, object_type, object_id):
         obj = get_post_or_tasted_record_or_comment(object_type, object_id)
 
+        user_id = request.user.id
         if user_id in obj.like_cnt.values_list("id", flat=True):
             return Response({"detail": "like already exists"}, status=status.HTTP_409_CONFLICT)
 
@@ -78,12 +77,9 @@ class LikeApiView(APIView):
         return Response({"detail": "like created"}, status=status.HTTP_201_CREATED)
 
     def delete(self, request, object_type, object_id):
-        user_id = request.user.id
-        if not request.user.is_authenticated:
-            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
-
         obj = get_post_or_tasted_record_or_comment(object_type, object_id)
 
+        user_id = request.user.id
         if user_id not in obj.like_cnt.values_list("id", flat=True):
             return Response({"detail": "like not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -93,6 +89,8 @@ class LikeApiView(APIView):
 
 @NoteSchema.note_schema_view
 class NoteApiView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request, object_type, object_id):
         user = request.user
 
@@ -347,13 +345,11 @@ class ProfilePhotoAPIView(APIView):
 
 @ReportSchema.report_schema_view
 class ReportApiView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @transaction.atomic
     def post(self, request):
-        # 1. 인증 확인
-        if not request.user.is_authenticated:
-            return Response({"error": "로그인이 필요한 서비스입니다."}, status=status.HTTP_401_UNAUTHORIZED)
-
-        # 2. 중복 신고 확인
+        # 1. 데이터 유효성 검증
         object_type = request.data.get("object_type")
         object_id = request.data.get("object_id")
 
