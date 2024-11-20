@@ -5,7 +5,11 @@ from django.db import models
 from repo.profiles.helpers import CoffeeLifeHelper, PreferredBeanTasteHelper
 
 # from profiles.managers import CustomUserManager
-from repo.profiles.managers import CustomUserManager, RelationshipManager
+from repo.profiles.managers import (
+    CustomUserManager,
+    RelationshipManager,
+    UserDetailManager,
+)
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -92,6 +96,8 @@ class UserDetail(models.Model):
     preferred_bean_taste = models.JSONField(default=default_coffee_life, verbose_name="선호하는 원두 맛")
     is_certificated = models.BooleanField(default=False, verbose_name="인증 여부")
 
+    objects = UserDetailManager()
+
     def get_coffee_life_helper(self):
         return CoffeeLifeHelper(self.coffee_life)
 
@@ -120,7 +126,6 @@ class Relationship(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일")
 
     objects = RelationshipManager()
-    # objects = models.Manager()
 
     def __str__(self):
         return f"{self.from_user.nickname} {self.get_relationship_type_display()} {self.to_user.nickname}"

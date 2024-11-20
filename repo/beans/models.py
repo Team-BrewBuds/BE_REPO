@@ -13,14 +13,14 @@ class Bean(models.Model):
     origin_country = models.CharField(max_length=100, verbose_name="원산지")
 
     # 선택
-    extraction = models.CharField(max_length=50, null=True, verbose_name="추출 방식")
-    roast_point = models.IntegerField(choices=roasting_point_choices, null=True, verbose_name="로스팅 포인트")
-    process = models.CharField(max_length=50, null=True, verbose_name="가공 방식")
-    region = models.CharField(max_length=100, null=True, verbose_name="지역")
-    bev_type = models.BooleanField(default=False, null=True, verbose_name="음료 유형")
-    roastery = models.CharField(max_length=100, null=True, verbose_name="로스터리")
-    variety = models.CharField(max_length=100, null=True, verbose_name="원두 품종")
-    is_user_created = models.BooleanField(default=False, null=True, verbose_name="사용자 추가 여부")
+    extraction = models.CharField(max_length=50, null=True, blank=True, verbose_name="추출 방식")
+    roast_point = models.IntegerField(choices=roasting_point_choices, null=True, blank=True, verbose_name="로스팅 포인트")
+    process = models.CharField(max_length=50, null=True, blank=True, verbose_name="가공 방식")
+    region = models.CharField(max_length=100, null=True, blank=True, verbose_name="지역")
+    bev_type = models.BooleanField(default=False, null=True, blank=True, verbose_name="음료 유형")
+    roastery = models.CharField(max_length=100, null=True, blank=True, verbose_name="로스터리")
+    variety = models.CharField(max_length=100, null=True, blank=True, verbose_name="원두 품종")
+    is_user_created = models.BooleanField(default=False, null=True, blank=True, verbose_name="사용자 추가 여부")
 
     def __str__(self):
         return f"{self.id} - {self.name}"

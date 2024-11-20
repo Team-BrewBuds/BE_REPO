@@ -3,9 +3,12 @@ import pymysql
 from ._base import *
 
 DEBUG = True
-ALLOWED_HOSTS = ["*"]  # 모든 호스트 허용
-WSGI_APPLICATION = "config.wsgi.dev.application"  # 수정
-INSTALLED_APPS += []
+ALLOWED_HOSTS = ["*"]
+WSGI_APPLICATION = "config.wsgi.dev.application"
+INSTALLED_APPS += ["debug_toolbar"]
+MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]
+INTERNAL_IPS = ["127.0.0.1"]  # django debug toolbar 사용 시 필요
+
 
 pymysql.install_as_MySQLdb()
 DATABASES = {

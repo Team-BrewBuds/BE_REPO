@@ -9,7 +9,7 @@ from repo.beans.serializers import BeanSerializer
 @BeanSchema.bena_name_list_schema
 class BeanNameListView(APIView):
     def get(self, request):
-        beans = Bean.objects.all()
+        beans = Bean.objects.all().order_by("name")
 
         paginator = PageNumberPagination()
         paginator.page_size = 20

@@ -14,6 +14,7 @@ class PostListSerializer(serializers.ModelSerializer):
     photos = PhotoSerializer(many=True, source="photo_set", read_only=True)
     tasted_records = TastedRecordInPostSerializer("tasted_records", many=True, read_only=True)
     created_at = serializers.SerializerMethodField()
+    subject = serializers.CharField(source="get_subject_display")
     likes = serializers.IntegerField()
     comments = serializers.IntegerField()
     is_user_liked = serializers.BooleanField()
@@ -30,15 +31,11 @@ class PostListSerializer(serializers.ModelSerializer):
 class TopPostSerializer(PostListSerializer):
     """인기 게시글 리스트 조회용"""
 
-    like_cnt = serializers.IntegerField(source="like_cnt.count")
-    comment_cnt = serializers.SerializerMethodField()
-
-    def get_comment_cnt(self, obj):
-        return obj.comment_cnt()
-
-    class Meta:
-        model = Post
-        fields = ["id", "author", "title", "content", "subject", "tag", "photos", "like_cnt", "comment_cnt", "is_user_liked"]
+    def get_fields(self):
+        fields = super().get_fields()
+        for field in ["is_user_noted", "like_cnt", "tasted_records"]:
+            fields.pop(field, None)
+        return fields
 
 
 class PostCreateUpdateSerializer(serializers.ModelSerializer):
@@ -59,14 +56,19 @@ class PostDetailSerializer(serializers.ModelSerializer):
     photos = PhotoSerializer(many=True, source="photo_set")
     tasted_records = TastedRecordInPostSerializer("post.tasted_records", many=True)
 
+    subject = serializers.CharField(source="get_subject_display")
     like_cnt = serializers.IntegerField(source="like_cnt.count")
     is_user_liked = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
 
     def get_is_user_liked(self, obj):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             return obj.like_cnt.filter(id=request.user.id).exists()
         return False
+
+    def get_created_at(self, obj):
+        return get_time_difference(obj.created_at)
 
     class Meta:
         model = Post
@@ -77,6 +79,7 @@ class UserPostSerializer(serializers.ModelSerializer):
     """특정 사용자의 게시글 리스트 조회용"""
 
     author = serializers.CharField(source="author.nickname", read_only=True)
+    subject = serializers.CharField(source="get_subject_display")
     represent_post_photo = serializers.SerializerMethodField()
     tasted_records_photo = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()

@@ -5,8 +5,8 @@ from ._base import *
 SECRET_KEY = env.str("SECRET_KEY")
 
 DEBUG = False  # 수정
-ALLOWED_HOSTS = [env.str("SERVER_HOST_NAME")]  # 추후 배포할 호스트 주소 입력 예정
-WSGI_APPLICATION = "config.wsgi.prod.application"  # 수정
+ALLOWED_HOSTS = [env.str("SERVER_HOST_NAME")]
+WSGI_APPLICATION = "config.wsgi.prod.application"
 INSTALLED_APPS += []
 
 pymysql.install_as_MySQLdb()
@@ -28,7 +28,7 @@ AWS_S3_REGION_NAME = env.str("AWS_S3_REGION_NAME", default="ap-northeast-2")
 AWS_S3_CUSTOM_DOMAIN = "%s.s3.%s.amazonaws.com" % (AWS_STORAGE_BUCKET_NAME, AWS_S3_REGION_NAME)
 MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 AWS_S3_FILE_OVERWRITE = False
-AWS_DEFAULT_ACL = None
+AWS_DEFAULT_ACL = "public-read"
 
 STORAGES = {
     "default": {

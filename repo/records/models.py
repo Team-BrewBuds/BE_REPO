@@ -1,8 +1,6 @@
-from django.conf import settings
 from django.db import models
 
 from repo.beans.models import Bean, BeanTasteReview
-from repo.common.bucket import delete_photo_from_s3
 from repo.profiles.models import CustomUser
 from repo.records.managers import NoteManagers, PostManagers
 
@@ -33,8 +31,8 @@ class TastedRecord(models.Model):
 class Post(models.Model):
     # fmt: off
     SUBJECT_TYPE_CHOICES = (
-        ("일반", "normal"), ("카페", "cafe"), ("원두", "bean"),
-        ("정보", "info"), ("질문", "question"), ("고민", "worry"), ("장비", "gear"),
+        ("normal", "일반"), ("cafe", "카페"), ("bean", "원두"),
+        ("info", "정보"), ("question", "질문"), ("worry", "고민"), ("gear", "장비"),
     )
     # fmt: on
 
@@ -71,15 +69,8 @@ class Post(models.Model):
 class Photo(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 게시글")
     tasted_record = models.ForeignKey(TastedRecord, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 시음 기록")
-    photo_url = models.ImageField(upload_to="records/", null=True, blank=True, verbose_name="사진")
+    photo_url = models.ImageField(upload_to="records/%Y/%m/%d/", null=True, blank=True, verbose_name="사진")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="업로드 일자")
-
-    def delete(self, *args, **kwargs):
-        if settings.STORAGES["default"]["BACKEND"] == "repo.common.bucket.AwsMediaStorage":
-            delete_photo_from_s3(self.photo_url)  # S3에서 삭제
-        else:
-            self.photo_url.delete(save=False)  # 로컬에서 삭제
-        super().delete(*args, **kwargs)
 
     def __str__(self):
         return f"Photo: {self.id}"
@@ -145,20 +136,6 @@ class Report(models.Model):
     reason = models.TextField(verbose_name="신고 사유")
     status = models.CharField(max_length=50, choices=ReportStatus.choices, default=ReportStatus.PENDING, verbose_name="신고 처리 상태")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="신고 일자")
-
-    def clean(self):
-        model_map = {
-            self.ReportObjectType.POST: Post,
-            self.ReportObjectType.COMMENT: Comment,
-            self.ReportObjectType.TASTED_RECORD: TastedRecord,
-        }
-        model = model_map.get(self.ReportObjectType(self.object_type))
-        if not model or not model.objects.filter(id=self.object_id).exists():
-            raise ValueError(f"{self.get_object_type_display()}이(가) 존재하지 않습니다.")
-
-    def save(self, *args, **kwargs):
-        self.clean()
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Report: {self.id} - {self.get_status_display()}"
