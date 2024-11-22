@@ -1,7 +1,8 @@
 from django.db import transaction
+from django.db.models import Prefetch
 
 from repo.beans.services import BeanService
-from repo.records.models import BeanTasteReview, TastedRecord
+from repo.records.models import BeanTasteReview, Photo, TastedRecord
 
 
 class TastedRecordService:
@@ -53,3 +54,12 @@ class TastedRecordService:
 
         instance.save()
         return instance
+
+    def get_record_detail(self, pk):
+        return (
+            TastedRecord.objects.select_related("author", "bean", "taste_review")
+            .prefetch_related(
+                Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
+            )
+            .get(pk=pk)
+        )

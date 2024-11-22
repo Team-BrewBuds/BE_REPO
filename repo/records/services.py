@@ -423,27 +423,6 @@ def get_tasted_record_feed(request, user):
     return not_viewd_tasted_records
 
 
-def get_tasted_record_detail(pk):
-    """
-    시음기록 상세 정보를 반환합니다.
-
-    Args:
-        pk: 시음기록 ID
-
-    Returns:
-        TastedRecord: 시음기록 객체
-    """
-    record = (
-        TastedRecord.objects.select_related("author", "bean", "taste_review")
-        .prefetch_related(
-            Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
-        )
-        .get(pk=pk)
-    )
-
-    return record
-
-
 def get_post_feed(request, user, subject):
     """
     게시글 전용 피드를 반환합니다.
