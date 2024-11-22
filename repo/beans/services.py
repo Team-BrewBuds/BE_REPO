@@ -84,7 +84,3 @@ class BeanTasteReviewService:
 
     def __init__(self, bean_taste_review_repository=None):
         self.bean_taste_review_repository = bean_taste_review_repository or BeanTasteReview.objects
-
-    def create_bean_taste_review(self, bean_taste_review_data: Dict) -> BeanTasteReview:
-        """원두 맛&평가 생성"""
-        return self.bean_taste_review_repository.create(**bean_taste_review_data)

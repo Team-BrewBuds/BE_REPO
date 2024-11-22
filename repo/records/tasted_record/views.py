@@ -1,4 +1,3 @@
-from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
@@ -20,10 +19,7 @@ from repo.records.tasted_record.serializers import (
     TastedRecordDetailSerializer,
     TastedRecordListSerializer,
 )
-from repo.records.tasted_record.service import (
-    TastedRecordService,
-    update_tasted_record,
-)
+from repo.records.tasted_record.service import TastedRecordService
 
 
 @TastedRecordSchema.tasted_record_list_create_schema_view
@@ -60,7 +56,8 @@ class TastedRecordListCreateAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         tasted_record_service = TastedRecordService()
-        tasted_record = tasted_record_service.create_tasted_record(request.user, serializer.validated_data)
+        tasted_record = tasted_record_service.create(request.user, serializer.validated_data)
+
         response_serializer = TastedRecordDetailSerializer(tasted_record, context={"request": request})
 
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
@@ -84,6 +81,9 @@ class TastedRecordDetailApiView(APIView):
     serializer_class = TastedRecordCreateUpdateSerializer
     response_serializer_class = TastedRecordDetailSerializer
 
+    def __init__(self):
+        self.tasted_record_service = TastedRecordService()
+
     def get_object(self, pk):
         tasted_record = get_object_or_404(TastedRecord, pk=pk)
         self.check_object_permissions(self.request, tasted_record)
@@ -105,8 +105,7 @@ class TastedRecordDetailApiView(APIView):
         serializer = self.serializer_class(tasted_record, data=request.data, partial=False)
         serializer.is_valid(raise_exception=True)
 
-        with transaction.atomic():
-            updated_tasted_record = update_tasted_record(tasted_record, serializer.validated_data)
+        updated_tasted_record = self.tasted_record_service.update(tasted_record, serializer.validated_data)
 
         response_serializer = self.response_serializer_class(updated_tasted_record, context={"request": request})
         return Response(response_serializer.data, status=status.HTTP_200_OK)
@@ -116,8 +115,7 @@ class TastedRecordDetailApiView(APIView):
         serializer = self.serializer_class(tasted_record, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
-        with transaction.atomic():
-            updated_tasted_record = update_tasted_record(tasted_record, serializer.validated_data)
+        updated_tasted_record = self.tasted_record_service.update(tasted_record, serializer.validated_data)
 
         response_serializer = self.response_serializer_class(updated_tasted_record, context={"request": request})
         return Response(response_serializer.data, status=status.HTTP_200_OK)

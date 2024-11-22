@@ -1,8 +1,7 @@
 from django.db import transaction
 
-from repo.beans.services import BeanService, BeanTasteReviewService
-
-from ..models import Bean, BeanTasteReview, TastedRecord
+from repo.beans.services import BeanService
+from repo.records.models import BeanTasteReview, TastedRecord
 
 
 class TastedRecordService:
@@ -10,13 +9,14 @@ class TastedRecordService:
     def __init__(self, tasted_record_repository=None):
         self.tasted_record_repository = tasted_record_repository or TastedRecord.objects
         self.bean_service = BeanService()
-        self.bean_taste_review_service = BeanTasteReviewService()
 
     @transaction.atomic
-    def create_tasted_record(self, user, validated_data):
+    def create(self, user, validated_data):
+        """TastedRecord 생성"""
+
         bean = self.bean_service.create(validated_data["bean"])
 
-        taste_review = self.bean_taste_review_service.create_bean_taste_review(validated_data["taste_review"])
+        taste_review = BeanTasteReview.objects.create(**validated_data["taste_review"])
 
         tasted_record = self.tasted_record_repository.create(
             author=user,
@@ -30,46 +30,26 @@ class TastedRecordService:
 
         return tasted_record
 
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        """TastedRecord 업데이트"""
 
-def update_bean(instance, bean_data):
-    """Bean 데이터를 업데이트하거나 생성"""
-    if bean_data:
-        if instance.bean:
-            for attr, value in bean_data.items():
-                setattr(instance.bean, attr, value)
-            instance.bean.save()
-        else:
-            instance.bean = Bean.objects.create(**bean_data)
+        if bean_data := validated_data.pop("bean", None):
+            bean = self.bean_service.update(bean_data, instance.author)
+            instance.bean = bean
 
+        if taste_review_data := validated_data.pop("taste_review", None):
+            taste_review, _ = BeanTasteReview.objects.update_or_create(
+                id=instance.taste_review_id,
+                defaults=taste_review_data,
+            )
+            instance.taste_review = taste_review
 
-def update_taste_review(instance, taste_review_data):
-    """TasteReview 데이터를 업데이트하거나 생성"""
-    if taste_review_data:
-        if instance.taste_review:
-            for attr, value in taste_review_data.items():
-                setattr(instance.taste_review, attr, value)
-            instance.taste_review.save()
-        else:
-            instance.taste_review = BeanTasteReview.objects.create(**taste_review_data)
+        if photos := validated_data.pop("photos", None):
+            instance.photo_set.set(photos)
 
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
 
-def update_photos(instance, photos):
-    instance.photo_set.set(photos)
-
-
-def update_other_fields(instance, validated_data):
-    """나머지 필드를 업데이트"""
-    for attr, value in validated_data.items():
-        setattr(instance, attr, value)
-    instance.save()
-
-
-def update_tasted_record(instance, validated_data):
-    """TastedRecord 객체를 트랜잭션으로 업데이트"""
-    bean_service = BeanService()
-    bean_service.update(validated_data.pop("bean", None), instance.author)
-    update_taste_review(instance, validated_data.pop("taste_review", None))
-    update_photos(instance, validated_data.pop("photos", []))
-    update_other_fields(instance, validated_data)
-    instance.save()
-    return instance
+        instance.save()
+        return instance
