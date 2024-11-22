@@ -8,19 +8,6 @@ BeansTag = "beans"
 
 
 class BeanSchema:
-    bena_name_list_schema = extend_schema(
-        parameters=[PageNumberSerializer],
-        responses={200: BeanSerializer(many=True)},
-        summary="모든 원두 리스트 조회",
-        description="""
-            모든 원두 리스트 가져오는 API
-            - page_size = 20
-
-            담당자 : hwstar1204
-        """,
-        tags=[BeansTag],
-    )
-
     bean_name_search_schema = extend_schema(
         parameters=[
             PageNumberSerializer,
