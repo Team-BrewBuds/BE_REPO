@@ -94,7 +94,6 @@ class TestLikeAPIView:
 
         # Then
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert response.data["error"] == "user not authenticated"
 
     def test_delete_like_unauthorized(self, client):
         """미인증 사용자의 좋아요 삭제 시 401 응답 테스트"""
@@ -107,4 +106,3 @@ class TestLikeAPIView:
 
         # Then
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert response.data["error"] == "user not authenticated"

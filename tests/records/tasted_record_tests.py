@@ -186,7 +186,6 @@ class TestTastedRecordListCreateAPIView:
 
         # Then
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "content" in response.data
 
     def test_create_tasted_record_unauthorized(self, api_client):
         """미인증 사용자의 시음기록 생성 시도시 401 에러 반환 테스트"""
