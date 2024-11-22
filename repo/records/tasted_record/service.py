@@ -66,7 +66,8 @@ def update_other_fields(instance, validated_data):
 
 def update_tasted_record(instance, validated_data):
     """TastedRecord 객체를 트랜잭션으로 업데이트"""
-    update_bean(instance, validated_data.pop("bean", None))
+    bean_service = BeanService()
+    bean_service.update(validated_data.pop("bean", None), instance.author)
     update_taste_review(instance, validated_data.pop("taste_review", None))
     update_photos(instance, validated_data.pop("photos", []))
     update_other_fields(instance, validated_data)

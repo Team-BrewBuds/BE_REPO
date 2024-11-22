@@ -5,6 +5,7 @@ from django.db.models.functions import Coalesce
 
 from repo.beans.models import Bean, BeanTasteReview
 from repo.common.exception.exceptions import NotFoundException
+from repo.profiles.models import CustomUser
 from repo.profiles.services import UserService
 
 
@@ -59,6 +60,24 @@ class BeanService:
             bean.is_user_created = True
             bean.save()
         return bean
+
+    def update(self, bean_data: Dict, user: CustomUser) -> Bean:
+        """원두 데이터 수정"""
+
+        if user.is_staff:
+            # 관리자만 원두 데이터 수정 가능
+            return self.bean_repository.update(**bean_data)
+        else:
+            # 사용자는 원두 데이터를 직접 수정할 수 없고 조회 또는 생성만 가능함
+            return self.get_or_create(bean_data)
+
+    def get_or_create(self, bean_data: Dict) -> Bean:
+        """원두 조회 또는 생성"""
+
+        if self.exists_by_data(bean_data):
+            return self.bean_repository.get(**bean_data)
+        else:
+            return self.create(bean_data)
 
 
 class BeanTasteReviewService:
