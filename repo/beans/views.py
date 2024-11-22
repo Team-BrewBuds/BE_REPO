@@ -17,7 +17,7 @@ class BeanNameSearchView(APIView):
 
     def get(self, request):
         name = request.query_params.get("name")
-        beans = self.bean_service.search_beans_by_name(name).order_by("name")
+        beans = self.bean_service.search_by_name(name).order_by("name")
 
         paginator = PageNumberPagination()
         paginator.page_size = 20
@@ -37,5 +37,5 @@ class UserBeanListAPIView(generics.ListAPIView):
     def get_queryset(self):
         user_id = self.kwargs.get("id")
         ordering = self.request.query_params.get("ordering", "-note__created_at")
-        queryset = BeanService().get_user_saved_beans(user_id)
+        queryset = BeanService().get_user_saved(user_id)
         return queryset.order_by(ordering)

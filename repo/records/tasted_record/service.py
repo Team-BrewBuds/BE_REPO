@@ -14,7 +14,7 @@ class TastedRecordService:
 
     @transaction.atomic
     def create_tasted_record(self, user, validated_data):
-        bean = self.bean_service.create_bean(validated_data["bean"])
+        bean = self.bean_service.create(validated_data["bean"])
 
         taste_review = self.bean_taste_review_service.create_bean_taste_review(validated_data["taste_review"])
 

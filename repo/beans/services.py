@@ -14,18 +14,22 @@ class BeanService:
         self.bean_repository = bean_repository or Bean.objects
         self.user_service = UserService()
 
-    def check_bean_exists(self, name: str) -> bool:
+    def exists_by_name(self, name: str) -> bool:
         """원두 존재 여부 확인"""
         return self.bean_repository.filter(name=name).exists()
 
-    def search_beans_by_name(self, name: str) -> QuerySet[Bean]:
+    def exists_by_data(self, bean_data: Dict) -> bool:
+        """원두 존재 여부 확인"""
+        return self.bean_repository.filter(**bean_data).exists()
+
+    def search_by_name(self, name: str) -> QuerySet[Bean]:
         """원두 이름 검색"""
         if not name:  # 검색어가 없어도 반환
             return self.bean_repository.all()
 
         return self.bean_repository.filter(name__icontains=name)
 
-    def get_user_saved_beans(self, user_id: int) -> QuerySet[Bean]:
+    def get_user_saved(self, user_id: int) -> QuerySet[Bean]:
         """
         유저가 찜한 원두 조회 및 통계 정보 반환
         - 평균 평점 계산 (없는 경우 0)
@@ -46,7 +50,7 @@ class BeanService:
         )
         return saved_beans
 
-    def create_bean(self, bean_data: Dict) -> Bean:
+    def create(self, bean_data: Dict) -> Bean:
         """원두 생성"""
 
         bean, created = self.bean_repository.get_or_create(**bean_data)
