@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from repo.beans.models import Bean
 from repo.beans.schemas import *
 from repo.beans.serializers import BeanSerializer
+from repo.beans.services import BeanService
 
 
 @BeanSchema.bena_name_list_schema
@@ -21,12 +22,13 @@ class BeanNameListView(APIView):
 
 @BeanSchema.bean_name_search_schema
 class BeanNameSearchView(APIView):
+
+    def __init__(self):
+        self.bean_service = BeanService()
+
     def get(self, request):
         name = request.query_params.get("name")
-        if not name:
-            return BeanNameListView().get(request)
-
-        beans = Bean.objects.filter(name__contains=name).order_by("name")
+        beans = self.bean_service.search_beans_by_name(name).order_by("name")
 
         paginator = PageNumberPagination()
         paginator.page_size = 20
