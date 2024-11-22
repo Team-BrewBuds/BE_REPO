@@ -3,21 +3,17 @@ from datetime import timedelta
 from itertools import chain
 
 from django.db.models import (
-    Avg,
     BooleanField,
     Count,
     Exists,
-    FloatField,
     OuterRef,
     Prefetch,
     Q,
     Value,
 )
-from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
-from repo.beans.models import Bean
 from repo.common.view_counter import is_viewed
 from repo.profiles.models import Relationship
 from repo.records.models import Comment, Photo, Post, TastedRecord
@@ -634,29 +630,3 @@ def get_user_tasted_records_by_filter(user):
         )
     )
     return queryset
-
-
-def get_user_saved_beans(user):
-    """
-    사용자가 저장한 원두 목록과 관련 통계를 반환합니다.
-
-    - 평균 평점 계산 (없는 경우 0)
-    - 시음기록 수 포함
-    - 필요한 필드만 선택적으로 가져옴
-
-    Args:
-        user: 사용자 객체
-
-    Returns:
-        QuerySet: 저장된 원두 목록과 통계 정보
-    """
-    saved_beans = (
-        Bean.objects.filter(note__author=user)
-        .prefetch_related("tastedrecord_set__taste_review")
-        .annotate(
-            avg_star=Coalesce(Avg("tastedrecord__taste_review__star"), 0, output_field=FloatField()),
-            tasted_records_cnt=Count("tastedrecord"),  # 시음기록 개수 계산
-        )
-        .values("id", "name", "origin_country", "roast_point", "avg_star", "tasted_records_cnt")
-    )
-    return saved_beans

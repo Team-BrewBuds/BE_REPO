@@ -4,6 +4,15 @@ from django.db.models import Count, Exists, F, Value
 from .models import CustomUser, Relationship
 
 
+class UserService:
+    def __init__(self, user_repository=None):
+        self.user_repository = user_repository or CustomUser.objects
+
+    def check_user_exists(self, id: int) -> bool:
+        """유저 존재 여부 확인"""
+        return self.user_repository.filter(id=id).exists()
+
+
 def base_user_profile_query(id):
     follower_cnt = Relationship.objects.followers(id).count()
     following_cnt = Relationship.objects.following(id).count()
