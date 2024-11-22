@@ -38,6 +38,7 @@ class TastedRecordSchema:
         responses={
             201: TastedRecordDetailSerializer,
             400: OpenApiResponse(description="Bad Request (taste_review.star type: float)"),
+            401: OpenApiResponse(description="Unauthorized"),
         },
         summary="시음기록 생성",
         description="""

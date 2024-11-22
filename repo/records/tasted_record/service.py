@@ -1,27 +1,34 @@
+from django.db import transaction
+
+from repo.beans.services import BeanService, BeanTasteReviewService
+
 from ..models import Bean, BeanTasteReview, TastedRecord
 
 
-def create_tasted_record(user, validated_data):
-    bean_data = validated_data["bean"]
-    bean, created = Bean.objects.get_or_create(**bean_data)
-    if created:
-        bean.is_user_created = True
-        bean.save()
+class TastedRecordService:
 
-    taste_review_data = validated_data["taste_review"]
-    taste_review = BeanTasteReview.objects.create(**taste_review_data)
+    def __init__(self, tasted_record_repository=None):
+        self.tasted_record_repository = tasted_record_repository or TastedRecord.objects
+        self.bean_service = BeanService()
+        self.bean_taste_review_service = BeanTasteReviewService()
 
-    tasted_record = TastedRecord.objects.create(
-        author=user,
-        bean=bean,
-        taste_review=taste_review,
-        content=validated_data["content"],
-    )
+    @transaction.atomic
+    def create_tasted_record(self, user, validated_data):
+        bean = self.bean_service.create_bean(validated_data["bean"])
 
-    photos = validated_data.get("photos", [])
-    tasted_record.photo_set.set(photos)
+        taste_review = self.bean_taste_review_service.create_bean_taste_review(validated_data["taste_review"])
 
-    return tasted_record
+        tasted_record = self.tasted_record_repository.create(
+            author=user,
+            bean=bean,
+            taste_review=taste_review,
+            content=validated_data["content"],
+        )
+
+        photos = validated_data.get("photos", [])
+        tasted_record.photo_set.set(photos)
+
+        return tasted_record
 
 
 def update_bean(instance, bean_data):

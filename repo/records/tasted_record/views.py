@@ -21,7 +21,7 @@ from repo.records.tasted_record.serializers import (
     TastedRecordListSerializer,
 )
 from repo.records.tasted_record.service import (
-    create_tasted_record,
+    TastedRecordService,
     update_tasted_record,
 )
 
@@ -59,16 +59,11 @@ class TastedRecordListCreateAPIView(APIView):
         serializer = TastedRecordCreateUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            with transaction.atomic():
-                tasted_record = create_tasted_record(request.user, serializer.validated_data)
-                response_serializer = TastedRecordDetailSerializer(tasted_record, context={"request": request})
+        tasted_record_service = TastedRecordService()
+        tasted_record = tasted_record_service.create_tasted_record(request.user, serializer.validated_data)
+        response_serializer = TastedRecordDetailSerializer(tasted_record, context={"request": request})
 
-            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-        except PermissionError as e:
-            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
 @TastedRecordSchema.tasted_record_detail_schema_view
