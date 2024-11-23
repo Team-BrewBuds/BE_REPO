@@ -44,6 +44,7 @@ def custom_exception_handler(exc, context):
         return response
 
     # 처리되지 않은 예외
+    print(exc, context)
     return Response(InternalServerErrorException().error_response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
