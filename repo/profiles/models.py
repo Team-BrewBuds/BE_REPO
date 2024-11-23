@@ -1,12 +1,9 @@
-# create user model with additional fields
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 
-# from profiles.managers import CustomUserManager
 from repo.profiles.managers import (
     CustomUserManager,
     RelationshipManager,
-    UserDetailManager,
 )
 
 
@@ -93,8 +90,6 @@ class UserDetail(models.Model):
     coffee_life = models.JSONField(default=default_coffee_life, verbose_name="커피 생활")
     preferred_bean_taste = models.JSONField(default=default_coffee_life, verbose_name="선호하는 원두 맛")
     is_certificated = models.BooleanField(default=False, verbose_name="인증 여부")
-
-    objects = UserDetailManager()
 
     def __str__(self):
         return f"{self.user.nickname}의 상세정보"

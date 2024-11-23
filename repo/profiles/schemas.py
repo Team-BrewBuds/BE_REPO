@@ -28,6 +28,7 @@ class ProfileSchema:
         responses={
             200: UserProfileSerializer,
             401: OpenApiResponse(description="user not authenticated"),
+            404: OpenApiResponse(description="user not found"),
         },
         summary="자기 프로필 조회",
         description="""
@@ -43,7 +44,7 @@ class ProfileSchema:
         responses={
             200: UserProfileSerializer,
             400: OpenApiResponse(description="Bad Request"),
-            401: OpenApiResponse(description="Unauthorized"),
+            401: OpenApiResponse(description="user not authenticated"),
         },
         summary="자기 프로필 수정",
         description="""
@@ -65,7 +66,7 @@ class OtherProfileSchema:
         responses={
             200: UserProfileSerializer,
             401: OpenApiResponse(description="user not authenticated"),
-            404: OpenApiResponse(description="Not Found"),
+            404: OpenApiResponse(description="user not found"),
         },
         summary="상대 프로필 조회",
         description="""
