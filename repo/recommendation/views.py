@@ -1,15 +1,12 @@
-import random
-
-from django.db.models import Count, Q
 from rest_framework import status
-from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.profiles.models import CustomUser, UserDetail
+from repo.profiles.services import CoffeeLifeCategoryService
 from repo.recommendation.schemas import BudyRecommendSchema
 from repo.recommendation.serializers import BudyRecommendSerializer
+from repo.recommendation.services import *
 
 
 @BudyRecommendSchema.budy_recommend_schema_view
@@ -32,23 +29,13 @@ class BudyRecommendAPIView(APIView):
 
     def get(self, request):
         user = request.user
-        user_detail = get_object_or_404(UserDetail, user=user)
-        coffee_life_helper = user_detail.get_coffee_life_helper()
-        true_categories = coffee_life_helper.get_true_categories()
+        coffee_life_category_service = CoffeeLifeCategoryService()
 
-        if not true_categories:
-            category = random.choice(UserDetail.COFFEE_LIFE_CHOICES)
-        else:
-            category = random.choice(true_categories)
+        strategy = BuddyRecommendationStrategy(user, coffee_life_category_service)
+        service = RecommendationService(strategy)
+        recommend_user_list = service.recommend()
 
-        recommend_user_list = (
-            CustomUser.objects.select_related("user_detail")
-            .only("user_detail__coffee_life")
-            .filter(user_detail__coffee_life__contains={category: True})
-            .exclude(id=user.id)
-            .annotate(follower_cnt=Count("relationships_to", filter=Q(relationships_to__relationship_type="follow")))
-            .order_by("?")[:10]
-        )
+        category = strategy.get_selected_category()
 
         serializer = BudyRecommendSerializer(recommend_user_list, many=True)
         response_data = {"users": serializer.data, "category": category}
