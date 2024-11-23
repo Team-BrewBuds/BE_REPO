@@ -124,12 +124,3 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ["nickname", "profile_image", "user_detail"]
-
-
-class BudyRecommendSerializer(serializers.ModelSerializer):
-    user = UserSimpleSerializer(source="*")
-    follower_cnt = serializers.IntegerField()
-
-    class Meta:
-        model = CustomUser
-        fields = ["user", "follower_cnt"]

@@ -1,7 +1,10 @@
+import random
+
 from django.db import models
 from django.db.models import Count, Exists, F, Value
+from rest_framework.generics import get_object_or_404
 
-from .models import CustomUser, Relationship
+from .models import CustomUser, Relationship, UserDetail
 
 
 class UserService:
@@ -11,6 +14,28 @@ class UserService:
     def check_user_exists(self, id: int) -> bool:
         """유저 존재 여부 확인"""
         return self.user_repository.filter(id=id).exists()
+
+
+class CoffeeLifeCategoryService:
+    default_categories = UserDetail.COFFEE_LIFE_CHOICES  # 커피 생활 카테고리 종류
+
+    def check_true_categories_by_user(self, user) -> bool:
+        user_detail = get_object_or_404(UserDetail, user=user)
+
+        for category in self.default_categories:
+            if user_detail.coffee_life[category]:
+                return True
+
+        return False
+
+    def get_random_category(self) -> str:
+        return random.choice(self.default_categories)
+
+    def get_random_true_category_by_user(self, user) -> str:
+        user_detail = get_object_or_404(UserDetail, user=user)
+        true_categories = [c for c in self.default_categories if user_detail.coffee_life[c]]
+
+        return random.choice(true_categories)
 
 
 def base_user_profile_query(id):

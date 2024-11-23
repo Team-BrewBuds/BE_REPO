@@ -11,6 +11,7 @@ urlpatterns = [
     path("beans/", include("repo.beans.urls")),
     path("profiles/", include("repo.profiles.urls")),
     path("records/", include("repo.records.urls")),
+    path("recommendation/", include("repo.recommendation.urls")),
     # def-spectacular
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

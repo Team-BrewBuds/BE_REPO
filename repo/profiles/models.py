@@ -2,8 +2,6 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 
-from repo.profiles.helpers import CoffeeLifeHelper, PreferredBeanTasteHelper
-
 # from profiles.managers import CustomUserManager
 from repo.profiles.managers import (
     CustomUserManager,
@@ -97,12 +95,6 @@ class UserDetail(models.Model):
     is_certificated = models.BooleanField(default=False, verbose_name="인증 여부")
 
     objects = UserDetailManager()
-
-    def get_coffee_life_helper(self):
-        return CoffeeLifeHelper(self.coffee_life)
-
-    def get_preferred_bean_taste_helper(self):
-        return PreferredBeanTasteHelper(self.preferred_bean_taste)
 
     def __str__(self):
         return f"{self.user.nickname}의 상세정보"
