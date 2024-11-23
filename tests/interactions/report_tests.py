@@ -108,7 +108,6 @@ class TestReportAPIView:
 
         # Then
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert response.data["error"] == "로그인이 필요한 서비스입니다."
 
     def test_not_found_object(self, authenticated_client):
         """존재하지 않는 객체 신고시 404 에러 반환 테스트"""

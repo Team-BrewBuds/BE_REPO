@@ -20,7 +20,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from repo.beans.serializers import UserBeanSerializer
+from repo.common.filters import TastedRecordFilter
 from repo.common.utils import get_first_photo_url, get_paginated_response_with_class
 from repo.profiles.models import CustomUser, Relationship, UserDetail
 from repo.profiles.schemas import *
@@ -38,13 +38,11 @@ from repo.profiles.services import (
     get_user_profile,
     get_user_relationships_by_follow_type,
 )
-from repo.records.filters import BeanFilter, TastedRecordFilter
 from repo.records.models import Post
 from repo.records.posts.serializers import UserPostSerializer
 from repo.records.serializers import UserNoteSerializer
 from repo.records.services import (
     get_user_posts_by_subject,
-    get_user_saved_beans,
     get_user_tasted_records_by_filter,
 )
 from repo.records.tasted_record.serializers import UserTastedRecordSerializer
@@ -564,21 +562,6 @@ class UserTastedRecordListView(generics.ListAPIView):
         user = get_object_or_404(CustomUser, id=user_id)
         queryset = get_user_tasted_records_by_filter(user)
         ordering = self.request.query_params.get("ordering", "-created_at")
-        return queryset.order_by(ordering)
-
-
-@UserBeanListSchema.user_bean_list_schema_view
-class UserBeanListAPIView(generics.ListAPIView):
-    serializer_class = UserBeanSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    filterset_class = BeanFilter
-    ordering_fields = ["-note__created_at", "-avg_star", "-tasted_records_cnt"]
-
-    def get_queryset(self):
-        user_id = self.kwargs.get("id")
-        user = get_object_or_404(CustomUser, id=user_id)
-        queryset = get_user_saved_beans(user)
-        ordering = self.request.query_params.get("ordering", "-note__created_at")
         return queryset.order_by(ordering)
 
 
