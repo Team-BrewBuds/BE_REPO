@@ -1,8 +1,7 @@
-import re
-
 from rest_framework import serializers
 
 from repo.profiles.models import CustomUser, UserDetail
+from repo.profiles.validators import UserValidator
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -30,9 +29,7 @@ class UserSignupSerializer(serializers.ModelSerializer):
         fields = ["nickname", "gender", "birth"]
 
     def validate_nickname(self, value):
-        if not re.match(r"^[가-힣0-9]{2,12}$", value):
-            raise serializers.ValidationError("닉네임은 2 ~ 12자의 한글 또는 숫자만 가능합니다.")
-        return value
+        return UserValidator.validate_nickname(value, instance=self.instance)
 
     def validate_gender(self, value):
         if value not in ["남", "여"]:
@@ -120,7 +117,12 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     user_detail = UserDetailSerializer(required=False)
+    nickname = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_nickname(self, value):
+        UserValidator.validate_nickname(value, instance=self.instance)
+        return value
 
     class Meta:
         model = CustomUser
-        fields = ["nickname", "profile_image", "user_detail"]
+        fields = ["nickname", "user_detail"]

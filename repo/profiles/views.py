@@ -30,8 +30,7 @@ from repo.profiles.serializers import (
     UserUpdateSerializer,
 )
 from repo.profiles.services import (
-    get_other_user_profile,
-    get_user_profile,
+    UserService,
     get_user_relationships_by_follow_type,
 )
 from repo.records.models import Post
@@ -341,9 +340,12 @@ class SignupView(APIView):
 class MyProfileAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def __init__(self, **kwargs):
+        self.user_service = UserService()
+
     def get(self, request):
         user = request.user
-        profile = get_user_profile(user.id)
+        profile = self.user_service.get_user_profile(user)
 
         serializer = UserProfileSerializer(profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -352,29 +354,26 @@ class MyProfileAPIView(APIView):
     def patch(self, request):
         user = request.user
         serializer = UserUpdateSerializer(data=request.data, partial=True)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
-        # TODO profile_image 처리 따로 빼기 (ImageField 처리)
         user_validated_data = serializer.validated_data
-        user_detail_validated_data = user_validated_data.pop("user_detail", {})
-        try:
-            CustomUser.objects.set_user(user, user_validated_data)
-            UserDetail.objects.set_user_detail(user, user_detail_validated_data)
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(UserUpdateSerializer(user).data, status=status.HTTP_200_OK)
+        self.user_service.update_user(user, user_validated_data)
+
+        serializer = UserUpdateSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @OtherProfileSchema.other_proflie_schema_view
 class OtherProfileAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, id):
-        request_user = request.user
+    def __init__(self, **kwargs):
+        self.user_service = UserService()
 
-        request_user_id, other_user_id = request_user.id, id
-        data = get_other_user_profile(request_user_id, other_user_id)
+    def get(self, request, id):
+        user_id = request.user.id
+        other_user_id = id
+        data = self.user_service.get_other_user_profile(user_id, other_user_id)
 
         serializer = UserProfileSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
