@@ -53,11 +53,11 @@ class RelationshipService:
     def get_followers(self, user_id):
         return self.relationship_repo.filter(to_user=user_id, relationship_type="follow")
 
-    def get_following_users(self, user_id):
-        return self.relationship_repo.filter(from_user=user_id, relationship_type="follow").values_list("to_user", flat=True)
+    def get_following_user_list(self, user_id):
+        return self.relationship_repo.get_following(user_id).values_list("to_user", flat=True)
 
-    def get_followers_users(self, user_id):
-        return self.relationship_repo.filter(to_user=user_id, relationship_type="follow").values_list("from_user", flat=True)
+    def get_followers_user_list(self, user_id):
+        return self.relationship_repo.get_followers(user_id).values_list("from_user", flat=True)
 
     def get_blocking(self, user_id):
         return self.relationship_repo.filter(from_user=user_id, relationship_type="block")
@@ -65,7 +65,7 @@ class RelationshipService:
     def get_blocked(self, user_id):
         return self.relationship_repo.filter(to_user=user_id, relationship_type="block")
 
-    def get_unique_blocked_users(self, user_id):
+    def get_unique_blocked_user_list(self, user_id):
         block_relationships = self.relationship_repo.filter(Q(from_user=user_id) | Q(to_user=user_id), relationship_type="block")
         blocking_users = list(block_relationships.values_list("to_user", flat=True))
         blocked_users = list(block_relationships.values_list("from_user", flat=True))
@@ -82,7 +82,7 @@ class RelationshipService:
 
         if follow_type == "following":
             return (
-                self.relationship_repo.filter(from_user=target_user.id, relationship_type="follow")
+                self.get_following(target_user.id)
                 .select_related("to_user")
                 .annotate(
                     is_following=Exists(
@@ -96,7 +96,7 @@ class RelationshipService:
 
         elif follow_type == "follower":
             return (
-                self.relationship_repo.filter(to_user=target_user.id, relationship_type="follow")
+                self.get_followers(target_user.id)
                 .select_related("from_user")
                 .annotate(
                     is_following=Exists(

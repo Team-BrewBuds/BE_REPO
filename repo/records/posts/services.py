@@ -3,10 +3,14 @@ from datetime import timedelta
 from django.db.models import Count, Exists
 from django.utils import timezone
 
-from repo.interactions.models import Relationship
+from repo.interactions.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.records.models import Photo, Post, TastedRecord
 from repo.records.services import get_user_liked_post_queryset
+
+
+def get_relationship_service():
+    return RelationshipService()
 
 
 def set_post_tasted_records(post: Post, tasted_records: list[TastedRecord]):
@@ -63,7 +67,8 @@ def get_top_subject_weekly_posts(user, subject):
     if user is None:
         return top_posts_base.order_by("-view_cnt")[:60]
 
-    block_users = Relationship.objects.get_unique_blocked_users(user.id)
+    relationship_service = get_relationship_service()
+    block_users = relationship_service.get_unique_blocked_user_list(user.id)
     top_posts = (
         top_posts_base.exclude(author__in=block_users)
         .annotate(

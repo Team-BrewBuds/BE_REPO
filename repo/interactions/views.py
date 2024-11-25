@@ -6,13 +6,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from repo.common.utils import get_paginated_response_with_class
-from repo.interactions.models import Relationship
 from repo.interactions.schemas import *
 from repo.interactions.serializers import (
     UserBlockListSerializer,
     UserFollowListSerializer,
 )
-from repo.interactions.services import get_user_relationships_by_follow_type
+from repo.interactions.services import RelationshipService
 from repo.profiles.models import CustomUser
 
 
@@ -20,14 +19,14 @@ from repo.profiles.models import CustomUser
 class FollowListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def __init__(self):
+        self.relationship_service = RelationshipService()
+
     def get(self, request):
         follow_type = request.query_params.get("type")
-        user = request.user
+        request_user = request.user
 
-        if follow_type not in ["following", "follower"]:
-            return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
-
-        relationships = get_user_relationships_by_follow_type(user, follow_type)
+        relationships = self.relationship_service.get_user_relationships_by_follow_type(follow_type, request_user)
 
         paginator = PageNumberPagination()
         relationships = paginator.paginate_queryset(relationships, request)
@@ -48,13 +47,15 @@ class FollowListAPIView(APIView):
 class FollowListCreateDeleteAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def __init__(self):
+        self.relationship_service = RelationshipService()
+
     def get(self, request, id):
         follow_type = request.query_params.get("type")
-        user = get_object_or_404(CustomUser, id=id)
+        request_user = request.user
+        target_user = get_object_or_404(CustomUser, id=id)
 
-        data = get_user_relationships_by_follow_type(user, follow_type)
-        if data is None:
-            return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
+        data = self.relationship_service.get_user_relationships_by_follow_type(follow_type, request_user, target_user)
 
         paginator = PageNumberPagination()
         data = paginator.paginate_queryset(data, request)
@@ -73,7 +74,7 @@ class FollowListCreateDeleteAPIView(APIView):
         user = request.user
         follow_user = get_object_or_404(CustomUser, id=id)
 
-        relationship, created = Relationship.objects.follow(user, follow_user)
+        relationship, created = self.relationship_service.follow(user, follow_user)
         if not relationship:
             return Response({"error": "user is blocking or blocked"}, status=status.HTTP_403_FORBIDDEN)
         elif not created:
@@ -84,7 +85,7 @@ class FollowListCreateDeleteAPIView(APIView):
         user = request.user
         following_user = get_object_or_404(CustomUser, id=id)
 
-        is_deleted = Relationship.objects.unfollow(user, following_user)
+        is_deleted = self.relationship_service.unfollow(user, following_user)
         if not is_deleted:
             return Response({"error": "user is not following"}, status=status.HTTP_404_NOT_FOUND)
         return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
@@ -94,9 +95,12 @@ class FollowListCreateDeleteAPIView(APIView):
 class BlockListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def __init__(self):
+        self.relationship_service = RelationshipService()
+
     def get(self, request):
         user = request.user
-        queryset = Relationship.objects.blocking(user).order_by("-id")
+        queryset = self.relationship_service.get_blocking(user).order_by("-id")
         return get_paginated_response_with_class(request, queryset, UserBlockListSerializer)
 
 
@@ -104,11 +108,14 @@ class BlockListAPIView(APIView):
 class BlockListCreateDeleteAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def __init__(self):
+        self.relationship_service = RelationshipService()
+
     def post(self, request, id):
         user = request.user
         target_user = get_object_or_404(CustomUser, id=id)
 
-        relationship, created = Relationship.objects.block(user, target_user)
+        relationship, created = self.relationship_service.block(user, target_user)
         if not created:
             return Response({"error": "User is already blocked"}, status=status.HTTP_409_CONFLICT)
         return Response({"success": "block"}, status=status.HTTP_201_CREATED)
@@ -117,7 +124,7 @@ class BlockListCreateDeleteAPIView(APIView):
         user = request.user
         block_user = get_object_or_404(CustomUser, id=id)
 
-        is_deleted = Relationship.objects.unblock(user, block_user)
+        is_deleted = self.relationship_service.unblock(user, block_user)
         if not is_deleted:
             return Response({"error": "User is not blocking"}, status=status.HTTP_404_NOT_FOUND)
         return Response({"success": "unblock"}, status=status.HTTP_200_OK)

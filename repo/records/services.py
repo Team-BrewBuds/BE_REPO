@@ -15,10 +15,14 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from repo.common.view_counter import is_viewed
-from repo.interactions.models import Relationship
+from repo.interactions.services import RelationshipService
 from repo.records.models import Comment, Photo, Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
+
+
+def get_relationship_service():
+    return RelationshipService()
 
 
 def serialize_tasted_record_list(item, request):
@@ -219,7 +223,8 @@ def get_following_feed(request, user):
     Returns:
         list: 시음기록과 게시글이 혼합된 피드 리스트
     """
-    following_users = Relationship.objects.get_following_users(user.id)
+    relationship_service = get_relationship_service()
+    following_users = relationship_service.get_following_user_list(user.id)
     one_hour_ago = timezone.now() - timedelta(hours=1)
 
     # 1. 팔로우한 유저의 시음기록, 게시글
@@ -260,8 +265,9 @@ def get_common_feed(request, user):
     Returns:
         list: 시음기록과 게시글이 최신순으로 정렬된 피드 리스트
     """
-    following_users = Relationship.objects.get_following_users(user.id)
-    block_users = Relationship.objects.get_unique_blocked_users(user.id)
+    relationship_service = get_relationship_service()
+    following_users = relationship_service.get_following_user_list(user.id)
+    block_users = relationship_service.get_unique_blocked_user_list(user.id)
 
     add_filter = {"is_private": False}
     exclude_filter = {"author__in": list(chain(following_users, block_users))}
@@ -296,7 +302,9 @@ def get_refresh_feed(user):
     Returns:
         list: 시음기록과 게시글이 랜덤으로 정렬된 피드 리스트
     """
-    block_users = Relationship.objects.get_unique_blocked_users(user.id)
+    relationship_service = get_relationship_service()
+    block_users = relationship_service.get_unique_blocked_user_list(user.id)
+
     private_filter = {"is_private": False}
     block_filter = {"author__in": block_users}
 
@@ -396,8 +404,9 @@ def get_tasted_record_feed(request, user):
     Returns:
         list: 최신순으로 정렬된 시음기록 리스트
     """
-    following_users = Relationship.objects.get_following_users(user.id)
-    block_users = Relationship.objects.get_unique_blocked_users(user.id)
+    relationship_service = get_relationship_service()
+    following_users = relationship_service.get_following_user_list(user.id)
+    block_users = relationship_service.get_unique_blocked_user_list(user.id)
 
     following_users_filter = {"author__in": following_users}
     private_false_filter = {"is_private": False}
@@ -441,8 +450,9 @@ def get_post_feed(request, user, subject):
     Returns:
         list: 최신순으로 정렬된 게시글 리스트
     """
-    following_users = Relationship.objects.get_following_users(user.id)
-    block_users = Relationship.objects.get_unique_blocked_users(user.id)
+    relationship_service = get_relationship_service()
+    following_users = relationship_service.get_following_user_list(user.id)
+    block_users = relationship_service.get_unique_blocked_user_list(user.id)
 
     # 1. 팔로우한 유저의 게시글
     following_users_filter = {"author__in": following_users}
@@ -542,7 +552,8 @@ def get_comment_list(object_type, object_id, user):
         QuerySet: 댓글 목록
     """
     obj = get_post_or_tasted_record_detail(object_type, object_id)
-    block_users = Relationship.objects.get_unique_blocked_users(user.id)
+    relationship_service = get_relationship_service()
+    block_users = relationship_service.get_unique_blocked_user_list(user.id)
 
     comments = obj.comment_set.filter(parent=None).exclude(author__in=block_users).order_by("id")
     for comment in comments:

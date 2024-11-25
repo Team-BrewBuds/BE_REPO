@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models import Count, F, QuerySet, Value
 from rest_framework.generics import get_object_or_404
 
-from repo.interactions.models import Relationship
+from repo.interactions.services import RelationshipService
 from repo.profiles.models import CustomUser, UserDetail
 
 
@@ -12,6 +12,7 @@ class UserService:
     def __init__(self, user_repo=CustomUser.objects, user_detail_repo=UserDetail.objects):
         self.user_repo = user_repo
         self.user_detail_repo = user_detail_repo
+        self.relationship_repo = RelationshipService()
 
     def check_user_exists(self, id: int) -> bool:
         """유저 존재 여부 확인"""
@@ -28,8 +29,8 @@ class UserService:
 
     def get_other_user_profile(self, user_id: int, other_user_id: int) -> dict:
         """다른 유저 프로필 조회"""
-        is_user_following = Relationship.objects.check_relationship(user_id, other_user_id, "follow")
-        is_user_blocking = Relationship.objects.check_relationship(user_id, other_user_id, "block")
+        is_user_following = self.relationship_repo.check_relationship(user_id, other_user_id, "follow")
+        is_user_blocking = self.relationship_repo.check_relationship(user_id, other_user_id, "block")
 
         base_queryset = self.get_profile_base_queryset(user_id)
         return (
@@ -43,8 +44,8 @@ class UserService:
 
     def get_profile_base_queryset(self, id: int) -> QuerySet:
         """유저 프로필 기본 쿼리셋 조회"""
-        follower_cnt = Relationship.objects.followers(id).count()
-        following_cnt = Relationship.objects.following(id).count()
+        follower_cnt = self.relationship_repo.get_followers(id).count()
+        following_cnt = self.relationship_repo.get_following(id).count()
 
         return self.user_repo.select_related("user_detail").annotate(
             introduction=F("user_detail__introduction"),
