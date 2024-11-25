@@ -22,14 +22,14 @@ class RelationshipService:
         ).exists()
 
     def follow(self, from_user, to_user):
-        if self.double_check_relationships(from_user, to_user, "block"):
+        if self.double_check_relationships(from_user, to_user, BLOCK_TYPE):
             return None, False
 
-        relationship, created = self.relationship_repo.get_or_create(from_user=from_user, to_user=to_user, relationship_type="follow")
+        relationship, created = self.relationship_repo.get_or_create(from_user=from_user, to_user=to_user, relationship_type=FOLLOW_TYPE)
         return relationship, created
 
     def unfollow(self, from_user, to_user):
-        relationship = self.relationship_repo.filter(from_user=from_user, to_user=to_user, relationship_type="follow")
+        relationship = self.relationship_repo.filter(from_user=from_user, to_user=to_user, relationship_type=FOLLOW_TYPE)
         if relationship.exists():
             relationship.delete()
             return True
@@ -39,22 +39,22 @@ class RelationshipService:
     def block(self, from_user, to_user):
         self.unfollow(from_user, to_user)
 
-        relationship, created = self.relationship_repo.get_or_create(from_user=from_user, to_user=to_user, relationship_type="block")
+        relationship, created = self.relationship_repo.get_or_create(from_user=from_user, to_user=to_user, relationship_type=BLOCK_TYPE)
         return relationship, created
 
     @transaction.atomic
     def unblock(self, from_user, to_user):
-        relationship = self.relationship_repo.filter(from_user=from_user, to_user=to_user, relationship_type="block")
+        relationship = self.relationship_repo.filter(from_user=from_user, to_user=to_user, relationship_type=BLOCK_TYPE)
         if relationship.exists():
             relationship.delete()
             return True
         return False
 
     def get_following(self, user_id):
-        return self.relationship_repo.filter(from_user=user_id, relationship_type="follow")
+        return self.relationship_repo.filter(from_user=user_id, relationship_type=FOLLOW_TYPE)
 
     def get_followers(self, user_id):
-        return self.relationship_repo.filter(to_user=user_id, relationship_type="follow")
+        return self.relationship_repo.filter(to_user=user_id, relationship_type=FOLLOW_TYPE)
 
     def get_following_user_list(self, user_id):
         return self.relationship_repo.get_following(user_id).values_list("to_user", flat=True)
@@ -63,13 +63,13 @@ class RelationshipService:
         return self.relationship_repo.get_followers(user_id).values_list("from_user", flat=True)
 
     def get_blocking(self, user_id):
-        return self.relationship_repo.filter(from_user=user_id, relationship_type="block")
+        return self.relationship_repo.filter(from_user=user_id, relationship_type=BLOCK_TYPE)
 
     def get_blocked(self, user_id):
-        return self.relationship_repo.filter(to_user=user_id, relationship_type="block")
+        return self.relationship_repo.filter(to_user=user_id, relationship_type=BLOCK_TYPE)
 
     def get_unique_blocked_user_list(self, user_id):
-        block_relationships = self.relationship_repo.filter(Q(from_user=user_id) | Q(to_user=user_id), relationship_type="block")
+        block_relationships = self.relationship_repo.filter(Q(from_user=user_id) | Q(to_user=user_id), relationship_type=BLOCK_TYPE)
         blocking_users = list(block_relationships.values_list("to_user", flat=True))
         blocked_users = list(block_relationships.values_list("from_user", flat=True))
         unique_block_users = list(set(blocking_users + blocked_users))
