@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models import Count, F, QuerySet, Value
 from rest_framework.generics import get_object_or_404
 
-from repo.interactions.services import RelationshipService
+from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser, UserDetail
 
 

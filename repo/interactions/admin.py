@@ -1,5 +1,5 @@
 from django.contrib import admin
 
-from repo.interactions.models import Relationship
+from repo.interactions.relationship.models import Relationship
 
 admin.site.register(Relationship)

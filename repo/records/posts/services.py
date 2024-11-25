@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.db.models import Count, Exists
 from django.utils import timezone
 
-from repo.interactions.services import RelationshipService
+from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.records.models import Photo, Post, TastedRecord
 from repo.records.services import get_user_liked_post_queryset

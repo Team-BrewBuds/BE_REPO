@@ -7,7 +7,8 @@ from repo.common.exception.exceptions import (
     ForbiddenException,
     NotFoundException,
 )
-from repo.interactions.models import Relationship
+
+from .models import Relationship
 
 FOLLOW_TYPE = "follow"
 BLOCK_TYPE = "block"

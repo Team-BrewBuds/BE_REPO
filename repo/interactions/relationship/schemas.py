@@ -6,7 +6,8 @@ from drf_spectacular.utils import (
 )
 
 from repo.common.serializers import PageNumberSerializer
-from repo.interactions.serializers import (
+
+from .serializers import (
     UserBlockListSerializer,
     UserFollowListSerializer,
 )
