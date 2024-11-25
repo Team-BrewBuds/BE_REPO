@@ -1,6 +1,5 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import status
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -28,11 +27,7 @@ class FollowListAPIView(APIView):
 
         relationships = self.relationship_service.get_user_relationships_by_follow_type(follow_type, request_user)
 
-        paginator = PageNumberPagination()
-        page = paginator.paginate_queryset(relationships, request)
-
-        serializer = UserFollowListSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return get_paginated_response_with_class(request, relationships, UserFollowListSerializer)
 
 
 @FollowListCreateDeleteSchema.follow_list_create_delete_schema_view
@@ -49,11 +44,7 @@ class FollowListCreateDeleteAPIView(APIView):
 
         relationships = self.relationship_service.get_user_relationships_by_follow_type(follow_type, request_user, target_user)
 
-        paginator = PageNumberPagination()
-        page = paginator.paginate_queryset(relationships, request)
-
-        serializer = UserFollowListSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return get_paginated_response_with_class(request, relationships, UserFollowListSerializer)
 
     def post(self, request, id):
         user = request.user
