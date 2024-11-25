@@ -1,10 +1,11 @@
 import random
 
-from django.db import models, transaction
-from django.db.models import Count, Exists, F, QuerySet, Value
+from django.db import transaction
+from django.db.models import Count, F, QuerySet, Value
 from rest_framework.generics import get_object_or_404
 
-from .models import CustomUser, Relationship, UserDetail
+from repo.interactions.models import Relationship
+from repo.profiles.models import CustomUser, UserDetail
 
 
 class UserService:
@@ -96,42 +97,3 @@ class CoffeeLifeCategoryService:
         true_categories = [c for c in self.default_categories if user_detail.coffee_life[c]]
 
         return random.choice(true_categories)
-
-
-def get_following_list(user):
-    """사용자가 팔로우한 유저 리스트 반환"""
-    followings = (
-        Relationship.objects.following(user)
-        .select_related("to_user")
-        .annotate(
-            is_following=Exists(
-                Relationship.objects.filter(from_user=user, to_user_id=models.OuterRef("to_user_id"), relationship_type="follow")
-            )
-        )
-    )
-
-    return followings
-
-
-def get_follower_list(user):
-    """사용자를 팔로우한 유저 리스트 반환"""
-    followers = (
-        Relationship.objects.followers(user)
-        .select_related("from_user")
-        .annotate(
-            is_following=Exists(
-                Relationship.objects.filter(from_user=user, to_user_id=models.OuterRef("from_user_id"), relationship_type="follow")
-            ),
-        )
-    )
-
-    return followers
-
-
-def get_user_relationships_by_follow_type(user, follow_type):
-    if follow_type == "following":
-        return get_following_list(user).order_by("-id")
-    elif follow_type == "follower":
-        return get_follower_list(user).order_by("-id")
-
-    return None

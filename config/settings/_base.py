@@ -17,6 +17,7 @@ LOCAL_APPS = [
     "repo.search",
     "repo.recommendation",
     "repo.common",
+    "repo.interactions",
 ]
 
 THIRD_PARTY_APPS = [
