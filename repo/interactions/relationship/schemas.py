@@ -18,6 +18,7 @@ Block_Tag = "block"
 
 class FollowListSchema:
     follow_list_get_schema = extend_schema(
+        operation_id="interactions_relationship_my_follow_list",
         parameters=[PageNumberSerializer, OpenApiParameter(name="type", type=str, enum=["following", "follower"])],
         responses={
             200: UserFollowListSerializer(many=True),
@@ -39,6 +40,7 @@ class FollowListSchema:
 
 class FollowListCreateDeleteSchema:
     follow_list_create_delete_get_schema = extend_schema(
+        operation_id="interactions_relationship_user_follow_list",
         parameters=[PageNumberSerializer, OpenApiParameter(name="type", type=str, enum=["following", "follower"])],
         responses={
             200: UserFollowListSerializer(many=True),
