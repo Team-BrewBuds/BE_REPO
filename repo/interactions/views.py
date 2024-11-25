@@ -29,17 +29,9 @@ class FollowListAPIView(APIView):
         relationships = self.relationship_service.get_user_relationships_by_follow_type(follow_type, request_user)
 
         paginator = PageNumberPagination()
-        relationships = paginator.paginate_queryset(relationships, request)
+        page = paginator.paginate_queryset(relationships, request)
 
-        serialized_data = [
-            {
-                "user": relationship.from_user if follow_type == "follower" else relationship.to_user,
-                "is_following": relationship.is_following,
-            }
-            for relationship in relationships
-        ]
-
-        serializer = UserFollowListSerializer(serialized_data, many=True)
+        serializer = UserFollowListSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -55,19 +47,12 @@ class FollowListCreateDeleteAPIView(APIView):
         request_user = request.user
         target_user = get_object_or_404(CustomUser, id=id)
 
-        data = self.relationship_service.get_user_relationships_by_follow_type(follow_type, request_user, target_user)
+        relationships = self.relationship_service.get_user_relationships_by_follow_type(follow_type, request_user, target_user)
 
         paginator = PageNumberPagination()
-        data = paginator.paginate_queryset(data, request)
-        serialized_data = [
-            {
-                "user": relationship.from_user if follow_type == "follower" else relationship.to_user,
-                "is_following": relationship.is_following,
-            }
-            for relationship in data
-        ]
+        page = paginator.paginate_queryset(relationships, request)
 
-        serializer = UserFollowListSerializer(serialized_data, many=True)
+        serializer = UserFollowListSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, id):

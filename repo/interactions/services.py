@@ -4,6 +4,9 @@ from django.db.models import Exists, Q
 from repo.common.exception.exceptions import BadRequestException
 from repo.interactions.models import Relationship
 
+FOLLOW_TYPE = "follow"
+BLOCK_TYPE = "block"
+
 
 class RelationshipService:
     def __init__(self, relationship_repo=Relationship.objects):
@@ -80,33 +83,44 @@ class RelationshipService:
         if target_user is None:
             target_user = request_user
 
-        if follow_type == "following":
-            return (
-                self.get_following(target_user.id)
-                .select_related("to_user")
-                .annotate(
-                    is_following=Exists(
-                        self.relationship_repo.filter(
-                            from_user=models.OuterRef("to_user_id"), to_user=request_user.id, relationship_type="follow"
-                        )
-                    )
-                )
-                .order_by("-id")
-            )
+        base_query = {
+            "following": {
+                "base": self.get_following(target_user.id),
+                "select_related_field": "to_user",
+                "user_field": "to_user",
+                "is_following_from_user": models.OuterRef("to_user_id"),
+                "is_following_to_user": request_user,
+            },
+            "follower": {
+                "base": self.get_followers(target_user.id),
+                "select_related_field": "from_user",
+                "user_field": "from_user",
+                "is_following_from_user": request_user,
+                "is_following_to_user": models.OuterRef("from_user_id"),
+            },
+        }
 
-        elif follow_type == "follower":
-            return (
-                self.get_followers(target_user.id)
-                .select_related("from_user")
-                .annotate(
-                    is_following=Exists(
-                        self.relationship_repo.filter(
-                            from_user=request_user, to_user_id=models.OuterRef("from_user_id"), relationship_type="follow"
-                        )
-                    )
-                )
-                .order_by("-id")
-            )
-
-        else:
+        if follow_type not in base_query:
             raise BadRequestException("Invalid follow type")
+
+        query_config = base_query[follow_type]
+
+        relationships = (
+            query_config["base"]
+            .select_related(query_config["select_related_field"])
+            .annotate(
+                is_following=Exists(
+                    self.relationship_repo.filter(
+                        from_user=query_config["is_following_from_user"],
+                        to_user_id=query_config["is_following_to_user"],
+                        relationship_type=FOLLOW_TYPE,
+                    )
+                )
+            )
+            .order_by("-id")
+        )
+
+        return [
+            {"user": getattr(relationship, query_config["user_field"]), "is_following": relationship.is_following}
+            for relationship in relationships
+        ]
