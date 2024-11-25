@@ -1,7 +1,12 @@
 from django.db import models, transaction
 from django.db.models import Exists, Q
 
-from repo.common.exception.exceptions import BadRequestException
+from repo.common.exception.exceptions import (
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+)
 from repo.interactions.models import Relationship
 
 FOLLOW_TYPE = "follow"
@@ -23,32 +28,39 @@ class RelationshipService:
 
     def follow(self, from_user, to_user):
         if self.double_check_relationships(from_user, to_user, BLOCK_TYPE):
-            return None, False
+            raise ForbiddenException("user is blocking or blocked")
 
         relationship, created = self.relationship_repo.get_or_create(from_user=from_user, to_user=to_user, relationship_type=FOLLOW_TYPE)
-        return relationship, created
+
+        if not created:
+            raise ConflictException("user is already following")
 
     def unfollow(self, from_user, to_user):
+        if not self.check_relationship(from_user, to_user, FOLLOW_TYPE):
+            raise NotFoundException("user is not following")
+
         relationship = self.relationship_repo.filter(from_user=from_user, to_user=to_user, relationship_type=FOLLOW_TYPE)
-        if relationship.exists():
-            relationship.delete()
-            return True
-        return False
+        relationship.delete()
 
     @transaction.atomic
     def block(self, from_user, to_user):
-        self.unfollow(from_user, to_user)
+        try:
+            self.unfollow(from_user, to_user)
+        except NotFoundException:
+            pass
 
         relationship, created = self.relationship_repo.get_or_create(from_user=from_user, to_user=to_user, relationship_type=BLOCK_TYPE)
-        return relationship, created
+
+        if not created:
+            raise ConflictException("user is already blocking")
 
     @transaction.atomic
     def unblock(self, from_user, to_user):
+        if not self.check_relationship(from_user, to_user, BLOCK_TYPE):
+            raise NotFoundException("user is not blocking")
+
         relationship = self.relationship_repo.filter(from_user=from_user, to_user=to_user, relationship_type=BLOCK_TYPE)
-        if relationship.exists():
-            relationship.delete()
-            return True
-        return False
+        relationship.delete()
 
     def get_following(self, user_id):
         return self.relationship_repo.filter(from_user=user_id, relationship_type=FOLLOW_TYPE)

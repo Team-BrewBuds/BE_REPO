@@ -26,7 +26,6 @@ class FollowListAPIView(APIView):
         request_user = request.user
 
         relationships = self.relationship_service.get_user_relationships_by_follow_type(follow_type, request_user)
-
         return get_paginated_response_with_class(request, relationships, UserFollowListSerializer)
 
 
@@ -43,27 +42,20 @@ class FollowListCreateDeleteAPIView(APIView):
         target_user = get_object_or_404(CustomUser, id=id)
 
         relationships = self.relationship_service.get_user_relationships_by_follow_type(follow_type, request_user, target_user)
-
         return get_paginated_response_with_class(request, relationships, UserFollowListSerializer)
 
     def post(self, request, id):
         user = request.user
         follow_user = get_object_or_404(CustomUser, id=id)
 
-        relationship, created = self.relationship_service.follow(user, follow_user)
-        if not relationship:
-            return Response({"error": "user is blocking or blocked"}, status=status.HTTP_403_FORBIDDEN)
-        elif not created:
-            return Response({"error": "user is already following"}, status=status.HTTP_409_CONFLICT)
+        self.relationship_service.follow(user, follow_user)
         return Response({"success": "follow"}, status=status.HTTP_201_CREATED)
 
     def delete(self, request, id):
         user = request.user
         following_user = get_object_or_404(CustomUser, id=id)
 
-        is_deleted = self.relationship_service.unfollow(user, following_user)
-        if not is_deleted:
-            return Response({"error": "user is not following"}, status=status.HTTP_404_NOT_FOUND)
+        self.relationship_service.unfollow(user, following_user)
         return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
 
 
@@ -91,16 +83,12 @@ class BlockListCreateDeleteAPIView(APIView):
         user = request.user
         target_user = get_object_or_404(CustomUser, id=id)
 
-        relationship, created = self.relationship_service.block(user, target_user)
-        if not created:
-            return Response({"error": "User is already blocked"}, status=status.HTTP_409_CONFLICT)
+        self.relationship_service.block(user, target_user)
         return Response({"success": "block"}, status=status.HTTP_201_CREATED)
 
     def delete(self, request, id):
         user = request.user
         block_user = get_object_or_404(CustomUser, id=id)
 
-        is_deleted = self.relationship_service.unblock(user, block_user)
-        if not is_deleted:
-            return Response({"error": "User is not blocking"}, status=status.HTTP_404_NOT_FOUND)
+        self.relationship_service.unblock(user, block_user)
         return Response({"success": "unblock"}, status=status.HTTP_200_OK)
