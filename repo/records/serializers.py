@@ -3,9 +3,8 @@ from rest_framework import serializers
 from repo.common.utils import get_time_difference
 from repo.interactions.note.models import Note
 from repo.profiles.serializers import UserSimpleSerializer
-from repo.records.models import Comment, Post, Report, TastedRecord
+from repo.records.models import Comment, Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
-from repo.records.services import get_post_or_tasted_record_or_comment
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
@@ -82,28 +81,3 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ["id", "content", "parent", "author", "like_cnt", "created_at", "replies", "is_user_liked"]
-
-
-class ReportSerializer(serializers.ModelSerializer):
-    author = serializers.CharField(source="author.nickname", read_only=True)
-    target_author = serializers.CharField(read_only=True)
-
-    def validate(self, data):
-        required_fields = ["object_type", "object_id", "reason"]
-        for field in required_fields:
-            if field not in data:
-                raise serializers.ValidationError(f"{field}는 필수 항목입니다.")
-
-        valid_object_types = ["post", "tasted_record", "comment"]
-        if data["object_type"] not in valid_object_types:
-            raise serializers.ValidationError("유효하지 않은 신고 대상 타입입니다.")
-
-        target_object = get_post_or_tasted_record_or_comment(data["object_type"], data["object_id"])
-        if target_object.author == self.context["request"].user:
-            raise serializers.ValidationError("자기 자신의 컨텐츠는 신고할 수 없습니다.")
-
-        return data
-
-    class Meta:
-        model = Report
-        fields = ["author", "target_author", "object_type", "object_id", "reason"]
