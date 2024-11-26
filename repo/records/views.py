@@ -24,7 +24,7 @@ from repo.common.utils import (
     get_paginated_response_with_class,
     get_paginated_response_with_func,
 )
-from repo.records.models import Comment, Note, Photo, Post, Report, TastedRecord
+from repo.records.models import Comment, Photo, Post, Report, TastedRecord
 from repo.records.schemas import *
 from repo.records.serializers import CommentSerializer, ReportSerializer
 from repo.records.services import (
@@ -85,30 +85,6 @@ class LikeApiView(APIView):
 
         obj.like_cnt.remove(user_id)
         return Response({"detail": "like deleted"}, status=status.HTTP_204_NO_CONTENT)
-
-
-@NoteSchema.note_schema_view
-class NoteApiView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, object_type, object_id):
-        user = request.user
-
-        existing_note = Note.objects.existing_note(user, object_type, object_id)
-        if existing_note:
-            return Response({"detail": "note already exists"}, status=status.HTTP_200_OK)
-
-        Note.objects.create_note_for_object(user, object_type, object_id)
-        return Response({"detail": "note created"}, status=status.HTTP_201_CREATED)
-
-    def delete(self, request, object_type, object_id):
-        user = request.user
-
-        existing_note = Note.objects.existing_note(user, object_type, object_id)
-        if existing_note:
-            existing_note.delete()
-            return Response({"detail": "note deleted"}, status=status.HTTP_200_OK)
-        return Response({"detail": "note not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 @CommentSchema.comment_schema_view

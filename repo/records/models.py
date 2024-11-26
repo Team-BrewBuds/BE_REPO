@@ -2,7 +2,7 @@ from django.db import models
 
 from repo.beans.models import Bean, BeanTasteReview
 from repo.profiles.models import CustomUser
-from repo.records.managers import NoteManagers, PostManagers
+from repo.records.managers import PostManagers
 
 
 class TastedRecord(models.Model):
@@ -98,25 +98,6 @@ class Comment(models.Model):
         db_table = "comment"
         verbose_name = "댓글"
         verbose_name_plural = "댓글"
-
-
-class Note(models.Model):
-    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
-    post = models.ForeignKey(Post, null=True, blank=True, on_delete=models.CASCADE, verbose_name="게시글")
-    tasted_record = models.ForeignKey(TastedRecord, null=True, blank=True, on_delete=models.CASCADE, verbose_name="시음 기록")
-    bean = models.ForeignKey(Bean, null=True, blank=True, on_delete=models.CASCADE, verbose_name="원두")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
-
-    # objects = models.Manager()  # The default manager
-    objects = NoteManagers()
-
-    def __str__(self):
-        return f"Note: {self.id}"
-
-    class Meta:
-        db_table = "note"
-        verbose_name = "노트"
-        verbose_name_plural = "노트"
 
 
 class Report(models.Model):

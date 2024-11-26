@@ -13,7 +13,6 @@ from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 Feed_Tag = "Feed"
 Like_Tage = "Like"
-Note_Tag = "Note"
 Comment_Tag = "Comment"
 Photo_Tag = "Photo"
 Report_TAG = "Report"
@@ -130,40 +129,6 @@ class LikeSchema:
     )
 
     like_schema_view = extend_schema_view(post=like_post_schema, delete=like_delete_schema)
-
-
-class NoteSchema:
-    note_post_schema = extend_schema(
-        responses={
-            200: OpenApiResponse(description="Note already exists"),
-            201: OpenApiResponse(description="Note created"),
-        },
-        summary="노트 생성",
-        description="""
-            object_type : "post" 또는 "tasted_record" 또는 "bean"
-            object_id : 노트를 처리할 객체의 ID
-
-            담당자: hwstar1204
-        """,
-        tags=[Note_Tag],
-    )
-
-    note_delete_schema = extend_schema(
-        responses={
-            200: OpenApiResponse(description="Note deleted"),
-            404: OpenApiResponse(description="Note not found"),
-        },
-        summary="노트 삭제",
-        description="""
-            object_type : "post" 또는 "tasted_record" 또는 "bean"
-            object_id : 노트를 처리할 객체의 ID
-
-            담당자: hwstar1204
-        """,
-        tags=[Note_Tag],
-    )
-
-    note_schema_view = extend_schema_view(post=note_post_schema, delete=note_delete_schema)
 
 
 class CommentSchema:

@@ -9,7 +9,6 @@ urlpatterns = [
     path("like/<str:object_type>/<int:object_id>/", views.LikeApiView.as_view(), name="records-likes"),
     path("comment/<int:id>/", views.CommentDetailAPIView.as_view(), name="comment-detail"),
     path("comment/<str:object_type>/<int:object_id>/", views.CommentApiView.as_view(), name="comment-list"),
-    path("note/<str:object_type>/<int:object_id>/", views.NoteApiView.as_view(), name="note"),
     path("photo/", views.PhotoApiView.as_view(), name="photo-upload"),
     path("photo/profile/", views.ProfilePhotoAPIView.as_view(), name="profile-photo"),
     path("report/", views.ReportApiView.as_view(), name="report"),
