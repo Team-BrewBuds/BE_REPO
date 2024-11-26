@@ -1,16 +1,18 @@
 import random
 
-from django.db import models, transaction
-from django.db.models import Count, Exists, F, QuerySet, Value
+from django.db import transaction
+from django.db.models import Count, F, QuerySet, Value
 from rest_framework.generics import get_object_or_404
 
-from .models import CustomUser, Relationship, UserDetail
+from repo.interactions.relationship.services import RelationshipService
+from repo.profiles.models import CustomUser, UserDetail
 
 
 class UserService:
     def __init__(self, user_repo=CustomUser.objects, user_detail_repo=UserDetail.objects):
         self.user_repo = user_repo
         self.user_detail_repo = user_detail_repo
+        self.relationship_repo = RelationshipService()
 
     def check_user_exists(self, id: int) -> bool:
         """유저 존재 여부 확인"""
@@ -27,8 +29,8 @@ class UserService:
 
     def get_other_user_profile(self, user_id: int, other_user_id: int) -> dict:
         """다른 유저 프로필 조회"""
-        is_user_following = Relationship.objects.check_relationship(user_id, other_user_id, "follow")
-        is_user_blocking = Relationship.objects.check_relationship(user_id, other_user_id, "block")
+        is_user_following = self.relationship_repo.check_relationship(user_id, other_user_id, "follow")
+        is_user_blocking = self.relationship_repo.check_relationship(user_id, other_user_id, "block")
 
         base_queryset = self.get_profile_base_queryset(user_id)
         return (
@@ -42,8 +44,8 @@ class UserService:
 
     def get_profile_base_queryset(self, id: int) -> QuerySet:
         """유저 프로필 기본 쿼리셋 조회"""
-        follower_cnt = Relationship.objects.followers(id).count()
-        following_cnt = Relationship.objects.following(id).count()
+        follower_cnt = self.relationship_repo.get_followers(id).count()
+        following_cnt = self.relationship_repo.get_following(id).count()
 
         return self.user_repo.select_related("user_detail").annotate(
             introduction=F("user_detail__introduction"),
@@ -96,42 +98,3 @@ class CoffeeLifeCategoryService:
         true_categories = [c for c in self.default_categories if user_detail.coffee_life[c]]
 
         return random.choice(true_categories)
-
-
-def get_following_list(user):
-    """사용자가 팔로우한 유저 리스트 반환"""
-    followings = (
-        Relationship.objects.following(user)
-        .select_related("to_user")
-        .annotate(
-            is_following=Exists(
-                Relationship.objects.filter(from_user=user, to_user_id=models.OuterRef("to_user_id"), relationship_type="follow")
-            )
-        )
-    )
-
-    return followings
-
-
-def get_follower_list(user):
-    """사용자를 팔로우한 유저 리스트 반환"""
-    followers = (
-        Relationship.objects.followers(user)
-        .select_related("from_user")
-        .annotate(
-            is_following=Exists(
-                Relationship.objects.filter(from_user=user, to_user_id=models.OuterRef("from_user_id"), relationship_type="follow")
-            ),
-        )
-    )
-
-    return followers
-
-
-def get_user_relationships_by_follow_type(user, follow_type):
-    if follow_type == "following":
-        return get_following_list(user).order_by("-id")
-    elif follow_type == "follower":
-        return get_follower_list(user).order_by("-id")
-
-    return None

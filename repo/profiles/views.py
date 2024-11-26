@@ -11,7 +11,6 @@ from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
 from django_filters import rest_framework as filters
 from rest_framework import generics, status
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,20 +18,15 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from repo.common.filters import TastedRecordFilter
 from repo.common.utils import get_first_photo_url, get_paginated_response_with_class
-from repo.profiles.models import CustomUser, Relationship, UserDetail
+from repo.profiles.models import CustomUser, UserDetail
 from repo.profiles.schemas import *
 from repo.profiles.serializers import (
-    UserBlockListSerializer,
     UserDetailSignupSerializer,
-    UserFollowListSerializer,
     UserProfileSerializer,
     UserSignupSerializer,
     UserUpdateSerializer,
 )
-from repo.profiles.services import (
-    UserService,
-    get_user_relationships_by_follow_type,
-)
+from repo.profiles.services import UserService
 from repo.records.models import Post
 from repo.records.posts.serializers import UserPostSerializer
 from repo.records.serializers import UserNoteSerializer
@@ -377,113 +371,6 @@ class OtherProfileAPIView(APIView):
 
         serializer = UserProfileSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-@FollowListSchema.follow_list_schema_view
-class FollowListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        follow_type = request.query_params.get("type")
-        user = request.user
-
-        if follow_type not in ["following", "follower"]:
-            return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
-
-        relationships = get_user_relationships_by_follow_type(user, follow_type)
-
-        paginator = PageNumberPagination()
-        relationships = paginator.paginate_queryset(relationships, request)
-
-        serialized_data = [
-            {
-                "user": relationship.from_user if follow_type == "follower" else relationship.to_user,
-                "is_following": relationship.is_following,
-            }
-            for relationship in relationships
-        ]
-
-        serializer = UserFollowListSerializer(serialized_data, many=True)
-        return paginator.get_paginated_response(serializer.data)
-
-
-@FollowListCreateDeleteSchema.follow_list_create_delete_schema_view
-class FollowListCreateDeleteAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, id):
-        follow_type = request.query_params.get("type")
-        user = get_object_or_404(CustomUser, id=id)
-
-        data = get_user_relationships_by_follow_type(user, follow_type)
-        if data is None:
-            return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
-
-        paginator = PageNumberPagination()
-        data = paginator.paginate_queryset(data, request)
-        serialized_data = [
-            {
-                "user": relationship.from_user if follow_type == "follower" else relationship.to_user,
-                "is_following": relationship.is_following,
-            }
-            for relationship in data
-        ]
-
-        serializer = UserFollowListSerializer(serialized_data, many=True)
-        return paginator.get_paginated_response(serializer.data)
-
-    def post(self, request, id):
-        user = request.user
-        follow_user = get_object_or_404(CustomUser, id=id)
-
-        relationship, created = Relationship.objects.follow(user, follow_user)
-        if not relationship:
-            return Response({"error": "user is blocking or blocked"}, status=status.HTTP_403_FORBIDDEN)
-        elif not created:
-            return Response({"error": "user is already following"}, status=status.HTTP_409_CONFLICT)
-        return Response({"success": "follow"}, status=status.HTTP_201_CREATED)
-
-    def delete(self, request, id):
-        user = request.user
-        following_user = get_object_or_404(CustomUser, id=id)
-
-        is_deleted = Relationship.objects.unfollow(user, following_user)
-        if not is_deleted:
-            return Response({"error": "user is not following"}, status=status.HTTP_404_NOT_FOUND)
-        return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
-
-
-@BlockListSchema.block_list_schema_view
-class BlockListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        queryset = Relationship.objects.blocking(user).order_by("-id")
-        return get_paginated_response_with_class(request, queryset, UserBlockListSerializer)
-
-
-@BlockListCreateDeleteSchema.block_list_create_delete_schema_view
-class BlockListCreateDeleteAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, id):
-        user = request.user
-        target_user = get_object_or_404(CustomUser, id=id)
-
-        relationship, created = Relationship.objects.block(user, target_user)
-        if not created:
-            return Response({"error": "User is already blocked"}, status=status.HTTP_409_CONFLICT)
-        return Response({"success": "block"}, status=status.HTTP_201_CREATED)
-
-    def delete(self, request, id):
-        user = request.user
-        block_user = get_object_or_404(CustomUser, id=id)
-
-        is_deleted = Relationship.objects.unblock(user, block_user)
-        if not is_deleted:
-            return Response({"error": "User is not blocking"}, status=status.HTTP_404_NOT_FOUND)
-        return Response({"success": "unblock"}, status=status.HTTP_200_OK)
 
 
 @UserPostListSchema.user_post_list_schema_view
