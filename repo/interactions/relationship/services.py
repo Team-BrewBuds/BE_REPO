@@ -70,10 +70,10 @@ class RelationshipService:
         return self.relationship_repo.filter(to_user=user_id, relationship_type=FOLLOW_TYPE)
 
     def get_following_user_list(self, user_id):
-        return self.relationship_repo.get_following(user_id).values_list("to_user", flat=True)
+        return self.get_following(user_id).values_list("to_user", flat=True)
 
     def get_followers_user_list(self, user_id):
-        return self.relationship_repo.get_followers(user_id).values_list("from_user", flat=True)
+        return self.get_followers(user_id).values_list("from_user", flat=True)
 
     def get_blocking(self, user_id):
         return self.relationship_repo.filter(from_user=user_id, relationship_type=BLOCK_TYPE)
