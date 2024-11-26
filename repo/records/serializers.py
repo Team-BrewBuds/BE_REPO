@@ -1,8 +1,9 @@
 from rest_framework import serializers
 
 from repo.common.utils import get_time_difference
+from repo.interactions.note.models import Note
 from repo.profiles.serializers import UserSimpleSerializer
-from repo.records.models import Comment, Note, Post, Report, TastedRecord
+from repo.records.models import Comment, Post, Report, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
 from repo.records.services import get_post_or_tasted_record_or_comment
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
