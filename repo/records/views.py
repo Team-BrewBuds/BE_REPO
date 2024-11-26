@@ -24,9 +24,9 @@ from repo.common.utils import (
     get_paginated_response_with_class,
     get_paginated_response_with_func,
 )
-from repo.records.models import Comment, Photo, Post, Report, TastedRecord
+from repo.records.models import Comment, Photo, Post, TastedRecord
 from repo.records.schemas import *
-from repo.records.serializers import CommentSerializer, ReportSerializer
+from repo.records.serializers import CommentSerializer
 from repo.records.services import (
     annonymous_user_feed,
     get_comment_list,
@@ -317,35 +317,3 @@ class ProfilePhotoAPIView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@ReportSchema.report_schema_view
-class ReportApiView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @transaction.atomic
-    def post(self, request):
-        # 1. 데이터 유효성 검증
-        object_type = request.data.get("object_type")
-        object_id = request.data.get("object_id")
-
-        if Report.objects.filter(author=request.user, object_type=object_type, object_id=object_id).exists():
-            return Response({"message": "이미 신고한 컨텐츠입니다."}, status=status.HTTP_200_OK)
-
-        # 3. 데이터 유효성 검증
-        serializer = ReportSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-
-        # 4. 신고 대상 객체 존재 여부 확인
-        try:
-            target_object = get_post_or_tasted_record_or_comment(object_type, object_id)
-        except Http404:
-            return Response({"error": "신고할 컨텐츠가 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND)
-        except ValueError as e:
-            return Response({"error": f"잘못된 신고 대상 타입입니다: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 5. 신고 생성 및 응답
-        report = serializer.save(author=request.user)
-        response_data = serializer.data
-        response_data["target_author"] = target_object.author.nickname
-        return Response(response_data, status=status.HTTP_201_CREATED)

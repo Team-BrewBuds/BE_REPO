@@ -8,14 +8,13 @@ from drf_spectacular.utils import (
 
 from repo.common.serializers import PageNumberSerializer, PhotoDetailSerializer
 from repo.records.posts.serializers import PostListSerializer
-from repo.records.serializers import CommentSerializer, ReportSerializer
+from repo.records.serializers import CommentSerializer
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 Feed_Tag = "Feed"
 Like_Tage = "Like"
 Comment_Tag = "Comment"
 Photo_Tag = "Photo"
-Report_TAG = "Report"
 
 
 class FeedSchema:
@@ -421,25 +420,3 @@ class ProfilePhotoSchema:
     )
 
     profile_photo_schema_view = extend_schema_view(post=profile_photo_post_schema, delete=profile_photo_delete_schema)
-
-
-class ReportSchema:
-    report_post_schema = extend_schema(
-        request=ReportSerializer,
-        responses={
-            200: OpenApiResponse(description="duplicate report"),
-            201: ReportSerializer,
-            400: OpenApiResponse(description="Bad Request"),
-            401: OpenApiResponse(description="Unauthorized"),
-            404: OpenApiResponse(description="Not Found"),
-        },
-        summary="신고하기",
-        description="""
-            object_type : "post" 또는 "tasted_record" 또는 "comment"
-            object_id : 신고할 객체의 ID
-            reason : 신고 사유
-        """,
-        tags=[Report_TAG],
-    )
-
-    report_schema_view = extend_schema_view(post=report_post_schema)
