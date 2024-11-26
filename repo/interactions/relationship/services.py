@@ -101,8 +101,8 @@ class RelationshipService:
                 "base": self.get_following(target_user.id),
                 "select_related_field": "to_user",
                 "user_field": "to_user",
-                "is_following_from_user": models.OuterRef("to_user_id"),
-                "is_following_to_user": request_user,
+                "is_following_from_user": request_user,
+                "is_following_to_user": models.OuterRef("to_user_id"),
             },
             "follower": {
                 "base": self.get_followers(target_user.id),
