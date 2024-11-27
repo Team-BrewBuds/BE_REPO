@@ -33,7 +33,6 @@ from repo.records.services import (
     get_common_feed,
     get_following_feed,
     get_post_or_tasted_record_detail,
-    get_post_or_tasted_record_or_comment,
     get_refresh_feed,
     get_serialized_data,
 )
@@ -59,32 +58,6 @@ class FeedAPIView(APIView):
             queryset = get_refresh_feed(user)
 
         return get_paginated_response_with_func(request, queryset, get_serialized_data)
-
-
-@LikeSchema.like_schema_view
-class LikeApiView(APIView):
-
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, object_type, object_id):
-        obj = get_post_or_tasted_record_or_comment(object_type, object_id)
-
-        user_id = request.user.id
-        if user_id in obj.like_cnt.values_list("id", flat=True):
-            return Response({"detail": "like already exists"}, status=status.HTTP_409_CONFLICT)
-
-        obj.like_cnt.add(user_id)
-        return Response({"detail": "like created"}, status=status.HTTP_201_CREATED)
-
-    def delete(self, request, object_type, object_id):
-        obj = get_post_or_tasted_record_or_comment(object_type, object_id)
-
-        user_id = request.user.id
-        if user_id not in obj.like_cnt.values_list("id", flat=True):
-            return Response({"detail": "like not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        obj.like_cnt.remove(user_id)
-        return Response({"detail": "like deleted"}, status=status.HTTP_204_NO_CONTENT)
 
 
 @CommentSchema.comment_schema_view

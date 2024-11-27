@@ -519,22 +519,6 @@ def get_post_or_tasted_record_detail(object_type, object_id):
     return obj
 
 
-def get_post_or_tasted_record_or_comment(object_type, object_id):
-    """
-    게시글, 시음기록 또는 댓글의 상세 정보를 반환합니다.
-
-    Args:
-        object_type: 객체 타입 ('post', 'tasted_record' 또는 'comment')
-        object_id: 객체 ID
-
-    Returns:
-        Post or TastedRecord or Comment: 요청된 객체
-    """
-    model_map = {"post": Post, "tasted_record": TastedRecord, "comment": Comment}
-    model_class = model_map.get(object_type)
-    return get_object_or_404(model_class, pk=object_id)
-
-
 def get_comment_list(object_type, object_id, user):
     """
     게시글 또는 시음기록에 달린 댓글 목록을 반환합니다.
