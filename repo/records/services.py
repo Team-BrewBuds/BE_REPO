@@ -15,6 +15,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from repo.common.view_counter import get_not_viewed_contents
+from repo.interactions.like.services import LikeService
 from repo.interactions.relationship.services import RelationshipService
 from repo.records.models import Comment, Photo, Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
@@ -78,19 +79,6 @@ def get_serialized_data(request, page_obj_list):
     return obj_list
 
 
-def get_user_liked_post_queryset(user):  # TODO: like service로 이동
-    """
-    사용자가 좋아요한 게시글을 확인하기 위한 서브쿼리를 반환합니다.
-
-    Args:
-        user: 사용자 객체
-
-    Returns:
-        QuerySet: 좋아요 관계를 확인하는 서브쿼리
-    """
-    return Post.like_cnt.through.objects.filter(post_id=OuterRef("pk"), customuser_id=user.id)
-
-
 def get_user_noted_post_queryset(user):  # TODO: note service로 이동
     """
     사용자가 저장한 게시글을 확인하기 위한 서브쿼리를 반환합니다.
@@ -102,19 +90,6 @@ def get_user_noted_post_queryset(user):  # TODO: note service로 이동
         QuerySet: 저장 관계를 확인하는 서브쿼리
     """
     return user.note_set.filter(post_id=OuterRef("pk"), author_id=user.id)
-
-
-def get_user_liked_tasted_record_queryset(user):  # TODO: like service로 이동
-    """
-    사용자가 좋아요한 시음기록을 확인하기 위한 서브쿼리를 반환합니다.
-
-    Args:
-        user: 사용자 객체
-
-    Returns:
-        QuerySet: 좋아요 관계를 확인하는 서브쿼리
-    """
-    return TastedRecord.like_cnt.through.objects.filter(tastedrecord_id=OuterRef("pk"), customuser_id=user.id)
 
 
 def get_user_noted_tasted_record_queryset(user):  # TODO: note service로 이동
@@ -142,8 +117,11 @@ def get_post_feed_queryset(user, add_filter=None, exclude_filter=None, subject=N
 
     Returns:
         QuerySet: 필터링된 게시글 쿼리셋
+
+    초기화 부분 잘 적용되어있어? Object_id가 없으면 특정 객체를 가리키지 못하더라도 target_model으로 해당 객체에 유저가 좋아요 했는지 등 매서드를 사용할 수 있도록 하고싶어
+
     """
-    is_user_liked_post_subquery = get_user_liked_post_queryset(user)
+    like_service = LikeService("post")
     is_user_noted_post_subquery = get_user_noted_post_queryset(user)
 
     add_filters = Q(**add_filter) if add_filter else Q()
@@ -159,7 +137,7 @@ def get_post_feed_queryset(user, add_filter=None, exclude_filter=None, subject=N
         .annotate(
             likes=Count("like_cnt", distinct=True),
             comments=Count("comment", distinct=True),
-            is_user_liked=Exists(is_user_liked_post_subquery),
+            is_user_liked=Exists(like_service.get_like_subquery_for_post(user)),
             is_user_noted=Exists(is_user_noted_post_subquery),
         )
     )
@@ -177,7 +155,7 @@ def get_tasted_record_feed_queryset(user, add_filter=None, exclude_filter=None):
     Returns:
         QuerySet: 필터링된 시음기록 쿼리셋
     """
-    is_user_liked_tasted_record_subquery = get_user_liked_tasted_record_queryset(user)
+    like_service = LikeService("tasted_record")
     is_user_noted_tasted_record_subquery = get_user_noted_tasted_record_queryset(user)
 
     add_filters = Q(**add_filter) if add_filter else Q()
@@ -191,7 +169,7 @@ def get_tasted_record_feed_queryset(user, add_filter=None, exclude_filter=None):
         .annotate(
             likes=Count("like_cnt", distinct=True),
             comments=Count("comment", distinct=True),
-            is_user_liked=Exists(is_user_liked_tasted_record_subquery),
+            is_user_liked=Exists(like_service.get_like_subquery_for_tasted_record(user)),
             is_user_noted=Exists(is_user_noted_tasted_record_subquery),
         )
     )
