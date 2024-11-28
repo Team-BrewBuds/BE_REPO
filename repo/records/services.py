@@ -14,7 +14,7 @@ from django.db.models import (
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
-from repo.common.view_counter import is_viewed
+from repo.common.view_counter import get_not_viewed_contents
 from repo.interactions.relationship.services import RelationshipService
 from repo.records.models import Comment, Photo, Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
@@ -76,21 +76,6 @@ def get_serialized_data(request, page_obj_list):
             obj_list.append(serializer_data)
             # obj_list.append(serialize_post_list(item, request))
     return obj_list
-
-
-def get_not_viewed_data(request, queryset, cookie_name):  # TODO: (utility) 쿠키 기반 조회수 업데이트 매서드로 이동
-    """
-    사용자가 아직 조회하지 않은 데이터만 필터링하여 반환합니다.
-
-    Args:
-        request: HTTP 요청 객체
-        queryset: 필터링할 쿼리셋
-        cookie_name: 조회 여부를 확인할 쿠키 이름
-
-    Returns:
-        list: 조회하지 않은 데이터 리스트
-    """
-    return [data for data in queryset if not is_viewed(request, cookie_name=cookie_name, content_id=data.id)]
 
 
 def get_user_liked_post_queryset(user):  # TODO: like service로 이동
@@ -246,8 +231,8 @@ def get_following_feed(request, user):
     following_posts_order = following_posts.order_by("-id")
 
     # 2. 조회하지 않은 시음기록, 게시글
-    not_viewed_tasted_records = get_not_viewed_data(request, following_tasted_records_order, "tasted_record_viewed")
-    not_viewed_posts = get_not_viewed_data(request, following_posts_order, "post_viewed")
+    not_viewed_tasted_records = get_not_viewed_contents(request, following_tasted_records_order, "tasted_record_viewed")
+    not_viewed_posts = get_not_viewed_contents(request, following_posts_order, "post_viewed")
 
     # 3. 1 + 2
     combined_data = list(chain(not_viewed_tasted_records, not_viewed_posts))
@@ -289,8 +274,8 @@ def get_common_feed(request, user):
     common_posts_order = common_posts.order_by("-id")
 
     # 2. 조회하지 않은 시음기록, 게시글
-    not_viewd_tasted_records = get_not_viewed_data(request, common_tasted_records_order, "tasted_record_viewed")
-    not_viewd_posts = get_not_viewed_data(request, common_posts_order, "post_viewed")
+    not_viewd_tasted_records = get_not_viewed_contents(request, common_tasted_records_order, "tasted_record_viewed")
+    not_viewd_posts = get_not_viewed_contents(request, common_posts_order, "post_viewed")
 
     # 3. 1 + 2 (최신순 done)
     combined_data = sorted(chain(not_viewd_tasted_records, not_viewd_posts), key=lambda x: x.created_at, reverse=True)
@@ -436,7 +421,7 @@ def get_tasted_record_feed(request, user):  # TODO: tasted record service로 이
     tasted_records = list(chain(followed_tasted_records_order, not_followed_tasted_records_order))
 
     # 4. 조회하지 않은 시음기록
-    not_viewd_tasted_records = get_not_viewed_data(request, tasted_records, "tasted_record_viewed")
+    not_viewd_tasted_records = get_not_viewed_contents(request, tasted_records, "tasted_record_viewed")
 
     return not_viewd_tasted_records
 
@@ -477,7 +462,7 @@ def get_post_feed(request, user, subject):  # TODO: post service로 이동
     posts = list(chain(followed_posts_order, not_followed_posts_order))
 
     # 4. 조회하지 않은 게시글
-    not_viewed_posts = get_not_viewed_data(request, posts, "post_viewed")
+    not_viewed_posts = get_not_viewed_contents(request, posts, "post_viewed")
 
     return not_viewed_posts
 
