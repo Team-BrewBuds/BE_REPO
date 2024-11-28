@@ -6,7 +6,6 @@ from django.db.models import (
     BooleanField,
     Count,
     Exists,
-    OuterRef,
     Prefetch,
     Q,
     Value,
@@ -14,7 +13,9 @@ from django.db.models import (
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
-from repo.common.view_counter import is_viewed
+from repo.common.view_counter import get_not_viewed_contents
+from repo.interactions.like.services import LikeService
+from repo.interactions.note.services import NoteService
 from repo.interactions.relationship.services import RelationshipService
 from repo.records.models import Comment, Photo, Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
@@ -78,73 +79,6 @@ def get_serialized_data(request, page_obj_list):
     return obj_list
 
 
-def get_not_viewed_data(request, queryset, cookie_name):  # TODO: (utility) 쿠키 기반 조회수 업데이트 매서드로 이동
-    """
-    사용자가 아직 조회하지 않은 데이터만 필터링하여 반환합니다.
-
-    Args:
-        request: HTTP 요청 객체
-        queryset: 필터링할 쿼리셋
-        cookie_name: 조회 여부를 확인할 쿠키 이름
-
-    Returns:
-        list: 조회하지 않은 데이터 리스트
-    """
-    return [data for data in queryset if not is_viewed(request, cookie_name=cookie_name, content_id=data.id)]
-
-
-def get_user_liked_post_queryset(user):  # TODO: like service로 이동
-    """
-    사용자가 좋아요한 게시글을 확인하기 위한 서브쿼리를 반환합니다.
-
-    Args:
-        user: 사용자 객체
-
-    Returns:
-        QuerySet: 좋아요 관계를 확인하는 서브쿼리
-    """
-    return Post.like_cnt.through.objects.filter(post_id=OuterRef("pk"), customuser_id=user.id)
-
-
-def get_user_noted_post_queryset(user):  # TODO: note service로 이동
-    """
-    사용자가 저장한 게시글을 확인하기 위한 서브쿼리를 반환합니다.
-
-    Args:
-        user: 사용자 객체
-
-    Returns:
-        QuerySet: 저장 관계를 확인하는 서브쿼리
-    """
-    return user.note_set.filter(post_id=OuterRef("pk"), author_id=user.id)
-
-
-def get_user_liked_tasted_record_queryset(user):  # TODO: like service로 이동
-    """
-    사용자가 좋아요한 시음기록을 확인하기 위한 서브쿼리를 반환합니다.
-
-    Args:
-        user: 사용자 객체
-
-    Returns:
-        QuerySet: 좋아요 관계를 확인하는 서브쿼리
-    """
-    return TastedRecord.like_cnt.through.objects.filter(tastedrecord_id=OuterRef("pk"), customuser_id=user.id)
-
-
-def get_user_noted_tasted_record_queryset(user):  # TODO: note service로 이동
-    """
-    사용자가 저장한 시음기록을 확인하기 위한 서브쿼리를 반환합니다.
-
-    Args:
-        user: 사용자 객체
-
-    Returns:
-        QuerySet: 저장 관계를 확인하는 서브쿼리
-    """
-    return user.note_set.filter(tasted_record_id=OuterRef("pk"), author_id=user.id)
-
-
 def get_post_feed_queryset(user, add_filter=None, exclude_filter=None, subject=None):  # TODO: post service로 이동
     """
     게시글 피드를 위한 필터링된 쿼리셋을 생성합니다.
@@ -157,9 +91,12 @@ def get_post_feed_queryset(user, add_filter=None, exclude_filter=None, subject=N
 
     Returns:
         QuerySet: 필터링된 게시글 쿼리셋
+
+    초기화 부분 잘 적용되어있어? Object_id가 없으면 특정 객체를 가리키지 못하더라도 target_model으로 해당 객체에 유저가 좋아요 했는지 등 매서드를 사용할 수 있도록 하고싶어
+
     """
-    is_user_liked_post_subquery = get_user_liked_post_queryset(user)
-    is_user_noted_post_subquery = get_user_noted_post_queryset(user)
+    like_service = LikeService("post")
+    note_service = NoteService()
 
     add_filters = Q(**add_filter) if add_filter else Q()
     add_filters &= Q(subject=subject) if subject is not None else Q()
@@ -174,8 +111,8 @@ def get_post_feed_queryset(user, add_filter=None, exclude_filter=None, subject=N
         .annotate(
             likes=Count("like_cnt", distinct=True),
             comments=Count("comment", distinct=True),
-            is_user_liked=Exists(is_user_liked_post_subquery),
-            is_user_noted=Exists(is_user_noted_post_subquery),
+            is_user_liked=Exists(like_service.get_like_subquery_for_post(user)),
+            is_user_noted=Exists(note_service.get_note_subquery_for_post(user)),
         )
     )
 
@@ -192,8 +129,9 @@ def get_tasted_record_feed_queryset(user, add_filter=None, exclude_filter=None):
     Returns:
         QuerySet: 필터링된 시음기록 쿼리셋
     """
-    is_user_liked_tasted_record_subquery = get_user_liked_tasted_record_queryset(user)
-    is_user_noted_tasted_record_subquery = get_user_noted_tasted_record_queryset(user)
+    like_service = LikeService("tasted_record")
+    note_service = NoteService()
+    # is_user_noted_tasted_record_subquery = get_user_noted_tasted_record_queryset(user)
 
     add_filters = Q(**add_filter) if add_filter else Q()
     exclude_filters = Q(**exclude_filter) if exclude_filter else Q()
@@ -206,8 +144,8 @@ def get_tasted_record_feed_queryset(user, add_filter=None, exclude_filter=None):
         .annotate(
             likes=Count("like_cnt", distinct=True),
             comments=Count("comment", distinct=True),
-            is_user_liked=Exists(is_user_liked_tasted_record_subquery),
-            is_user_noted=Exists(is_user_noted_tasted_record_subquery),
+            is_user_liked=Exists(like_service.get_like_subquery_for_tasted_record(user)),
+            is_user_noted=Exists(note_service.get_note_subquery_for_tasted_record(user)),
         )
     )
 
@@ -246,8 +184,8 @@ def get_following_feed(request, user):
     following_posts_order = following_posts.order_by("-id")
 
     # 2. 조회하지 않은 시음기록, 게시글
-    not_viewed_tasted_records = get_not_viewed_data(request, following_tasted_records_order, "tasted_record_viewed")
-    not_viewed_posts = get_not_viewed_data(request, following_posts_order, "post_viewed")
+    not_viewed_tasted_records = get_not_viewed_contents(request, following_tasted_records_order, "tasted_record_viewed")
+    not_viewed_posts = get_not_viewed_contents(request, following_posts_order, "post_viewed")
 
     # 3. 1 + 2
     combined_data = list(chain(not_viewed_tasted_records, not_viewed_posts))
@@ -289,8 +227,8 @@ def get_common_feed(request, user):
     common_posts_order = common_posts.order_by("-id")
 
     # 2. 조회하지 않은 시음기록, 게시글
-    not_viewd_tasted_records = get_not_viewed_data(request, common_tasted_records_order, "tasted_record_viewed")
-    not_viewd_posts = get_not_viewed_data(request, common_posts_order, "post_viewed")
+    not_viewd_tasted_records = get_not_viewed_contents(request, common_tasted_records_order, "tasted_record_viewed")
+    not_viewd_posts = get_not_viewed_contents(request, common_posts_order, "post_viewed")
 
     # 3. 1 + 2 (최신순 done)
     combined_data = sorted(chain(not_viewd_tasted_records, not_viewd_posts), key=lambda x: x.created_at, reverse=True)
@@ -436,7 +374,7 @@ def get_tasted_record_feed(request, user):  # TODO: tasted record service로 이
     tasted_records = list(chain(followed_tasted_records_order, not_followed_tasted_records_order))
 
     # 4. 조회하지 않은 시음기록
-    not_viewd_tasted_records = get_not_viewed_data(request, tasted_records, "tasted_record_viewed")
+    not_viewd_tasted_records = get_not_viewed_contents(request, tasted_records, "tasted_record_viewed")
 
     return not_viewd_tasted_records
 
@@ -477,7 +415,7 @@ def get_post_feed(request, user, subject):  # TODO: post service로 이동
     posts = list(chain(followed_posts_order, not_followed_posts_order))
 
     # 4. 조회하지 않은 게시글
-    not_viewed_posts = get_not_viewed_data(request, posts, "post_viewed")
+    not_viewed_posts = get_not_viewed_contents(request, posts, "post_viewed")
 
     return not_viewed_posts
 
