@@ -25,32 +25,32 @@ def get_relationship_service():
     return RelationshipService()
 
 
-def serialize_tasted_record_list(item, request):
-    """
-    시음기록 객체를 시리얼라이즈하여 JSON 형태로 반환합니다.
+# def serialize_tasted_record_list(item, request):  # TODO : 삭제
+#     """
+#     시음기록 객체를 시리얼라이즈하여 JSON 형태로 반환합니다.
 
-    Args:
-        item: TastedRecord 객체
-        request: HTTP 요청 객체
+#     Args:
+#         item: TastedRecord 객체
+#         request: HTTP 요청 객체
 
-    Returns:
-        dict: 시리얼라이즈된 시음기록 데이터
-    """
-    return TastedRecordListSerializer(item, context={"request": request}).data
+#     Returns:
+#         dict: 시리얼라이즈된 시음기록 데이터
+#     """
+#     return TastedRecordListSerializer(item, context={"request": request}).data
 
 
-def serialize_post_list(item, request):
-    """
-    게시글 객체를 시리얼라이즈하여 JSON 형태로 반환합니다.
+# def serialize_post_list(item, request):  # TODO : 삭제
+#     """
+#     게시글 객체를 시리얼라이즈하여 JSON 형태로 반환합니다.
 
-    Args:
-        item: Post 객체
-        request: HTTP 요청 객체
+#     Args:
+#         item: Post 객체
+#         request: HTTP 요청 객체
 
-    Returns:
-        dict: 시리얼라이즈된 게시글 데이터
-    """
-    return PostListSerializer(item, context={"request": request}).data
+#     Returns:
+#         dict: 시리얼라이즈된 게시글 데이터
+#     """
+#     return PostListSerializer(item, context={"request": request}).data
 
 
 def get_serialized_data(request, page_obj_list):
@@ -68,13 +68,17 @@ def get_serialized_data(request, page_obj_list):
     obj_list = []
     for item in page_obj_list:
         if isinstance(item, TastedRecord):
-            obj_list.append(serialize_tasted_record_list(item, request))
+            serializer_data = TastedRecordListSerializer(item, context={"request": request}).data
+            obj_list.append(serializer_data)
+            # obj_list.append(serialize_tasted_record_list(item, request))
         else:
-            obj_list.append(serialize_post_list(item, request))
+            serializer_data = PostListSerializer(item, context={"request": request}).data
+            obj_list.append(serializer_data)
+            # obj_list.append(serialize_post_list(item, request))
     return obj_list
 
 
-def get_not_viewed_data(request, queryset, cookie_name):
+def get_not_viewed_data(request, queryset, cookie_name):  # TODO: (utility) 쿠키 기반 조회수 업데이트 매서드로 이동
     """
     사용자가 아직 조회하지 않은 데이터만 필터링하여 반환합니다.
 
@@ -89,7 +93,7 @@ def get_not_viewed_data(request, queryset, cookie_name):
     return [data for data in queryset if not is_viewed(request, cookie_name=cookie_name, content_id=data.id)]
 
 
-def get_user_liked_post_queryset(user):
+def get_user_liked_post_queryset(user):  # TODO: like service로 이동
     """
     사용자가 좋아요한 게시글을 확인하기 위한 서브쿼리를 반환합니다.
 
@@ -102,7 +106,7 @@ def get_user_liked_post_queryset(user):
     return Post.like_cnt.through.objects.filter(post_id=OuterRef("pk"), customuser_id=user.id)
 
 
-def get_user_noted_post_queryset(user):
+def get_user_noted_post_queryset(user):  # TODO: note service로 이동
     """
     사용자가 저장한 게시글을 확인하기 위한 서브쿼리를 반환합니다.
 
@@ -115,7 +119,7 @@ def get_user_noted_post_queryset(user):
     return user.note_set.filter(post_id=OuterRef("pk"), author_id=user.id)
 
 
-def get_user_liked_tasted_record_queryset(user):
+def get_user_liked_tasted_record_queryset(user):  # TODO: like service로 이동
     """
     사용자가 좋아요한 시음기록을 확인하기 위한 서브쿼리를 반환합니다.
 
@@ -128,7 +132,7 @@ def get_user_liked_tasted_record_queryset(user):
     return TastedRecord.like_cnt.through.objects.filter(tastedrecord_id=OuterRef("pk"), customuser_id=user.id)
 
 
-def get_user_noted_tasted_record_queryset(user):
+def get_user_noted_tasted_record_queryset(user):  # TODO: note service로 이동
     """
     사용자가 저장한 시음기록을 확인하기 위한 서브쿼리를 반환합니다.
 
@@ -141,7 +145,7 @@ def get_user_noted_tasted_record_queryset(user):
     return user.note_set.filter(tasted_record_id=OuterRef("pk"), author_id=user.id)
 
 
-def get_post_feed_queryset(user, add_filter=None, exclude_filter=None, subject=None):
+def get_post_feed_queryset(user, add_filter=None, exclude_filter=None, subject=None):  # TODO: post service로 이동
     """
     게시글 피드를 위한 필터링된 쿼리셋을 생성합니다.
 
@@ -176,7 +180,7 @@ def get_post_feed_queryset(user, add_filter=None, exclude_filter=None, subject=N
     )
 
 
-def get_tasted_record_feed_queryset(user, add_filter=None, exclude_filter=None):
+def get_tasted_record_feed_queryset(user, add_filter=None, exclude_filter=None):  # TODO: tasted record service로 이동
     """
     시음기록 피드를 위한 필터링된 쿼리셋을 생성합니다.
 
@@ -206,6 +210,11 @@ def get_tasted_record_feed_queryset(user, add_filter=None, exclude_filter=None):
             is_user_noted=Exists(is_user_noted_tasted_record_subquery),
         )
     )
+
+
+################################ 피드 관련 매서드 ################################
+################################ 피드 관련 매서드 ################################
+################################ 피드 관련 매서드 ################################
 
 
 def get_following_feed(request, user):
@@ -320,7 +329,7 @@ def get_refresh_feed(user):
     return combined_data
 
 
-def get_annonymous_tasted_records_feed():
+def get_annonymous_tasted_records_feed():  # TODO: tasted record service로 이동
     """
     비로그인 사용자를 위한 시음기록 피드를 반환합니다.
 
@@ -345,7 +354,7 @@ def get_annonymous_tasted_records_feed():
     )
 
 
-def get_annonymous_posts_feed():
+def get_annonymous_posts_feed():  # TODO: post service로 이동
     """
     비로그인 사용자를 위한 게시글 피드를 반환합니다.
 
@@ -388,7 +397,7 @@ def annonymous_user_feed():
     return combined_data
 
 
-def get_tasted_record_feed(request, user):
+def get_tasted_record_feed(request, user):  # TODO: tasted record service로 이동
     """
     시음기록 전용 피드를 반환합니다.
 
@@ -432,7 +441,7 @@ def get_tasted_record_feed(request, user):
     return not_viewd_tasted_records
 
 
-def get_post_feed(request, user, subject):
+def get_post_feed(request, user, subject):  # TODO: post service로 이동
     """
     게시글 전용 피드를 반환합니다.
 
@@ -473,7 +482,12 @@ def get_post_feed(request, user, subject):
     return not_viewed_posts
 
 
-def get_post_detail(post_id):
+################################ 피드 관련 매서드 ################################
+################################ 피드 관련 매서드 ################################
+################################ 피드 관련 매서드 ################################
+
+
+def get_post_detail(post_id):  # TODO: post 서비스로 이동
     """
     게시글 상세 정보를 반환합니다.
 
@@ -495,6 +509,9 @@ def get_post_detail(post_id):
     return post
 
 
+# comment, photo에서 사용중
+# comment의 서비스에서 model_map 사용하도록 수정
+# photo는 utils에서 사용하도록 수정
 def get_post_or_tasted_record_detail(object_type, object_id):
     """
     게시글 또는 시음기록의 상세 정보를 반환합니다.
@@ -519,7 +536,7 @@ def get_post_or_tasted_record_detail(object_type, object_id):
     return obj
 
 
-def get_comment_list(object_type, object_id, user):
+def get_comment_list(object_type, object_id, user):  # TODO: comment service로 이동
     """
     게시글 또는 시음기록에 달린 댓글 목록을 반환합니다.
 
@@ -546,7 +563,7 @@ def get_comment_list(object_type, object_id, user):
     return comments
 
 
-def get_comment(comment_id):
+def get_comment(comment_id):  # TODO: comment service로 이동
     """
     댓글 상세 정보를 반환합니다.
 
@@ -560,7 +577,12 @@ def get_comment(comment_id):
     return comment
 
 
-def get_user_posts_by_subject(user, subject):
+################################ 사용자 게시물 관련 매서드 ################################
+################################ 사용자 게시물 관련 매서드 ################################
+################################ 사용자 게시물 관련 매서드 ################################
+
+
+def get_user_posts_by_subject(user, subject):  # TODO: post service로 이동
     """
     사용자가 작성한 주제별 게시글 목록을 반환합니다.
 
@@ -582,7 +604,7 @@ def get_user_posts_by_subject(user, subject):
     return posts
 
 
-def get_user_tasted_records_by_filter(user):
+def get_user_tasted_records_by_filter(user):  # TODO: tasted record service로 이동
     """
     사용자가 작성한 시음기록 목록을 반환합니다.
 
@@ -604,3 +626,8 @@ def get_user_tasted_records_by_filter(user):
         )
     )
     return queryset
+
+
+################################ 사용자 게시물 관련 매서드 ################################
+################################ 사용자 게시물 관련 매서드 ################################
+################################ 사용자 게시물 관련 매서드 ################################
