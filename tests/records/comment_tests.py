@@ -274,7 +274,7 @@ class TestCommentDetailAPIView:
         response = client.delete(f"{self.base_url}{comment.id}/")
 
         # Then
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_204_NO_CONTENT
         comment.refresh_from_db()
         assert comment.is_deleted is True
         assert comment.content == "삭제된 댓글입니다."

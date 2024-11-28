@@ -76,26 +76,6 @@ def update(request: Request, pk: int, model: Type[Model], serializer_class: Type
     return Response(data_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-def delete(request: Request, pk: int, model: Type[Model]) -> Response:
-    """
-    주어진 primary key와 모델을 사용하여 객체를 삭제
-    Args:
-        request (Request): 클라이언트로부터의 요청 객체
-        pk (int): 삭제할 객체의 primary key
-        model (Model): 삭제할 객체의 모델 클래스
-    Returns:
-        Response: 삭제 결과에 따라 HTTP 응답을 반환
-    작성자 : hwstar1204
-    """
-
-    data, response = get_object(pk, model)
-    if response:
-        return response
-
-    data.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
-
-
 def get_paginated_response_with_func(request: Request, queryset: QuerySet, serializer_func: Callable) -> Response:
     """
     페이지네이션된 응답을 생성하는 매서드 (직렬화 객체 사용)

@@ -17,7 +17,7 @@ from repo.common.view_counter import get_not_viewed_contents
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
 from repo.interactions.relationship.services import RelationshipService
-from repo.records.models import Comment, Photo, Post, TastedRecord
+from repo.records.models import Photo, Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
@@ -472,47 +472,6 @@ def get_post_or_tasted_record_detail(object_type, object_id):
         raise ValueError("invalid object_type")
 
     return obj
-
-
-def get_comment_list(object_type, object_id, user):  # TODO: comment service로 이동
-    """
-    게시글 또는 시음기록에 달린 댓글 목록을 반환합니다.
-
-    - 차단한 사용자의 댓글 제외
-    - 대댓글 포함
-    - 작성 순서대로 정렬
-
-    Args:
-        object_type: 객체 타입 ('post' 또는 'tasted_record')
-        object_id: 객체 ID
-        user: 사용자 객체
-
-    Returns:
-        QuerySet: 댓글 목록
-    """
-    obj = get_post_or_tasted_record_detail(object_type, object_id)
-    relationship_service = get_relationship_service()
-    block_users = relationship_service.get_unique_blocked_user_list(user.id)
-
-    comments = obj.comment_set.filter(parent=None).exclude(author__in=block_users).order_by("id")
-    for comment in comments:
-        comment.replies_list = comment.replies.exclude(author__in=block_users).order_by("id")
-
-    return comments
-
-
-def get_comment(comment_id):  # TODO: comment service로 이동
-    """
-    댓글 상세 정보를 반환합니다.
-
-    Args:
-        comment_id: 댓글 ID
-
-    Returns:
-        Comment: 댓글 객체
-    """
-    comment = Comment.objects.get(pk=comment_id)
-    return comment
 
 
 ################################ 사용자 게시물 관련 매서드 ################################
