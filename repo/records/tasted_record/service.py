@@ -1,7 +1,8 @@
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch
 
 from repo.beans.services import BeanService
+from repo.profiles.services import UserService
 from repo.records.models import BeanTasteReview, Photo, TastedRecord
 
 
@@ -10,6 +11,7 @@ class TastedRecordService:
     def __init__(self, tasted_record_repository=None):
         self.tasted_record_repository = tasted_record_repository or TastedRecord.objects
         self.bean_service = BeanService()
+        self.user_service = UserService()
 
     @transaction.atomic
     def create(self, user, validated_data):
@@ -62,4 +64,15 @@ class TastedRecordService:
                 Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
             )
             .get(pk=pk)
+        )
+
+    def get_user_tasted_records(self, user_id):
+        user = self.user_service.get_user_by_id(user_id)
+        return (
+            user.tastedrecord_set.select_related("bean", "taste_review")
+            .prefetch_related("like_cnt", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+            .only("id", "bean__name", "taste_review__star", "created_at", "like_cnt")
+            .annotate(
+                likes=Count("like_cnt", distinct=True),
+            )
         )

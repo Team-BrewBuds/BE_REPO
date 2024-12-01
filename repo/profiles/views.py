@@ -30,11 +30,9 @@ from repo.profiles.services import UserService
 from repo.records.models import Post
 from repo.records.posts.serializers import UserPostSerializer
 from repo.records.serializers import UserNoteSerializer
-from repo.records.services import (
-    get_user_posts_by_subject,
-    get_user_tasted_records_by_filter,
-)
+from repo.records.services import get_user_posts_by_subject
 from repo.records.tasted_record.serializers import UserTastedRecordSerializer
+from repo.records.tasted_record.service import TastedRecordService
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -397,8 +395,8 @@ class UserTastedRecordListView(generics.ListAPIView):
 
     def get_queryset(self):
         user_id = self.kwargs.get("id")
-        user = get_object_or_404(CustomUser, id=user_id)
-        queryset = get_user_tasted_records_by_filter(user)
+        tasted_record_service = TastedRecordService()
+        queryset = tasted_record_service.get_user_tasted_records(user_id)
         ordering = self.request.query_params.get("ordering", "-created_at")
         return queryset.order_by(ordering)
 
