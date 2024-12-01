@@ -9,14 +9,12 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
-from django_filters import rest_framework as filters
-from rest_framework import generics, status
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from repo.common.filters import TastedRecordFilter
 from repo.common.utils import get_first_photo_url, get_paginated_response_with_class
 from repo.profiles.models import CustomUser, UserDetail
 from repo.profiles.schemas import *
@@ -31,8 +29,6 @@ from repo.records.models import Post
 from repo.records.posts.serializers import UserPostSerializer
 from repo.records.serializers import UserNoteSerializer
 from repo.records.services import get_user_posts_by_subject
-from repo.records.tasted_record.serializers import UserTastedRecordSerializer
-from repo.records.tasted_record.service import TastedRecordService
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -384,21 +380,6 @@ class UserPostListAPIView(APIView):
         posts = get_user_posts_by_subject(user, subject)
 
         return get_paginated_response_with_class(request, posts, UserPostSerializer)
-
-
-@UserTastedRecordListSchema.user_tasted_record_list_schema_view
-class UserTastedRecordListView(generics.ListAPIView):
-    serializer_class = UserTastedRecordSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    filterset_class = TastedRecordFilter
-    ordering_fields = ["-created_at", "-taste_review__star", "-likes"]
-
-    def get_queryset(self):
-        user_id = self.kwargs.get("id")
-        tasted_record_service = TastedRecordService()
-        queryset = tasted_record_service.get_user_tasted_records(user_id)
-        ordering = self.request.query_params.get("ordering", "-created_at")
-        return queryset.order_by(ordering)
 
 
 @UserNoteSchema.user_note_schema_view

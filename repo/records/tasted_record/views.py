@@ -1,9 +1,11 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import status
+from django_filters import rest_framework as filters
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from repo.common.filters import TastedRecordFilter
 from repo.common.permissions import IsOwnerOrReadOnly
 from repo.common.utils import get_paginated_response_with_class
 from repo.common.view_counter import update_view_count
@@ -12,11 +14,15 @@ from repo.records.services import (
     get_annonymous_tasted_records_feed,
     get_tasted_record_feed,
 )
-from repo.records.tasted_record.schemas import TastedRecordSchema
+from repo.records.tasted_record.schemas import (
+    TastedRecordSchema,
+    UserTastedRecordListSchema,
+)
 from repo.records.tasted_record.serializers import (
     TastedRecordCreateUpdateSerializer,
     TastedRecordDetailSerializer,
     TastedRecordListSerializer,
+    UserTastedRecordSerializer,
 )
 from repo.records.tasted_record.service import TastedRecordService
 
@@ -123,3 +129,18 @@ class TastedRecordDetailApiView(APIView):
         tasted_record = self.get_object(pk)
         tasted_record.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@UserTastedRecordListSchema.user_tasted_record_list_schema_view
+class UserTastedRecordListView(generics.ListAPIView):
+    serializer_class = UserTastedRecordSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = TastedRecordFilter
+    ordering_fields = ["-created_at", "-taste_review__star", "-likes"]
+
+    def get_queryset(self):
+        user_id = self.kwargs.get("id")
+        tasted_record_service = TastedRecordService()
+        queryset = tasted_record_service.get_user_tasted_records(user_id)
+        ordering = self.request.query_params.get("ordering", "-created_at")
+        return queryset.order_by(ordering)
