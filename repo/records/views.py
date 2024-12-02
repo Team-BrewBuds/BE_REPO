@@ -18,12 +18,13 @@ from repo.common.serializers import (
     PhotoUploadSerializer,
 )
 from repo.common.utils import (
-    get_paginated_response_with_func,
+    get_paginated_response_with_class,
     get_post_or_tasted_record_detail,
 )
 from repo.records.models import Photo
 from repo.records.schemas import *
-from repo.records.services import get_feed_service, get_serialized_data
+from repo.records.serializers import FeedSerializer
+from repo.records.services import get_feed_service
 
 
 @FeedSchema.feed_schema_view
@@ -34,9 +35,11 @@ class FeedAPIView(APIView):
 
     def get(self, request):
         user = request.user
+        serializer_class = FeedSerializer
+
         if not request.user.is_authenticated:  # AnonymousUser
             queryset = self.feed_service.get_anonymous_feed()
-            return get_paginated_response_with_func(request, queryset, get_serialized_data)
+            return get_paginated_response_with_class(request, queryset, serializer_class)
 
         feed_type = request.query_params.get("feed_type")
         if feed_type not in ["following", "common", "refresh"]:
@@ -49,7 +52,7 @@ class FeedAPIView(APIView):
         else:  # refresh
             queryset = self.feed_service.get_refresh_feed(user)
 
-        return get_paginated_response_with_func(request, queryset, get_serialized_data)
+        return get_paginated_response_with_class(request, queryset, serializer_class)
 
 
 @PhotoSchema.photo_schema_view

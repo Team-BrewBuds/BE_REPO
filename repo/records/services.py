@@ -2,37 +2,11 @@ import random
 from itertools import chain
 
 from repo.common.view_counter import get_not_viewed_contents
-from repo.records.models import Post, TastedRecord
-from repo.records.posts.serializers import PostListSerializer
 from repo.records.posts.services import PostService, get_post_service
-from repo.records.tasted_record.serializers import TastedRecordListSerializer
 from repo.records.tasted_record.services import (
     TastedRecordService,
     get_tasted_record_service,
 )
-
-
-def get_serialized_data(request, page_obj_list):
-    """
-    페이지네이션된 객체 리스트를 시리얼라이즈하여 반환합니다.
-    게시글과 시음기록 객체를 모두 처리할 수 있습니다.
-
-    Args:
-        request: HTTP 요청 객체
-        page_obj_list: 페이지네이션된 객체 리스트
-
-    Returns:
-        list: 시리얼라이즈된 객체 리스트
-    """
-    obj_list = []
-    for item in page_obj_list:
-        if isinstance(item, TastedRecord):
-            serializer_data = TastedRecordListSerializer(item, context={"request": request}).data
-            obj_list.append(serializer_data)
-        elif isinstance(item, Post):
-            serializer_data = PostListSerializer(item, context={"request": request}).data
-            obj_list.append(serializer_data)
-    return obj_list
 
 
 def get_feed_service():
