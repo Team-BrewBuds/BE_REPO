@@ -276,8 +276,8 @@ def annonymous_user_feed():
     Returns:
         list: 시음기록과 게시글이 랜덤으로 정렬된 피드 리스트
     """
-    tasted_records = get_annonymous_tasted_records_feed()
-    posts = get_annonymous_posts_feed()
+    tasted_records = tasted_record_service.get_record_list_for_anonymous()
+    posts = post_service.get_record_list_for_anonymous()
 
     combined_data = list(chain(tasted_records, posts))
     random.shuffle(combined_data)
