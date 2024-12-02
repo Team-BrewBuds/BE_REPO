@@ -93,6 +93,26 @@ class PostDetailAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@PostSchema.user_post_list_schema_view
+class UserPostListAPIView(APIView):
+    """특정 사용자의 게시글 조회 API"""
+
+    def __init__(self, **kwargs):
+        self.post_service = get_post_service()
+
+    def get(self, request, id):
+        subject = request.query_params.get("subject", "all")
+        valid_subjects = list(dict(Post.SUBJECT_TYPE_CHOICES).keys()) + ["all"]
+
+        if subject not in valid_subjects:
+            return Response({"error": "Invalid subject parameter"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = get_object_or_404(CustomUser, pk=id)
+        posts = self.post_service.get_user_records(user.id, subject=subject)
+
+        return get_paginated_response_with_class(request, posts, UserPostSerializer)
+
+
 @PostSchema.top_posts_schema_view
 class TopSubjectPostsAPIView(APIView):
     """

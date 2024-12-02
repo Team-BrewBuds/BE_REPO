@@ -13,6 +13,7 @@ from repo.records.posts.serializers import (
     PostDetailSerializer,
     PostListSerializer,
     TopPostSerializer,
+    UserPostSerializer,
 )
 
 Post_Tag = "Post"
@@ -111,6 +112,27 @@ class PostSchema:
         patch=post_detail_patch_schema,
         delete=post_detail_delete_schema,
     )
+
+    user_post_list_get_schema = extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="subject",
+                type=str,
+                enum=[choice[0] for choice in Post.SUBJECT_TYPE_CHOICES],
+                description="게시글 주제",
+            ),
+        ],
+        summary="유저 게시글 조회",
+        description="특정 사용자의 게시글을 주제별로 조회합니다. (정렬 기준: 최신순)",
+        responses={
+            200: UserPostSerializer(many=True),
+            400: OpenApiResponse(description="Invalid subject parameter"),
+            404: OpenApiResponse(description="Not Found"),
+        },
+        tags=[Post_Tag],
+    )
+
+    user_post_list_schema_view = extend_schema_view(get=user_post_list_get_schema)
 
     top_posts_get_schema = extend_schema(
         responses={200: TopPostSerializer},

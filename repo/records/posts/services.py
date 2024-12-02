@@ -40,12 +40,13 @@ class PostService(BaseRecordService):
             .first()
         )
 
-    def get_user_records(self, user_id, **kwargs):
+    def get_user_records(self, user_id, **kwargs) -> QuerySet[Post]:
         """유저가 작성한 게시글 조회"""
-        subject = kwargs.get("subject", None)
         user = CustomUser.objects.get(id=user_id)
+        subject = kwargs.get("subject", None)
 
-        subject_filter = Q(subject=subject) if subject else Q()
+        subject_filter = Q(subject=subject) if subject != "all" else Q()
+
         posts = (
             user.post_set.filter(subject_filter)
             .select_related("author")
