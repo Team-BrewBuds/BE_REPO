@@ -183,10 +183,13 @@ class TastedRecordService(BaseRecordService):
 
     # home following feed
     def get_following_feed_and_gte_one_hour(self, user: CustomUser) -> QuerySet[TastedRecord]:
-        one_hour_ago = timezone.now() - timedelta(hours=1)
-        add_filter = {"created_at__gte": one_hour_ago}
+        """팔로잉한 사용자의 최근 1시간 이내 피드 조회"""
+        following_feed = self.get_following_feed(user)
 
-        return self.get_following_feed(user, add_filter, None, None)
+        one_hour_ago = timezone.now() - timedelta(hours=1)
+        add_filter = Q(created_at__gte=one_hour_ago)
+
+        return following_feed.filter(add_filter)
 
     # home common feed
     def get_unfollowing_feed(self, user: CustomUser) -> QuerySet[TastedRecord]:
