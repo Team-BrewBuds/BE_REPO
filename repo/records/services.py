@@ -26,34 +26,6 @@ def get_relationship_service():
     return RelationshipService()
 
 
-# def serialize_tasted_record_list(item, request):  # TODO : 삭제
-#     """
-#     시음기록 객체를 시리얼라이즈하여 JSON 형태로 반환합니다.
-
-#     Args:
-#         item: TastedRecord 객체
-#         request: HTTP 요청 객체
-
-#     Returns:
-#         dict: 시리얼라이즈된 시음기록 데이터
-#     """
-#     return TastedRecordListSerializer(item, context={"request": request}).data
-
-
-# def serialize_post_list(item, request):  # TODO : 삭제
-#     """
-#     게시글 객체를 시리얼라이즈하여 JSON 형태로 반환합니다.
-
-#     Args:
-#         item: Post 객체
-#         request: HTTP 요청 객체
-
-#     Returns:
-#         dict: 시리얼라이즈된 게시글 데이터
-#     """
-#     return PostListSerializer(item, context={"request": request}).data
-
-
 def get_serialized_data(request, page_obj_list):
     """
     페이지네이션된 객체 리스트를 시리얼라이즈하여 반환합니다.
@@ -79,7 +51,7 @@ def get_serialized_data(request, page_obj_list):
     return obj_list
 
 
-def get_post_feed_queryset(user, add_filter=None, exclude_filter=None, subject=None):  # TODO: post service로 이동
+def get_post_feed_queryset(user, add_filter=None, exclude_filter=None, subject=None):  # TODO: post service로 이동 V
     """
     게시글 피드를 위한 필터링된 쿼리셋을 생성합니다.
 
@@ -91,9 +63,6 @@ def get_post_feed_queryset(user, add_filter=None, exclude_filter=None, subject=N
 
     Returns:
         QuerySet: 필터링된 게시글 쿼리셋
-
-    초기화 부분 잘 적용되어있어? Object_id가 없으면 특정 객체를 가리키지 못하더라도 target_model으로 해당 객체에 유저가 좋아요 했는지 등 매서드를 사용할 수 있도록 하고싶어
-
     """
     like_service = LikeService("post")
     note_service = NoteService()
@@ -131,7 +100,6 @@ def get_tasted_record_feed_queryset(user, add_filter=None, exclude_filter=None):
     """
     like_service = LikeService("tasted_record")
     note_service = NoteService()
-    # is_user_noted_tasted_record_subquery = get_user_noted_tasted_record_queryset(user)
 
     add_filters = Q(**add_filter) if add_filter else Q()
     exclude_filters = Q(**exclude_filter) if exclude_filter else Q()
@@ -335,116 +303,9 @@ def annonymous_user_feed():
     return combined_data
 
 
-def get_tasted_record_feed(request, user):  # TODO: tasted record service로 이동
-    """
-    시음기록 전용 피드를 반환합니다.
-
-    - 팔로잉한 사용자의 모든 시음기록과 다른 사용자의 공개 시음기록 포함
-    - 차단한 사용자의 시음기록 제외
-    - 최근 조회한 기록 제외
-    - 최신순으로 정렬
-
-    Args:
-        request: HTTP 요청 객체
-        user: 사용자 객체
-
-    Returns:
-        list: 최신순으로 정렬된 시음기록 리스트
-    """
-    relationship_service = get_relationship_service()
-    following_users = relationship_service.get_following_user_list(user.id)
-    block_users = relationship_service.get_unique_blocked_user_list(user.id)
-
-    following_users_filter = {"author__in": following_users}
-    private_false_filter = {"is_private": False}
-    mixin_filter = {**following_users_filter, **private_false_filter}
-
-    # 1. 팔로우한 유저의 시음기록
-    followed_tasted_records = get_tasted_record_feed_queryset(user, add_filter=mixin_filter, exclude_filter=None)
-    followed_tasted_records_order = followed_tasted_records.order_by("-id")
-
-    # 2. 팔로우하지 않고 차단하지 않은 유저의 시음기록
-    following_and_block_users_filter = {"author__in": list(chain(following_users, block_users))}
-    not_followed_tasted_records = get_tasted_record_feed_queryset(
-        user, add_filter=private_false_filter, exclude_filter=following_and_block_users_filter
-    )
-    not_followed_tasted_records_order = not_followed_tasted_records.order_by("-id")
-
-    # 3. 1 + 2 (최신순 done)
-    tasted_records = list(chain(followed_tasted_records_order, not_followed_tasted_records_order))
-
-    # 4. 조회하지 않은 시음기록
-    not_viewd_tasted_records = get_not_viewed_contents(request, tasted_records, "tasted_record_viewed")
-
-    return not_viewd_tasted_records
-
-
-def get_post_feed(request, user, subject):  # TODO: post service로 이동
-    """
-    게시글 전용 피드를 반환합니다.
-
-    - 팔로잉한 사용자의 게시글과 다른 사용자의 게시글 포함
-    - 차단한 사용자의 게시글 제외
-    - 최근 조회한 기록 제외
-    - 주제별 필터링 가능
-    - 최신순으로 정렬
-
-    Args:
-        request: HTTP 요청 객체
-        user: 사용자 객체
-        subject: 게시글 주제
-
-    Returns:
-        list: 최신순으로 정렬된 게시글 리스트
-    """
-    relationship_service = get_relationship_service()
-    following_users = relationship_service.get_following_user_list(user.id)
-    block_users = relationship_service.get_unique_blocked_user_list(user.id)
-
-    # 1. 팔로우한 유저의 게시글
-    following_users_filter = {"author__in": following_users}
-    followed_posts = get_post_feed_queryset(user, add_filter=following_users_filter, exclude_filter=None, subject=subject)
-    followed_posts_order = followed_posts.order_by("-id")
-
-    # 2. 팔로우하지 않고 차단하지않은 유저의 게시글
-    following_and_block_users_filter = {"author__in": list(chain(following_users, block_users))}
-    not_followed_posts = get_post_feed_queryset(user, add_filter=None, exclude_filter=following_and_block_users_filter, subject=subject)
-    not_followed_posts_order = not_followed_posts.order_by("-id")
-
-    # 3.  1 + 2 (최신순 done)
-    posts = list(chain(followed_posts_order, not_followed_posts_order))
-
-    # 4. 조회하지 않은 게시글
-    not_viewed_posts = get_not_viewed_contents(request, posts, "post_viewed")
-
-    return not_viewed_posts
-
-
 ################################ 피드 관련 매서드 ################################
 ################################ 피드 관련 매서드 ################################
 ################################ 피드 관련 매서드 ################################
-
-
-def get_post_detail(post_id):  # TODO: post 서비스로 이동
-    """
-    게시글 상세 정보를 반환합니다.
-
-    Args:
-        post_id: 게시글 ID
-
-    Returns:
-        Post: 게시글 객체
-    """
-    post = (
-        Post.objects.select_related("author")
-        .prefetch_related(
-            Prefetch("tasted_records", queryset=TastedRecord.objects.select_related("bean", "taste_review")),
-            Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
-        )
-        .get(pk=post_id)
-    )
-
-    return post
 
 
 # comment, photo에서 사용중
@@ -472,35 +333,3 @@ def get_post_or_tasted_record_detail(object_type, object_id):
         raise ValueError("invalid object_type")
 
     return obj
-
-
-################################ 사용자 게시물 관련 매서드 ################################
-################################ 사용자 게시물 관련 매서드 ################################
-################################ 사용자 게시물 관련 매서드 ################################
-
-
-def get_user_posts_by_subject(user, subject):  # TODO: post service로 이동
-    """
-    사용자가 작성한 주제별 게시글 목록을 반환합니다.
-
-    Args:
-        user: 사용자 객체
-        subject: 게시글 주제 ('all'인 경우 모든 주제)
-
-    Returns:
-        QuerySet: 최신순으로 정렬된 게시글 목록
-    """
-    subject_filter = Q(subject=subject) if subject != "all" else Q()
-    posts = (
-        user.post_set.filter(subject_filter)
-        .select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-id")
-    )
-
-    return posts
-
-
-################################ 사용자 게시물 관련 매서드 ################################
-################################ 사용자 게시물 관련 매서드 ################################
-################################ 사용자 게시물 관련 매서드 ################################
