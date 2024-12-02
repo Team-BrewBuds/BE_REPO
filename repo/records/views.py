@@ -17,14 +17,16 @@ from repo.common.serializers import (
     PhotoUpdateSerializer,
     PhotoUploadSerializer,
 )
-from repo.common.utils import get_paginated_response_with_func
+from repo.common.utils import (
+    get_paginated_response_with_func,
+    get_post_or_tasted_record_detail,
+)
 from repo.records.models import Photo
 from repo.records.schemas import *
 from repo.records.services import (
     annonymous_user_feed,
     get_common_feed,
     get_following_feed,
-    get_post_or_tasted_record_detail,
     get_refresh_feed,
     get_serialized_data,
 )

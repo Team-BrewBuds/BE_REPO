@@ -10,7 +10,6 @@ from django.db.models import (
     Q,
     Value,
 )
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from repo.common.view_counter import get_not_viewed_contents
@@ -306,30 +305,3 @@ def annonymous_user_feed():
 ################################ 피드 관련 매서드 ################################
 ################################ 피드 관련 매서드 ################################
 ################################ 피드 관련 매서드 ################################
-
-
-# comment, photo에서 사용중
-# comment의 서비스에서 model_map 사용하도록 수정
-# photo는 utils에서 사용하도록 수정
-def get_post_or_tasted_record_detail(object_type, object_id):
-    """
-    게시글 또는 시음기록의 상세 정보를 반환합니다.
-
-    Args:
-        object_type: 객체 타입 ('post' 또는 'tasted_record')
-        object_id: 객체 ID
-
-    Returns:
-        Post or TastedRecord: 요청된 객체
-
-    Raises:
-        ValueError: 유효하지 않은 object_type이 전달된 경우
-    """
-    if object_type == "post":
-        obj = get_object_or_404(Post, pk=object_id)
-    elif object_type == "tasted_record":
-        obj = get_object_or_404(TastedRecord, pk=object_id)
-    else:
-        raise ValueError("invalid object_type")
-
-    return obj

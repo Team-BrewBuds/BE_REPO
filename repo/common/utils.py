@@ -2,12 +2,15 @@ from datetime import timedelta
 from typing import Callable, Optional, Tuple, Type
 
 from django.db.models import Model, QuerySet
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import Serializer
+
+from repo.records.models import Post, TastedRecord
 
 
 def get_object(pk: int, model: Type[Model]) -> Tuple[Optional[Model], Optional[Response]]:
@@ -151,3 +154,27 @@ def get_first_photo_url(obj: Model) -> Optional[str]:
     if obj and hasattr(obj, "photo_set") and obj.photo_set.exists():
         return obj.photo_set.first().photo_url.url
     return None
+
+
+def get_post_or_tasted_record_detail(object_type, object_id):
+    """
+    게시글 또는 시음기록의 상세 정보를 반환합니다.
+
+    Args:
+        object_type: 객체 타입 ('post' 또는 'tasted_record')
+        object_id: 객체 ID
+
+    Returns:
+        Post or TastedRecord: 요청된 객체
+
+    Raises:
+        ValueError: 유효하지 않은 object_type이 전달된 경우
+    """
+    if object_type == "post":
+        obj = get_object_or_404(Post, pk=object_id)
+    elif object_type == "tasted_record":
+        obj = get_object_or_404(TastedRecord, pk=object_id)
+    else:
+        raise ValueError("invalid object_type")
+
+    return obj
