@@ -12,7 +12,6 @@ from repo.profiles.serializers import (
 from repo.records.models import Post
 from repo.records.posts.serializers import UserPostSerializer
 from repo.records.serializers import UserNoteSerializer
-from repo.records.tasted_record.serializers import UserTastedRecordSerializer
 
 Profile_Tag = "profiles"
 Profile_Records_Tag = "profile_records"
@@ -98,43 +97,6 @@ class UserPostListSchema:
     )
 
     user_post_list_schema_view = extend_schema_view(get=user_post_list_get_schema)
-
-
-class UserTastedRecordListSchema:
-    user_tasted_record_list_get_schema = extend_schema(
-        parameters=[
-            OpenApiParameter(name="bean_type", type=str, enum=["single", "blend"], required=False),
-            OpenApiParameter(
-                name="origin_country",
-                type=str,
-                enum=[
-                    "케냐",
-                    "과테말라",
-                    "에티오피아",
-                    "브라질",
-                    "콜롬비아",
-                    "인도네시아",
-                    "온두라스",
-                    "탄자니아",
-                    "르완다",
-                ],
-                required=False,
-            ),
-            OpenApiParameter(name="star_min", type=float, enum=[x / 2 for x in range(11)], required=False),
-            OpenApiParameter(name="star_max", type=float, enum=[x / 2 for x in range(11)], required=False),
-            OpenApiParameter(name="is_decaf", type=bool, enum=[True, False], required=False),
-            OpenApiParameter(name="ordering", type=str, enum=["-created_at", "-taste_review__star", "-likes"], required=False),
-        ],
-        responses={
-            200: UserTastedRecordSerializer(many=True),
-            404: OpenApiResponse(description="Not Found"),
-        },
-        summary="유저 시음기록 리스트 조회",
-        description="특정 사용자의 시음기록 리스트를 필터링하여 조회합니다.",
-        tags=[Profile_Records_Tag],
-    )
-
-    user_tasted_record_list_schema_view = extend_schema_view(get=user_tasted_record_list_get_schema)
 
 
 class UserNoteSchema:

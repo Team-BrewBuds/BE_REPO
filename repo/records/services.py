@@ -501,30 +501,6 @@ def get_user_posts_by_subject(user, subject):  # TODO: post service로 이동
     return posts
 
 
-def get_user_tasted_records_by_filter(user):  # TODO: tasted record service로 이동
-    """
-    사용자가 작성한 시음기록 목록을 반환합니다.
-
-    - 좋아요 수 포함
-    - 필요한 필드만 선택적으로 가져옴
-
-    Args:
-        user: 사용자 객체
-
-    Returns:
-        QuerySet: 시음기록 목록
-    """
-    queryset = (
-        user.tastedrecord_set.select_related("bean", "taste_review")
-        .prefetch_related("like_cnt", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .only("id", "bean__name", "taste_review__star", "created_at", "like_cnt")
-        .annotate(
-            likes=Count("like_cnt", distinct=True),
-        )
-    )
-    return queryset
-
-
 ################################ 사용자 게시물 관련 매서드 ################################
 ################################ 사용자 게시물 관련 매서드 ################################
 ################################ 사용자 게시물 관련 매서드 ################################
