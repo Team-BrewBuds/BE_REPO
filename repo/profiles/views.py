@@ -25,10 +25,7 @@ from repo.profiles.serializers import (
     UserUpdateSerializer,
 )
 from repo.profiles.services import UserService
-from repo.records.models import Post
-from repo.records.posts.serializers import UserPostSerializer
 from repo.records.serializers import UserNoteSerializer
-from repo.records.services import get_user_posts_by_subject
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -365,21 +362,6 @@ class OtherProfileAPIView(APIView):
 
         serializer = UserProfileSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-@UserPostListSchema.user_post_list_schema_view
-class UserPostListAPIView(APIView):
-    def get(self, request, id):
-        subject = request.query_params.get("subject", "all")
-        valid_subjects = list(dict(Post.SUBJECT_TYPE_CHOICES).keys()) + ["all"]
-
-        if subject not in valid_subjects:
-            return Response({"error": "Invalid subject parameter"}, status=status.HTTP_400_BAD_REQUEST)
-
-        user = get_object_or_404(CustomUser, pk=id)
-        posts = get_user_posts_by_subject(user, subject)
-
-        return get_paginated_response_with_class(request, posts, UserPostSerializer)
 
 
 @UserNoteSchema.user_note_schema_view

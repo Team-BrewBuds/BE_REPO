@@ -1,4 +1,3 @@
-from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
@@ -11,11 +10,6 @@ from repo.common.view_counter import update_view_count
 from repo.records.posts.schemas import PostSchema
 from repo.records.posts.serializers import *
 from repo.records.posts.services import *
-from repo.records.services import (
-    get_annonymous_posts_feed,
-    get_post_detail,
-    get_post_feed,
-)
 
 
 @PostSchema.post_list_create_schema_view
@@ -24,31 +18,26 @@ class PostListCreateAPIView(APIView):
 
     permission_classes = [IsAuthenticatedOrReadOnly]
 
+    def __init__(self, **kwargs):
+        self.post_service = get_post_service()
+
     def get(self, request):
         user = request.user
         if not user.is_authenticated:
-            posts = get_annonymous_posts_feed()
+            posts = self.post_service.get_record_list_for_anonymous()
             return get_paginated_response_with_class(request, posts, PostListSerializer)
 
         subject = request.query_params.get("subject", None)
-        posts = get_post_feed(request, user, subject)
-
+        posts = self.post_service.get_record_list(user, subject=subject, request=request)
         return get_paginated_response_with_class(request, posts, PostListSerializer)
 
     def post(self, request):
         serializer = PostCreateUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            with transaction.atomic():
-                post = create_post(request.user, serializer.validated_data)
-                serializer = PostDetailSerializer(post, context={"request": request})
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except PermissionError as e:
-            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        post = self.post_service.create_record(request.user, serializer.validated_data)
+        serializer = PostDetailSerializer(post, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 @PostSchema.post_detail_schema_view
@@ -63,6 +52,9 @@ class PostDetailAPIView(APIView):
 
     permission_classes = [IsOwnerOrReadOnly]
 
+    def __init__(self, **kwargs):
+        self.post_service = get_post_service()
+
     def get_object(self, pk):
         post = get_object_or_404(Post, pk=pk)
         self.check_object_permissions(self.request, post)
@@ -70,7 +62,7 @@ class PostDetailAPIView(APIView):
 
     def get(self, request, pk):
         post = self.get_object(pk)
-        post_detail = get_post_detail(post.id)
+        post_detail = self.post_service.get_record_detail(post.id)
 
         # 쿠키 기반 조회수 업데이트
         response = update_view_count(request, post_detail, Response(), "post_viewed")
@@ -84,23 +76,41 @@ class PostDetailAPIView(APIView):
         serializer = PostCreateUpdateSerializer(post, data=request.data, partial=False)
         serializer.is_valid(raise_exception=True)
 
-        with transaction.atomic():
-            updated_post = update_post(post, serializer.validated_data)
-            return Response(PostDetailSerializer(updated_post, context={"request": request}).data, status=status.HTTP_200_OK)
+        updated_post = self.post_service.update_record(post, serializer.validated_data)
+        return Response(PostDetailSerializer(updated_post, context={"request": request}).data, status=status.HTTP_200_OK)
 
     def patch(self, request, pk):
         post = self.get_object(pk)
         serializer = PostCreateUpdateSerializer(post, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
-        with transaction.atomic():
-            updated_post = update_post(post, serializer.validated_data)
-            return Response(PostDetailSerializer(updated_post, context={"request": request}).data, status=status.HTTP_200_OK)
+        updated_post = self.post_service.update_record(post, serializer.validated_data)
+        return Response(PostDetailSerializer(updated_post, context={"request": request}).data, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
         post = self.get_object(pk)
-        post.delete()
+        self.post_service.delete_record(post)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@PostSchema.user_post_list_schema_view
+class UserPostListAPIView(APIView):
+    """특정 사용자의 게시글 조회 API"""
+
+    def __init__(self, **kwargs):
+        self.post_service = get_post_service()
+
+    def get(self, request, id):
+        subject = request.query_params.get("subject", "all")
+        valid_subjects = list(dict(Post.SUBJECT_TYPE_CHOICES).keys()) + ["all"]
+
+        if subject not in valid_subjects:
+            return Response({"error": "Invalid subject parameter"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = get_object_or_404(CustomUser, pk=id)
+        posts = self.post_service.get_user_records(user.id, subject=subject)
+
+        return get_paginated_response_with_class(request, posts, UserPostSerializer)
 
 
 @PostSchema.top_posts_schema_view
@@ -118,9 +128,12 @@ class TopSubjectPostsAPIView(APIView):
 
     permission_classes = [AllowAny]
 
+    def __init__(self, **kwargs):
+        self.post_service = get_post_service()
+
     def get(self, request):
         user = request.user  # 비회원 = None
         subject = request.query_params.get("subject")  # 주제 필터 없는 경우 = None
 
-        posts = get_top_subject_weekly_posts(user, subject)
+        posts = self.post_service.get_top_subject_weekly_posts(user, subject)
         return get_paginated_response_with_class(request, posts, TopPostSerializer)
