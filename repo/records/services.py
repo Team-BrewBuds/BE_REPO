@@ -1,5 +1,4 @@
 import random
-from datetime import timedelta
 from itertools import chain
 
 from django.db.models import (
@@ -10,7 +9,6 @@ from django.db.models import (
     Q,
     Value,
 )
-from django.utils import timezone
 
 from repo.common.view_counter import get_not_viewed_contents
 from repo.interactions.like.services import LikeService
@@ -18,11 +16,18 @@ from repo.interactions.note.services import NoteService
 from repo.interactions.relationship.services import RelationshipService
 from repo.records.models import Photo, Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
+from repo.records.posts.services import get_post_service
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
+from repo.records.tasted_record.services import get_tasted_record_service
 
 
 def get_relationship_service():
     return RelationshipService()
+
+
+post_service = get_post_service()
+
+tasted_record_service = get_tasted_record_service()
 
 
 def get_serialized_data(request, page_obj_list):
@@ -137,29 +142,21 @@ def get_following_feed(request, user):
     Returns:
         list: 시음기록과 게시글이 혼합된 피드 리스트
     """
-    relationship_service = get_relationship_service()
-    following_users = relationship_service.get_following_user_list(user.id)
-    one_hour_ago = timezone.now() - timedelta(hours=1)
 
     # 1. 팔로우한 유저의 시음기록, 게시글
-    tr_add_filter = {"author__in": following_users, "is_private": False, "created_at__gte": one_hour_ago}
-    following_tasted_records = get_tasted_record_feed_queryset(user, tr_add_filter, None)
-    following_tasted_records_order = following_tasted_records.order_by("-id")
+    following_tasted_records = tasted_record_service.get_following_feed_and_gte_one_hour(user)
 
-    p_add_filter = {"author__in": following_users, "created_at__gte": one_hour_ago}
-    following_posts = get_post_feed_queryset(user, p_add_filter, None, None)
-    following_posts_order = following_posts.order_by("-id")
+    following_posts = post_service.get_following_feed_and_gte_one_hour(user)
 
     # 2. 조회하지 않은 시음기록, 게시글
-    not_viewed_tasted_records = get_not_viewed_contents(request, following_tasted_records_order, "tasted_record_viewed")
-    not_viewed_posts = get_not_viewed_contents(request, following_posts_order, "post_viewed")
+    not_viewed_tasted_records = get_not_viewed_contents(request, following_tasted_records, "tasted_record_viewed")
+    not_viewed_posts = get_not_viewed_contents(request, following_posts, "post_viewed")
 
     # 3. 1 + 2
     combined_data = list(chain(not_viewed_tasted_records, not_viewed_posts))
 
     # 4. 랜덤순으로 섞기
     random.shuffle(combined_data)
-
     return combined_data
 
 
@@ -179,26 +176,21 @@ def get_common_feed(request, user):
     Returns:
         list: 시음기록과 게시글이 최신순으로 정렬된 피드 리스트
     """
-    relationship_service = get_relationship_service()
-    following_users = relationship_service.get_following_user_list(user.id)
-    block_users = relationship_service.get_unique_blocked_user_list(user.id)
-
-    add_filter = {"is_private": False}
-    exclude_filter = {"author__in": list(chain(following_users, block_users))}
 
     # 1. 팔로우하지 않고 차단하지 않은 유저들의 시음기록, 게시글
-    common_tasted_records = get_tasted_record_feed_queryset(user, add_filter, exclude_filter)
-    common_tasted_records_order = common_tasted_records.order_by("-id")
-
-    common_posts = get_post_feed_queryset(user, None, exclude_filter, None)
-    common_posts_order = common_posts.order_by("-id")
+    common_tasted_records = tasted_record_service.get_unfollowing_feed(user)
+    common_posts = post_service.get_unfollowing_feed(user)
 
     # 2. 조회하지 않은 시음기록, 게시글
-    not_viewd_tasted_records = get_not_viewed_contents(request, common_tasted_records_order, "tasted_record_viewed")
-    not_viewd_posts = get_not_viewed_contents(request, common_posts_order, "post_viewed")
+    not_viewd_tasted_records = get_not_viewed_contents(request, common_tasted_records, "tasted_record_viewed")
+    not_viewd_posts = get_not_viewed_contents(request, common_posts, "post_viewed")
 
-    # 3. 1 + 2 (최신순 done)
-    combined_data = sorted(chain(not_viewd_tasted_records, not_viewd_posts), key=lambda x: x.created_at, reverse=True)
+    # 3. 1 + 2
+    combined_data = list(chain(not_viewd_tasted_records, not_viewd_posts))
+
+    # 4. 최신순으로 정렬
+    combined_data.sort(key=lambda x: x.created_at, reverse=True)
+
     return combined_data
 
 
@@ -216,21 +208,12 @@ def get_refresh_feed(user):
     Returns:
         list: 시음기록과 게시글이 랜덤으로 정렬된 피드 리스트
     """
-    relationship_service = get_relationship_service()
-    block_users = relationship_service.get_unique_blocked_user_list(user.id)
+    tasted_records = tasted_record_service.get_refresh_feed(user)
+    posts = post_service.get_refresh_feed(user)
 
-    private_filter = {"is_private": False}
-    block_filter = {"author__in": block_users}
+    combined_data = list(chain(tasted_records, posts))
 
-    tasted_records = get_tasted_record_feed_queryset(user, add_filter=private_filter, exclude_filter=block_filter)
-    tasted_records_order = tasted_records.order_by("?")
-
-    posts = get_post_feed_queryset(user, add_filter=None, exclude_filter=block_filter, subject=None)
-    posts_order = posts.order_by("?")
-
-    combined_data = list(chain(tasted_records_order, posts_order))
     random.shuffle(combined_data)
-
     return combined_data
 
 
