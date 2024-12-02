@@ -17,39 +17,42 @@ from repo.common.serializers import (
     PhotoUpdateSerializer,
     PhotoUploadSerializer,
 )
-from repo.common.utils import get_paginated_response_with_func
+from repo.common.utils import (
+    get_paginated_response_with_class,
+    get_post_or_tasted_record_detail,
+)
 from repo.records.models import Photo
 from repo.records.schemas import *
-from repo.records.services import (
-    annonymous_user_feed,
-    get_common_feed,
-    get_following_feed,
-    get_post_or_tasted_record_detail,
-    get_refresh_feed,
-    get_serialized_data,
-)
+from repo.records.serializers import FeedSerializer
+from repo.records.services import get_feed_service
 
 
 @FeedSchema.feed_schema_view
 class FeedAPIView(APIView):
+
+    def __init__(self, **kwargs):
+        self.feed_service = get_feed_service()
+
     def get(self, request):
         user = request.user
+        serializer_class = FeedSerializer
+
         if not request.user.is_authenticated:  # AnonymousUser
-            queryset = annonymous_user_feed()
-            return get_paginated_response_with_func(request, queryset, get_serialized_data)
+            queryset = self.feed_service.get_anonymous_feed()
+            return get_paginated_response_with_class(request, queryset, serializer_class)
 
         feed_type = request.query_params.get("feed_type")
         if feed_type not in ["following", "common", "refresh"]:
             return Response({"error": "invalid feed type"}, status=status.HTTP_400_BAD_REQUEST)
 
         if feed_type == "following":
-            queryset = get_following_feed(request, user)
+            queryset = self.feed_service.get_following_feed(request, user)
         elif feed_type == "common":
-            queryset = get_common_feed(request, user)
+            queryset = self.feed_service.get_common_feed(request, user)
         else:  # refresh
-            queryset = get_refresh_feed(user)
+            queryset = self.feed_service.get_refresh_feed(user)
 
-        return get_paginated_response_with_func(request, queryset, get_serialized_data)
+        return get_paginated_response_with_class(request, queryset, serializer_class)
 
 
 @PhotoSchema.photo_schema_view

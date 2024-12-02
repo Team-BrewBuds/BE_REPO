@@ -118,12 +118,6 @@ class PostService(BaseRecordService):
     def _get_base_weekly_posts(self) -> QuerySet[Post]:
         """일주일 이내의 기본 게시글 쿼리셋을 반환"""
         time_threshold = timezone.now() - timedelta(days=7)
-        print(
-            Post.objects.filter(created_at__gte=time_threshold).annotate(
-                likes=Count("like_cnt", distinct=True),
-                comments=Count("comment", distinct=True),
-            )
-        )
         return Post.objects.filter(created_at__gte=time_threshold).annotate(
             likes=Count("like_cnt", distinct=True),
             comments=Count("comment", distinct=True),
@@ -208,10 +202,11 @@ class PostService(BaseRecordService):
 
     # home following feed
     def get_following_feed_and_gte_one_hour(self, user: CustomUser) -> QuerySet[Post]:
-        one_hour_ago = timezone.now() - timedelta(hours=1)
-        add_filter = {"created_at__gte": one_hour_ago}
-
+        """팔로잉한 사용자의 최근 1시간 이내 피드 조회"""
         following_feed = self.get_following_feed(user)
+
+        one_hour_ago = timezone.now() - timedelta(hours=1)
+        add_filter = Q(created_at__gte=one_hour_ago)
 
         return following_feed.filter(add_filter)
 

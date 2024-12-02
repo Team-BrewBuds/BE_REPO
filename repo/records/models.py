@@ -2,7 +2,6 @@ from django.db import models
 
 from repo.beans.models import Bean, BeanTasteReview
 from repo.profiles.models import CustomUser
-from repo.records.managers import PostManagers
 
 
 class TastedRecord(models.Model):
@@ -45,8 +44,6 @@ class Post(models.Model):
     like_cnt = models.ManyToManyField(CustomUser, related_name="like_posts")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
-
-    objects = PostManagers()
 
     def is_user_liked(self, user):
         return user in self.like_cnt.all()
