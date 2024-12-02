@@ -1,3 +1,5 @@
+from django.db.models import OuterRef
+
 from repo.beans.models import Bean
 from repo.common.exception.exceptions import ConflictException, NotFoundException
 from repo.records.models import Post, TastedRecord
@@ -33,3 +35,9 @@ class NoteService:
 
         note.delete()
         return note
+
+    def get_note_subquery_for_post(self, user):
+        return self.note_repo.filter(author=user, post_id=OuterRef("pk"))
+
+    def get_note_subquery_for_tasted_record(self, user):
+        return self.note_repo.filter(author=user, tasted_record_id=OuterRef("pk"))

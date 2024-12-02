@@ -59,3 +59,18 @@ def get_viewed_contents(request, cookie_name):
     """
     viewed_contents = json.loads(request.COOKIES.get(cookie_name, "[]"))
     return viewed_contents
+
+
+def get_not_viewed_contents(request, queryset, cookie_name):
+    """
+    사용자가 아직 조회하지 않은 데이터만 필터링하여 반환합니다.
+
+    Args:
+        request: HTTP 요청 객체
+        queryset: 필터링할 쿼리셋
+        cookie_name: 조회 여부를 확인할 쿠키 이름
+
+    Returns:
+        list: 조회하지 않은 데이터 리스트
+    """
+    return [content for content in queryset if not is_viewed(request, cookie_name=cookie_name, content_id=content.id)]

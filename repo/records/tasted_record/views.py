@@ -1,24 +1,26 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import status
+from django_filters import rest_framework as filters
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from repo.common.filters import TastedRecordFilter
 from repo.common.permissions import IsOwnerOrReadOnly
 from repo.common.utils import get_paginated_response_with_class
 from repo.common.view_counter import update_view_count
 from repo.records.models import TastedRecord
-from repo.records.services import (
-    get_annonymous_tasted_records_feed,
-    get_tasted_record_feed,
+from repo.records.tasted_record.schemas import (
+    TastedRecordSchema,
+    UserTastedRecordListSchema,
 )
-from repo.records.tasted_record.schemas import TastedRecordSchema
 from repo.records.tasted_record.serializers import (
     TastedRecordCreateUpdateSerializer,
     TastedRecordDetailSerializer,
     TastedRecordListSerializer,
+    UserTastedRecordSerializer,
 )
-from repo.records.tasted_record.service import TastedRecordService
+from repo.records.tasted_record.services import get_tasted_record_service
 
 
 @TastedRecordSchema.tasted_record_list_create_schema_view
@@ -40,22 +42,24 @@ class TastedRecordListCreateAPIView(APIView):
 
     permission_classes = [IsAuthenticatedOrReadOnly]
 
+    def __init__(self, **kwargs):
+        self.tasted_record_service = get_tasted_record_service()
+
     def get(self, request):
         serializer_class = TastedRecordListSerializer
         user = request.user
         if not user.is_authenticated:
-            tasted_records = get_annonymous_tasted_records_feed()
+            tasted_records = self.tasted_record_service.get_record_list_for_anonymous()
             return get_paginated_response_with_class(request, tasted_records, serializer_class)
 
-        tasted_records = get_tasted_record_feed(request, user)
+        tasted_records = self.tasted_record_service.get_record_list(user, request=request)
         return get_paginated_response_with_class(request, tasted_records, serializer_class)
 
     def post(self, request):
         serializer = TastedRecordCreateUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        tasted_record_service = TastedRecordService()
-        tasted_record = tasted_record_service.create(request.user, serializer.validated_data)
+        tasted_record = self.tasted_record_service.create_record(request.user, serializer.validated_data)
 
         response_serializer = TastedRecordDetailSerializer(tasted_record, context={"request": request})
 
@@ -80,8 +84,8 @@ class TastedRecordDetailApiView(APIView):
     serializer_class = TastedRecordCreateUpdateSerializer
     response_serializer_class = TastedRecordDetailSerializer
 
-    def __init__(self):
-        self.tasted_record_service = TastedRecordService()
+    def __init__(self, **kwargs):
+        self.tasted_record_service = get_tasted_record_service()
 
     def get_object(self, pk):
         tasted_record = get_object_or_404(TastedRecord, pk=pk)
@@ -104,7 +108,7 @@ class TastedRecordDetailApiView(APIView):
         serializer = self.serializer_class(tasted_record, data=request.data, partial=False)
         serializer.is_valid(raise_exception=True)
 
-        updated_tasted_record = self.tasted_record_service.update(tasted_record, serializer.validated_data)
+        updated_tasted_record = self.tasted_record_service.update_record(tasted_record, serializer.validated_data)
 
         response_serializer = self.response_serializer_class(updated_tasted_record, context={"request": request})
         return Response(response_serializer.data, status=status.HTTP_200_OK)
@@ -114,12 +118,29 @@ class TastedRecordDetailApiView(APIView):
         serializer = self.serializer_class(tasted_record, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
-        updated_tasted_record = self.tasted_record_service.update(tasted_record, serializer.validated_data)
+        updated_tasted_record = self.tasted_record_service.update_record(tasted_record, serializer.validated_data)
 
         response_serializer = self.response_serializer_class(updated_tasted_record, context={"request": request})
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
         tasted_record = self.get_object(pk)
-        tasted_record.delete()
+        self.tasted_record_service.delete_record(tasted_record)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@UserTastedRecordListSchema.user_tasted_record_list_schema_view
+class UserTastedRecordListView(generics.ListAPIView):
+    serializer_class = UserTastedRecordSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = TastedRecordFilter
+    ordering_fields = ["-created_at", "-taste_review__star", "-likes"]
+
+    def __init__(self, **kwargs):
+        self.tasted_record_service = get_tasted_record_service()
+
+    def get_queryset(self):
+        user_id = self.kwargs.get("id")
+        queryset = self.tasted_record_service.get_user_records(user_id)
+        ordering = self.request.query_params.get("ordering", "-created_at")
+        return queryset.order_by(ordering)
