@@ -2,7 +2,6 @@ from django.db import models
 
 from repo.beans.models import Bean, BeanTasteReview
 from repo.profiles.models import CustomUser
-from repo.records.managers import NoteManagers, PostManagers
 
 
 class TastedRecord(models.Model):
@@ -45,8 +44,6 @@ class Post(models.Model):
     like_cnt = models.ManyToManyField(CustomUser, related_name="like_posts")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
-
-    objects = PostManagers()
 
     def is_user_liked(self, user):
         return user in self.like_cnt.all()
@@ -98,49 +95,3 @@ class Comment(models.Model):
         db_table = "comment"
         verbose_name = "댓글"
         verbose_name_plural = "댓글"
-
-
-class Note(models.Model):
-    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
-    post = models.ForeignKey(Post, null=True, blank=True, on_delete=models.CASCADE, verbose_name="게시글")
-    tasted_record = models.ForeignKey(TastedRecord, null=True, blank=True, on_delete=models.CASCADE, verbose_name="시음 기록")
-    bean = models.ForeignKey(Bean, null=True, blank=True, on_delete=models.CASCADE, verbose_name="원두")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
-
-    # objects = models.Manager()  # The default manager
-    objects = NoteManagers()
-
-    def __str__(self):
-        return f"Note: {self.id}"
-
-    class Meta:
-        db_table = "note"
-        verbose_name = "노트"
-        verbose_name_plural = "노트"
-
-
-class Report(models.Model):
-    class ReportObjectType(models.TextChoices):
-        POST = "post", "게시글"
-        COMMENT = "comment", "댓글"
-        TASTED_RECORD = "tasted_record", "시음 기록"
-
-    class ReportStatus(models.TextChoices):
-        PENDING = "pending", "대기 중"
-        PROCESSING = "processing", "처리 중"
-        COMPLETED = "completed", "완료됨"
-
-    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
-    object_type = models.CharField(max_length=50, choices=ReportObjectType.choices, verbose_name="신고 대상 종류")
-    object_id = models.PositiveIntegerField(verbose_name="신고 대상 ID")
-    reason = models.TextField(verbose_name="신고 사유")
-    status = models.CharField(max_length=50, choices=ReportStatus.choices, default=ReportStatus.PENDING, verbose_name="신고 처리 상태")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="신고 일자")
-
-    def __str__(self):
-        return f"Report: {self.id} - {self.get_status_display()}"
-
-    class Meta:
-        db_table = "report"
-        verbose_name = "신고"
-        verbose_name_plural = "신고"

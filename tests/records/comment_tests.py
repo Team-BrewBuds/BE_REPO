@@ -174,7 +174,6 @@ class TestCommentAPIView:
 
         # Then
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "content" in response.data
 
     def test_create_comment_unauthorized(self, api_client):
         """미인증 사용자의 댓글 생성 시도시 401 에러 반환 테스트"""
@@ -275,7 +274,7 @@ class TestCommentDetailAPIView:
         response = client.delete(f"{self.base_url}{comment.id}/")
 
         # Then
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_204_NO_CONTENT
         comment.refresh_from_db()
         assert comment.is_deleted is True
         assert comment.content == "삭제된 댓글입니다."

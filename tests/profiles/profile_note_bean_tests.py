@@ -25,6 +25,9 @@ class TestUserBeanListAPIView:
     - [예외] 존재하지 않는 사용자의 원두 리스트 조회 테스트
     """
 
+    def setup_method(self):
+        self.url = "/beans/profile/"
+
     def test_get_user_bean_list_success(self, authenticated_client):
         """
         사용자의 원두 리스트 조회 성공 테스트
@@ -37,7 +40,7 @@ class TestUserBeanListAPIView:
         for bean in beans:
             NoteFactory(author=user, bean=bean)
 
-        url = f"/profiles/{user.id}/beans/"
+        url = f"{self.url}{user.id}/"
 
         # When
         response = api_client.get(url)
@@ -52,7 +55,7 @@ class TestUserBeanListAPIView:
         """
         # Given
         api_client, user = authenticated_client()
-        url = f"/profiles/{user.id}/beans/"
+        url = f"{self.url}{user.id}/"
 
         # When
         response = api_client.get(url)
@@ -78,7 +81,7 @@ class TestUserBeanListAPIView:
             if i == len(beans) - 1:
                 latest_notes = note
 
-        url = f"/profiles/{user.id}/beans/"  # default ordering = -note__created_at
+        url = f"{self.url}{user.id}/"  # default ordering = -note__created_at
 
         # When
         response = api_client.get(f"{url}")
@@ -112,7 +115,7 @@ class TestUserBeanListAPIView:
                 ),
             )
 
-        url = f"/profiles/{user.id}/beans/"
+        url = f"{self.url}{user.id}/"
         ordering = "-avg_star"
 
         # When
@@ -138,7 +141,7 @@ class TestUserBeanListAPIView:
                 taste_review=BeanTasteReviewFactory(flavor="", body=3, acidity=3, bitterness=3, sweetness=3, star=3.0),
             )
 
-        url = f"/profiles/{user.id}/beans/"
+        url = f"{self.url}{user.id}/"
         ordering = "-tasted_records_cnt"
 
         # When
@@ -198,7 +201,7 @@ class TestUserBeanListAPIView:
             bean.save()
             NoteFactory(author=user, bean=bean)
 
-        url = f"/profiles/{user.id}/beans/"
+        url = f"{self.url}{user.id}/"
 
         # When
         query_params = "&".join([f"{key}={value}" for key, value in filters.items()])
@@ -233,7 +236,7 @@ class TestUserBeanListAPIView:
         for bean in beans:
             NoteFactory(author=user, bean=bean)
 
-        url = f"/profiles/{user.id}/beans/"
+        url = f"{self.url}{user.id}/"
 
         # When
         query_params = "&".join([f"{key}={value}" for key, value in filters.items()])
@@ -284,7 +287,7 @@ class TestUserBeanListAPIView:
                 ),
             )
 
-        url = f"/profiles/{user.id}/beans/"
+        url = f"{self.url}{user.id}/"
 
         # When
         query_params = "&".join([f"{key}={value}" for key, value in filters.items()])
@@ -299,7 +302,7 @@ class TestUserBeanListAPIView:
         존재하지 않는 사용자의 원두 리스트 조회 테스트
         """
         # Given
-        url = f"/profiles/{non_existent_user_id}/beans/"
+        url = f"{self.url}{non_existent_user_id}/"
 
         # When
         response = api_client.get(url)

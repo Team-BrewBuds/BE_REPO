@@ -5,8 +5,11 @@ from factory.django import DjangoModelFactory
 from faker import Faker
 
 from repo.beans.models import Bean, BeanTasteReview
-from repo.profiles.models import CustomUser, Relationship, UserDetail
-from repo.records.models import Comment, Note, Photo, Post, Report, TastedRecord
+from repo.interactions.note.models import Note
+from repo.interactions.relationship.models import Relationship
+from repo.interactions.report.models import Report
+from repo.profiles.models import CustomUser, UserDetail
+from repo.records.models import Comment, Photo, Post, TastedRecord
 
 fake = Faker("ko_KR")
 

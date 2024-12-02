@@ -19,6 +19,9 @@ class TestFollowListAPIView:
     - [예외] 팔로잉/팔로워 타입이 아닌 경우 400 에러 반환 테스트
     """
 
+    def setup_method(self):
+        self.url = "/interactions/relationship/follow/"
+
     def test_get_following_list_api_view_success(self, authenticated_client):
         """
         팔로잉 리스트 조회 성공 테스트
@@ -30,7 +33,7 @@ class TestFollowListAPIView:
 
         relation_type = "following"
 
-        url = f"/profiles/follow/?type={relation_type}"
+        url = f"{self.url}?type={relation_type}"
 
         # When
         response = api_client.get(url)
@@ -50,7 +53,7 @@ class TestFollowListAPIView:
 
         relation_type = "follower"
 
-        url = f"/profiles/follow/?type={relation_type}"
+        url = f"{self.url}?type={relation_type}"
 
         # When
         response = api_client.get(url)
@@ -66,7 +69,7 @@ class TestFollowListAPIView:
         # Given
         api_client, user = authenticated_client()
         relation_type = "following"
-        url = f"/profiles/follow/?type={relation_type}"
+        url = f"{self.url}?type={relation_type}"
 
         # When
         response = api_client.get(url)
@@ -84,7 +87,7 @@ class TestFollowListAPIView:
         relationship_2 = RelationshipFactory(from_user=user, to_user=CustomUserFactory(), relationship_type="follow")
 
         relation_type = "following"
-        url = f"/profiles/follow/?type={relation_type}"
+        url = f"{self.url}?type={relation_type}"
 
         # When
         response = api_client.get(url)
@@ -104,7 +107,7 @@ class TestFollowListAPIView:
         RelationshipFactory(from_user=user, to_user=CustomUserFactory(), relationship_type="follow")
 
         relation_type = "following"
-        url = f"/profiles/follow/?type={relation_type}"
+        url = f"{self.url}?type={relation_type}"
 
         # When
         response = api_client.get(url)
@@ -124,7 +127,7 @@ class TestFollowListAPIView:
         RelationshipFactory(from_user=CustomUserFactory(), to_user=user, relationship_type="follow")
 
         relation_type = "follower"
-        url = f"/profiles/follow/?type={relation_type}"
+        url = f"{self.url}?type={relation_type}"
 
         # When
         response = api_client.get(url)
@@ -141,19 +144,25 @@ class TestFollowListAPIView:
         # Given
         api_client, user = authenticated_client()
         relation_type = "invalid"
-        url = f"/profiles/follow/?type={relation_type}"
+        url = f"{self.url}?type={relation_type}"
 
         # When
         response = api_client.get(url)
 
         # Then
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["message"] == "Invalid follow type"
+        assert response.data["code"] == "bad_request"
+        assert response.data["status"] == 400
 
 
 class TestFollowListCreateDeleteAPIView:
     """
     팔로우 관계 조회/생성/삭제 API 테스트
     """
+
+    def setup_method(self):
+        self.url = "/interactions/relationship/follow/"
 
     def test_create_following_relationship_success(self, authenticated_client):
         """
@@ -162,7 +171,7 @@ class TestFollowListCreateDeleteAPIView:
         # Given
         api_client, user = authenticated_client()
         target_user = CustomUserFactory()
-        url = f"/profiles/{target_user.id}/follow/"
+        url = f"{self.url}{target_user.id}/"
 
         # When
         response = api_client.post(url)
@@ -178,8 +187,7 @@ class TestFollowListCreateDeleteAPIView:
         # Given
         api_client1, user1 = authenticated_client()
         api_client2, user2 = authenticated_client()
-        url = f"/profiles/{user1.id}/follow/"
-
+        url = f"{self.url}{user1.id}/"
         # When
         response = api_client2.post(url)
 
@@ -195,7 +203,7 @@ class TestFollowListCreateDeleteAPIView:
         api_client, user = authenticated_client()
         target_user = CustomUserFactory()
         RelationshipFactory(from_user=user, to_user=target_user, relationship_type="follow")
-        url = f"/profiles/{target_user.id}/follow/"
+        url = f"{self.url}{target_user.id}/"
 
         # When
         response = api_client.delete(url)
@@ -212,7 +220,7 @@ class TestFollowListCreateDeleteAPIView:
         api_client1, user1 = authenticated_client()
         api_client2, user2 = authenticated_client()
         RelationshipFactory(from_user=user2, to_user=user1, relationship_type="follow")
-        url = f"/profiles/{user1.id}/follow/"
+        url = f"{self.url}{user1.id}/"
 
         # When
         response = api_client2.delete(url)
@@ -229,14 +237,16 @@ class TestFollowListCreateDeleteAPIView:
         api_client, user = authenticated_client()
         blocked_user = CustomUserFactory()
         RelationshipFactory(from_user=user, to_user=blocked_user, relationship_type="block")
-        url = f"/profiles/{blocked_user.id}/follow/"
+        url = f"{self.url}{blocked_user.id}/"
 
         # When
         response = api_client.post(url)
 
         # Then
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.data["error"] == "user is blocking or blocked"
+        assert response.data["message"] == "user is blocking or blocked"
+        assert response.data["code"] == "forbidden"
+        assert response.data["status"] == 403
 
     def test_get_follow_relationship_not_found_user_404(self, authenticated_client, non_existent_user_id):
         """
@@ -244,7 +254,7 @@ class TestFollowListCreateDeleteAPIView:
         """
         # Given
         api_client, user = authenticated_client()
-        url = f"/profiles/{non_existent_user_id}/follow/"
+        url = f"{self.url}{non_existent_user_id}/"
 
         # When
         response = api_client.get(url)
@@ -260,11 +270,13 @@ class TestFollowListCreateDeleteAPIView:
         api_client, user = authenticated_client()
         target_user = CustomUserFactory()
         RelationshipFactory(from_user=user, to_user=target_user, relationship_type="follow")
-        url = f"/profiles/{target_user.id}/follow/"
+        url = f"{self.url}{target_user.id}/"
 
         # When
         response = api_client.post(url)
 
         # Then
         assert response.status_code == status.HTTP_409_CONFLICT
-        assert response.data["error"] == "user is already following"
+        assert response.data["message"] == "user is already following"
+        assert response.data["code"] == "conflict"
+        assert response.data["status"] == 409
