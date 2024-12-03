@@ -45,8 +45,9 @@ class BaseRecordService(ABC):
         """게시물 삭제"""
         pass
 
+    @staticmethod
     @abstractmethod
-    def get_base_record_list_queryset(self, user: Optional[CustomUser] = None) -> QuerySet[Post | TastedRecord]:
+    def get_base_record_list_queryset() -> QuerySet[Post | TastedRecord]:
         """공통적으로 사용하는 기본 게시물 리스트 쿼리셋 생성"""
         pass
 
@@ -58,7 +59,7 @@ class BaseRecordService(ABC):
         pass
 
     @abstractmethod
-    def get_following_feed(self, user: CustomUser, following_users: QuerySet[CustomUser]) -> QuerySet[Post | TastedRecord]:
+    def get_feed_by_follow_relation(self, user: CustomUser, follow: bool) -> QuerySet[Post | TastedRecord]:
         """팔로잉 피드 조회"""
         pass
 

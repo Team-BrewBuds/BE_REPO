@@ -1,6 +1,6 @@
 from datetime import timedelta
 from itertools import chain
-from typing import Dict, Optional
+from typing import Optional
 
 from django.db import transaction
 from django.db.models import BooleanField, Count, Exists, Prefetch, Q, QuerySet, Value
@@ -45,7 +45,7 @@ class PostService(BaseRecordService):
         user = CustomUser.objects.get(id=user_id)
         subject = kwargs.get("subject", None)
 
-        subject_filter = Q(subject=subject) if subject != "all" else Q()
+        subject_filter = Q(subject=subject) if subject else Q()
 
         posts = (
             user.post_set.filter(subject_filter)
@@ -57,14 +57,13 @@ class PostService(BaseRecordService):
 
     def get_record_list(self, user: CustomUser, **kwargs) -> QuerySet[Post]:
         """홈 게시글 리스트 조회"""
-        subject = kwargs.get("subject", None)
         request = kwargs.get("request", None)
+        subject = kwargs.get("subject", None)
 
-        following_users = self.relationship_service.get_following_user_list(user.id)
+        filters = Q(subject=subject) if subject else Q()
 
-        add_filter = {"author__in": following_users}
-        following_posts = self.get_feed_queryset(user, add_filter, None, subject)
-        unfollowing_posts = self.get_unfollowing_feed(user)
+        following_posts = self.get_feed_by_follow_relation(user, True).filter(filters).order_by("-id")
+        unfollowing_posts = self.get_feed_by_follow_relation(user, False).filter(filters).order_by("-id")
 
         posts = list(chain(following_posts, unfollowing_posts))
 
@@ -159,67 +158,52 @@ class PostService(BaseRecordService):
             )
         )
 
-    def get_feed_queryset(
-        self, user: CustomUser, add_filter: Optional[Dict] = None, exclude_filter: Optional[Dict] = None, subject: Optional[str] = None
-    ) -> QuerySet[Post]:
+    def get_feed_queryset(self, user: CustomUser, add_filter: Optional[Q] = None, subject: Optional[str] = None) -> QuerySet[Post]:
         """
         게시글 피드를 위한 필터링된 쿼리셋 생성
 
         Args:
             user: 사용자 객체
-            add_filter: 추가할 필터 조건 (dict)
-            exclude_filter: 제외할 필터 조건 (dict)
+            add_filter: 추가할 필터 조건 (Q)
             subject: 게시글 주제
 
         Returns:
             QuerySet: 필터링된 게시글 쿼리셋
         """
-        base_queryset = self.get_base_record_list_queryset()
-
-        base_queryset = base_queryset.annotate(
+        base_queryset = self.get_base_record_list_queryset().annotate(
             is_user_liked=Exists(self.like_service.get_like_subquery_for_post(user)),
             is_user_noted=Exists(self.note_service.get_note_subquery_for_post(user)),
         )
 
-        filters = Q(**add_filter) if add_filter else Q()
-        excludes = Q(**exclude_filter) if exclude_filter else Q()
-
         block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
+
+        filters = add_filter if add_filter else Q()
         filters &= ~Q(author__in=block_users)  # 차단한 유저 필터링
+        filters &= Q(subject=subject) if subject else Q()  # 주제 필터링
 
-        if subject:
-            filters &= Q(subject=subject)
+        return base_queryset.filter(filters)
 
-        return base_queryset.filter(filters).exclude(excludes)
-
-    def get_following_feed(self, user: CustomUser) -> QuerySet[Post]:
+    def get_feed_by_follow_relation(self, user: CustomUser, follow: bool) -> QuerySet[Post]:
+        """팔로잉 관계에 따른 피드 조회"""
         following_users = self.relationship_service.get_following_user_list(user.id)
 
-        add_filter = {"author__in": following_users}
+        filters = Q(author__in=following_users) if follow else ~Q(author__in=following_users)
 
-        return self.get_feed_queryset(user, add_filter, None, None)
+        return self.get_feed_queryset(user, filters, None)
 
     # home following feed
     def get_following_feed_and_gte_one_hour(self, user: CustomUser) -> QuerySet[Post]:
         """팔로잉한 사용자의 최근 1시간 이내 피드 조회"""
-        following_feed = self.get_following_feed(user)
+        following_feed = self.get_feed_by_follow_relation(user, True)
 
         one_hour_ago = timezone.now() - timedelta(hours=1)
         add_filter = Q(created_at__gte=one_hour_ago)
 
         return following_feed.filter(add_filter)
 
-    # home common feed
-    def get_unfollowing_feed(self, user: CustomUser) -> QuerySet[Post]:
-        following_users = self.relationship_service.get_following_user_list(user.id)
-
-        exclude_filter = {"author__in": following_users}
-
-        return self.get_feed_queryset(user, None, exclude_filter, None)
-
     # home refresh feed
     def get_refresh_feed(self, user: CustomUser) -> QuerySet[Post]:
-        return self.get_feed_queryset(user, None, None, None)
+        return self.get_feed_queryset(user, None, None)
 
     # 비로그인 사용자를 위한 게시글 피드
     def get_record_list_for_anonymous(self) -> QuerySet[Post]:
