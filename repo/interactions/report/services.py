@@ -11,12 +11,11 @@ from .models import Report
 
 
 class ReportService:
-    def __init__(self, report_repo=Report.objects):
-        self.report_repo = report_repo
+    """신고 관련 비즈니스 로직을 처리하는 서비스"""
 
     def is_existing_report(self, user, object_type, object_id):
         """이미 신고한 컨텐츠인지 확인"""
-        return self.report_repo.filter(author=user, object_type=object_type, object_id=object_id).exists()
+        return Report.objects.filter(author=user, object_type=object_type, object_id=object_id).exists()
 
     def _get_instance(self, object_type, object_id):
         """신고 대상 객체 조회"""
@@ -39,7 +38,7 @@ class ReportService:
         if target_object.author == user:
             raise ConflictException(detail="self report is not allowed", code="self_report_not_allowed")
 
-        report = self.report_repo.create(
+        report = Report.objects.create(
             author=user, object_type=object_type, object_id=object_id, reason=reason, status=Report.ReportStatus.PENDING
         )
 

@@ -9,18 +9,16 @@ from repo.profiles.models import CustomUser, UserDetail
 
 
 class UserService:
-    def __init__(self, user_repo=CustomUser.objects, user_detail_repo=UserDetail.objects):
-        self.user_repo = user_repo
-        self.user_detail_repo = user_detail_repo
+    def __init__(self):
         self.relationship_repo = RelationshipService()
 
     def check_user_exists(self, id: int) -> bool:
         """유저 존재 여부 확인"""
-        return self.user_repo.filter(id=id).exists()
+        return CustomUser.objects.filter(id=id).exists()
 
     def get_user_by_id(self, id: int) -> CustomUser:
         """유저 조회"""
-        return get_object_or_404(self.user_repo, id=id)
+        return get_object_or_404(CustomUser, id=id)
 
     def get_user_profile(self, user: CustomUser) -> dict:
         """유저 프로필 조회"""
@@ -47,7 +45,7 @@ class UserService:
         follower_cnt = self.relationship_repo.get_followers(id).count()
         following_cnt = self.relationship_repo.get_following(id).count()
 
-        return self.user_repo.select_related("user_detail").annotate(
+        return CustomUser.objects.select_related("user_detail").annotate(
             introduction=F("user_detail__introduction"),
             profile_link=F("user_detail__profile_link"),
             coffee_life=F("user_detail__coffee_life"),
@@ -70,7 +68,7 @@ class UserService:
 
     def _update_user_detail(self, user: CustomUser, validated_data: dict) -> UserDetail:
         """유저 상세 정보를 업데이트"""
-        user_detail = self.user_detail_repo.get(user=user)
+        user_detail = UserDetail.objects.get(user=user)
         for field, value in validated_data.items():
             setattr(user_detail, field, value)
 
