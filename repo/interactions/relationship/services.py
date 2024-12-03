@@ -15,14 +15,13 @@ BLOCK_TYPE = "block"
 
 
 class RelationshipService:
-    def __init__(self, relationship_repo=Relationship.objects):
-        self.relationship_repo = relationship_repo
+    """관계 관련 비즈니스 로직을 처리하는 서비스"""
 
     def check_relationship(self, from_user, to_user, relationship_type):
-        return self.relationship_repo.filter(from_user=from_user, to_user=to_user, relationship_type=relationship_type).exists()
+        return Relationship.objects.filter(from_user=from_user, to_user=to_user, relationship_type=relationship_type).exists()
 
     def double_check_relationships(self, from_user, to_user, relationship_type):
-        return self.relationship_repo.filter(
+        return Relationship.objects.filter(
             Q(from_user=from_user, to_user=to_user, relationship_type=relationship_type)
             | Q(from_user=to_user, to_user=from_user, relationship_type=relationship_type)
         ).exists()
@@ -31,7 +30,7 @@ class RelationshipService:
         if self.double_check_relationships(from_user, to_user, BLOCK_TYPE):
             raise ForbiddenException("user is blocking or blocked")
 
-        relationship, created = self.relationship_repo.get_or_create(from_user=from_user, to_user=to_user, relationship_type=FOLLOW_TYPE)
+        relationship, created = Relationship.objects.get_or_create(from_user=from_user, to_user=to_user, relationship_type=FOLLOW_TYPE)
 
         if not created:
             raise ConflictException("user is already following")
@@ -40,7 +39,7 @@ class RelationshipService:
         if not self.check_relationship(from_user, to_user, FOLLOW_TYPE):
             raise NotFoundException("user is not following")
 
-        relationship = self.relationship_repo.filter(from_user=from_user, to_user=to_user, relationship_type=FOLLOW_TYPE)
+        relationship = Relationship.objects.filter(from_user=from_user, to_user=to_user, relationship_type=FOLLOW_TYPE)
         relationship.delete()
 
     @transaction.atomic
@@ -50,7 +49,7 @@ class RelationshipService:
         except NotFoundException:
             pass
 
-        relationship, created = self.relationship_repo.get_or_create(from_user=from_user, to_user=to_user, relationship_type=BLOCK_TYPE)
+        relationship, created = Relationship.objects.get_or_create(from_user=from_user, to_user=to_user, relationship_type=BLOCK_TYPE)
 
         if not created:
             raise ConflictException("user is already blocking")
@@ -60,14 +59,14 @@ class RelationshipService:
         if not self.check_relationship(from_user, to_user, BLOCK_TYPE):
             raise NotFoundException("user is not blocking")
 
-        relationship = self.relationship_repo.filter(from_user=from_user, to_user=to_user, relationship_type=BLOCK_TYPE)
+        relationship = Relationship.objects.filter(from_user=from_user, to_user=to_user, relationship_type=BLOCK_TYPE)
         relationship.delete()
 
     def get_following(self, user_id):
-        return self.relationship_repo.filter(from_user=user_id, relationship_type=FOLLOW_TYPE)
+        return Relationship.objects.filter(from_user=user_id, relationship_type=FOLLOW_TYPE)
 
     def get_followers(self, user_id):
-        return self.relationship_repo.filter(to_user=user_id, relationship_type=FOLLOW_TYPE)
+        return Relationship.objects.filter(to_user=user_id, relationship_type=FOLLOW_TYPE)
 
     def get_following_user_list(self, user_id):
         return self.get_following(user_id).values_list("to_user", flat=True)
@@ -76,13 +75,13 @@ class RelationshipService:
         return self.get_followers(user_id).values_list("from_user", flat=True)
 
     def get_blocking(self, user_id):
-        return self.relationship_repo.filter(from_user=user_id, relationship_type=BLOCK_TYPE)
+        return Relationship.objects.filter(from_user=user_id, relationship_type=BLOCK_TYPE)
 
     def get_blocked(self, user_id):
-        return self.relationship_repo.filter(to_user=user_id, relationship_type=BLOCK_TYPE)
+        return Relationship.objects.filter(to_user=user_id, relationship_type=BLOCK_TYPE)
 
     def get_unique_blocked_user_list(self, user_id):
-        block_relationships = self.relationship_repo.filter(Q(from_user=user_id) | Q(to_user=user_id), relationship_type=BLOCK_TYPE)
+        block_relationships = Relationship.objects.filter(Q(from_user=user_id) | Q(to_user=user_id), relationship_type=BLOCK_TYPE)
         blocking_users = list(block_relationships.values_list("to_user", flat=True))
         blocked_users = list(block_relationships.values_list("from_user", flat=True))
         unique_block_users = list(set(blocking_users + blocked_users))
@@ -123,7 +122,7 @@ class RelationshipService:
             .select_related(query_config["select_related_field"])
             .annotate(
                 is_following=Exists(
-                    self.relationship_repo.filter(
+                    Relationship.objects.filter(
                         from_user=query_config["is_following_from_user"],
                         to_user_id=query_config["is_following_to_user"],
                         relationship_type=FOLLOW_TYPE,
