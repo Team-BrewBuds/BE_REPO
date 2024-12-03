@@ -69,6 +69,11 @@ class UserService:
     def _update_user_detail(self, user: CustomUser, validated_data: dict) -> UserDetail:
         """유저 상세 정보를 업데이트"""
         user_detail = UserDetail.objects.get(user=user)
+
+        if coffee_life := validated_data.pop("coffee_life", None):
+            coffee_life_data = {choice: choice in coffee_life for choice in UserDetail.COFFEE_LIFE_CHOICES}
+            validated_data["coffee_life"] = coffee_life_data
+
         for field, value in validated_data.items():
             setattr(user_detail, field, value)
 

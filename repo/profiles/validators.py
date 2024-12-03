@@ -17,9 +17,9 @@ class UserValidator:
                 code="nickname_invalid",
             )
 
-        if not re.match(r"^[가-힣a-zA-Z0-9]{2,12}$", value):
+        if not re.match(r"^[가-힣a-zA-Z0-9\s]{2,12}$", value):
             raise ValidationException(
-                detail="닉네임은 2 ~ 12자의 한글 영어 또는 숫자만 가능합니다.",
+                detail="닉네임은 2 ~ 12자의 한글, 영어, 숫자 또는 공백만 가능합니다.",
                 code="nickname_invalid",
             )
 
