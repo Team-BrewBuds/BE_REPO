@@ -1,6 +1,6 @@
 from datetime import timedelta
 from itertools import chain
-from typing import Optional
+from typing import Dict, Optional
 
 from django.db import transaction
 from django.db.models import BooleanField, Count, Exists, Prefetch, Q, QuerySet, Value
@@ -40,7 +40,7 @@ class PostService(BaseRecordService):
             .first()
         )
 
-    def get_user_records(self, user_id, **kwargs) -> QuerySet[Post]:
+    def get_user_records(self, user_id: int, **kwargs) -> QuerySet[Post]:
         """유저가 작성한 게시글 조회"""
         user = CustomUser.objects.get(id=user_id)
         subject = kwargs.get("subject", None)
@@ -147,10 +147,10 @@ class PostService(BaseRecordService):
             post.photo_set.set(photos)
 
     ## 피드 조회 관련 메서드
-
-    def get_base_record_list_queryset(self, user: Optional[CustomUser] = None):
+    @staticmethod
+    def get_base_record_list_queryset() -> QuerySet[Post]:
         """공통적으로 사용하는 기본 쿼리셋 생성"""
-        base_queryset = (
+        return (
             Post.objects.select_related("author")
             .prefetch_related("tasted_records", "comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
             .annotate(
@@ -158,14 +158,10 @@ class PostService(BaseRecordService):
                 comments=Count("comment", distinct=True),
             )
         )
-        if user:
-            base_queryset = base_queryset.annotate(
-                is_user_liked=Exists(self.like_service.get_like_subquery_for_post(user)),
-                is_user_noted=Exists(self.note_service.get_note_subquery_for_post(user)),
-            )
-        return base_queryset
 
-    def get_feed_queryset(self, user, add_filter=None, exclude_filter=None, subject=None):
+    def get_feed_queryset(
+        self, user: CustomUser, add_filter: Optional[Dict] = None, exclude_filter: Optional[Dict] = None, subject: Optional[str] = None
+    ) -> QuerySet[Post]:
         """
         게시글 피드를 위한 필터링된 쿼리셋 생성
 
@@ -178,15 +174,18 @@ class PostService(BaseRecordService):
         Returns:
             QuerySet: 필터링된 게시글 쿼리셋
         """
+        base_queryset = self.get_base_record_list_queryset()
 
-        base_queryset = self.get_base_record_list_queryset(user)
+        base_queryset = base_queryset.annotate(
+            is_user_liked=Exists(self.like_service.get_like_subquery_for_post(user)),
+            is_user_noted=Exists(self.note_service.get_note_subquery_for_post(user)),
+        )
 
         filters = Q(**add_filter) if add_filter else Q()
         excludes = Q(**exclude_filter) if exclude_filter else Q()
 
-        if user:  # 기본적으로 차단한 사용자는 제외
-            block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
-            filters &= ~Q(author__in=block_users)
+        block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
+        filters &= ~Q(author__in=block_users)  # 차단한 유저 필터링
 
         if subject:
             filters &= Q(subject=subject)
@@ -225,14 +224,11 @@ class PostService(BaseRecordService):
     # 비로그인 사용자를 위한 게시글 피드
     def get_record_list_for_anonymous(self) -> QuerySet[Post]:
         """비로그인 사용자 게시글 피드 조회"""
-        return (
-            Post.objects.select_related("author")
-            .prefetch_related("tasted_records", "comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-            .annotate(
-                likes=Count("like_cnt", distinct=True),
-                comments=Count("comment", distinct=True),
-                is_user_liked=Value(False, output_field=BooleanField()),  # False 고정
-                is_user_noted=Value(False, output_field=BooleanField()),  # False 고정
-            )
-            .order_by("?")
+        base_queryset = self.get_base_record_list_queryset()
+
+        record_queryset = base_queryset.annotate(
+            is_user_liked=Value(False, output_field=BooleanField()),  # False 고정
+            is_user_noted=Value(False, output_field=BooleanField()),  # False 고정
         )
+
+        return record_queryset.order_by("?")
