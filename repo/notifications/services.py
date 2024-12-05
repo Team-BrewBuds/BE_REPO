@@ -2,6 +2,7 @@ import firebase_admin
 from django.conf import settings
 from django.utils.log import get_logger
 from firebase_admin import credentials, exceptions, messaging
+from firebase_admin.messaging import Message, MulticastMessage, Notification
 
 from repo.notifications.enums import Topic
 from repo.notifications.models import NotificationSettings, UserDevice
@@ -22,40 +23,37 @@ class FCMService:
     cred = credentials.Certificate(SERVICE_ACCOUNT_FILE)
 
     def __init__(self):
-        self.firebase_app = firebase_admin.initialize_app(self.cred)
-        self.messaging = messaging
+        firebase_admin.initialize_app(self.cred)
 
     def send_push_notification_to_single_device(self, device_token: str, title: str, body: str, data: dict = None):
         """
         단일 디바이스에 알림 전송
         """
-        message = messaging.Message(
-            notification=messaging.Notification(title=title, body=body),
+        message = Message(
+            notification=Notification(title=title, body=body),
             token=device_token,
             data=data if data else None,
         )
 
-        response = self.messaging.send(message, dry_run=True)
+        response = messaging.send(message, dry_run=True)
         logger.info(f"Successfully sent single message: {response}")
 
     def send_push_notification_to_multiple_devices(self, device_tokens: list[str], title: str, body: str, data: dict = None):
         """
         여러 디바이스에 알림 전송
         """
-        message = messaging.MulticastMessage(
-            notification=messaging.Notification(title=title, body=body), tokens=device_tokens, data=data if data else None
-        )
+        message = MulticastMessage(notification=Notification(title=title, body=body), tokens=device_tokens, data=data if data else None)
 
-        response = self.messaging.send_multicast(message)
+        response = messaging.send_multicast(message)
         logger.info(f"Successfully sent multiple message: {response}")
 
     def send_push_notification_silent(self, device_token: str, data: dict):
         """
         단일 디바이스에 무음 알림 전송
         """
-        message = messaging.Message(token=device_token, data=data)
+        message = Message(token=device_token, data=data)
 
-        response = self.messaging.send(message)
+        response = messaging.send(message)
         logger.info(f"Successfully sent silent message: {response}")
 
     def send_push_notification_to_topic(self, topic: str, title: str, body: str, data: dict = None):
@@ -63,9 +61,9 @@ class FCMService:
         토픽에 알림 전송
         """
 
-        message = messaging.Message(notification=messaging.Notification(title=title, body=body), topic=topic, data=data if data else None)
+        message = Message(notification=Notification(title=title, body=body), topic=topic, data=data if data else None)
 
-        response = self.messaging.send(message)
+        response = messaging.send(message)
         logger.info(f"Successfully sent topic message: {response}")
 
     def subscribe_topic(self, topic: str, token: str):
@@ -73,7 +71,7 @@ class FCMService:
         토픽 설정
         """
         try:
-            self.messaging.subscribe_to_topic(token, topic)
+            messaging.subscribe_to_topic(token, topic)
         except ValueError as e:
             logger.error(f"Failed to subscribe to topic: {e}")
         except exceptions.FirebaseError as e:
@@ -84,7 +82,7 @@ class FCMService:
         토픽 해지
         """
         try:
-            self.messaging.unsubscribe_from_topic(token, topic)
+            messaging.unsubscribe_from_topic(token, topic)
         except ValueError as e:
             logger.error(f"Failed to unsubscribe from topic: {e}")
         except exceptions.FirebaseError as e:
