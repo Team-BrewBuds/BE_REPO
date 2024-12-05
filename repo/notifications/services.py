@@ -12,7 +12,6 @@ from repo.records.models import Comment, Post, TastedRecord
 logger = get_logger(__name__)
 
 SERVICE_ACCOUNT_FILE = getattr(settings, "FCM_SERVICE_ACCOUNT_FILE", None)
-PROJECT_ID = getattr(settings, "FCM_PROJECT_ID", None)
 
 
 class FCMService:
