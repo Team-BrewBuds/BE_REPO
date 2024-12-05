@@ -460,3 +460,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/django,macos,windows,visualstudiocode,python,pycharm
+
+# FCM
+config/settings/settings_modules/*.json
