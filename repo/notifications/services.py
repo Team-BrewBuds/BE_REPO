@@ -20,10 +20,23 @@ class FCMService:
     FCM 알림 서비스
     """
 
+    _instance = None
+    _initialized = False
     cred = credentials.Certificate(SERVICE_ACCOUNT_FILE)
 
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self):
-        firebase_admin.initialize_app(self.cred)
+        if not self._initialized:
+            try:
+                firebase_admin.initialize_app(self.cred)
+            except ValueError:
+                # 이미 초기화된 경우 무시
+                pass
+            self._initialized = True
 
     def send_push_notification_to_single_device(self, device_token: str, title: str, body: str, data: dict = None):
         """
