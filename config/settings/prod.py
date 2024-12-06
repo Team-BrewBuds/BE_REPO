@@ -1,3 +1,5 @@
+import json
+
 import pymysql
 
 from ._base import *
@@ -44,4 +46,4 @@ AWS_ACCESS_KEY_ID = env.str("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = env.str("AWS_SECRET_ACCESS_KEY")
 
 # FCM
-FCM_SERVICE_ACCOUNT_FILE = env.str("FCM_SERVICE_ACCOUNT_FILE")
+FCM_SERVICE_ACCOUNT_FILE = json.load(open(BASE_DIR / env.str("FCM_SERVICE_ACCOUNT_FILE")))
