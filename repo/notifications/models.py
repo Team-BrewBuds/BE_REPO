@@ -13,7 +13,7 @@ class UserDevice(models.Model):
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     device_token = models.CharField(max_length=255)
-    device_type = models.CharField(max_length=10, choices=DEVICE_TYPE_CHOICES)
+    device_type = models.CharField(max_length=10, default="ios", choices=DEVICE_TYPE_CHOICES)
     is_active = models.BooleanField(default=True)
     last_used = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -46,7 +46,6 @@ class PushNotification(models.Model):
 
 class NotificationSettings(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    new_post_notify = models.BooleanField(default=True)
     like_notify = models.BooleanField(default=True)
     comment_notify = models.BooleanField(default=True)
     marketing_notify = models.BooleanField(default=False)
