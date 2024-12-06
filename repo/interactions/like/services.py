@@ -5,6 +5,7 @@ from repo.common.exception.exceptions import (
     NotFoundException,
     ValidationException,
 )
+from repo.notifications.services import NotificationService
 from repo.records.models import Comment, Post, TastedRecord
 
 
@@ -29,6 +30,7 @@ class LikeService:
         self.object_type = object_type
         self.object_id = object_id
         self.like_repo = self._set_like_object()
+        self.notification_service = NotificationService()
 
     def _set_like_object(self) -> Post | TastedRecord | Comment | None:
         """좋아요 대상 객체 설정"""
@@ -47,6 +49,10 @@ class LikeService:
             raise ConflictException(detail="like already exists", code="conflict")
 
         self.like_repo.like_cnt.add(user_id)
+
+        # 알림 전송
+        if self.like_repo.author.id != user_id:  # 자신의 게시물에 좋아요를 누른 경우 알림 전송하지 않음
+            self.notification_service.send_notification_like(self.like_repo, user_id)
 
     def decrease_like(self, user_id: int) -> None:
         """좋아요 감소"""
