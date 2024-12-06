@@ -160,6 +160,11 @@ class NotificationService:
         body : {좋아요 누른 사용자 닉네임}님이 버디님의 게시물을 좋아해요.
         token : 게시물 작성자의 token
         """
+
+        author = object_type.author
+        if not self.check_notification_settings(author, "like_notify"):
+            return
+
         if isinstance(object_type, Post):
             object_str = "게시물"
         elif isinstance(object_type, TastedRecord):
@@ -167,7 +172,7 @@ class NotificationService:
         else:
             object_str = "댓글"
 
-        device_token = self.get_device_token(object_type.author)
+        device_token = self.get_device_token(author)
 
         self.fcm_service.send_push_notification_to_single_device(
             title="브루버즈",
@@ -183,6 +188,9 @@ class NotificationService:
         body : {팔로우 신청한 사용자의 닉네임}님이 버디님을 팔로우하기 시작했어요.
         token : 팔로우 당한 사용자의 token
         """
+        if not self.check_notification_settings(followee, "follow_notify"):
+            return
+
         device_token = self.get_device_token(followee)
 
         self.fcm_service.send_push_notification_to_single_device(
