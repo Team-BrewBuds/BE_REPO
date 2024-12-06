@@ -1,6 +1,7 @@
+import logging
+
 import firebase_admin
 from django.conf import settings
-from django.utils.log import get_logger
 from firebase_admin import credentials, exceptions, messaging
 from firebase_admin.messaging import Message, MulticastMessage, Notification
 
@@ -9,7 +10,7 @@ from repo.notifications.models import NotificationSettings, PushNotification, Us
 from repo.profiles.models import CustomUser
 from repo.records.models import Comment, Post, TastedRecord
 
-logger = get_logger(__name__)
+logger = logging.getLogger("django.server")
 
 SERVICE_ACCOUNT_FILE = getattr(settings, "FCM_SERVICE_ACCOUNT_FILE", None)
 
