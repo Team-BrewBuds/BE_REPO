@@ -5,7 +5,7 @@ from firebase_admin import credentials, exceptions, messaging
 from firebase_admin.messaging import Message, MulticastMessage, Notification
 
 from repo.notifications.enums import Topic
-from repo.notifications.models import NotificationSettings, UserDevice
+from repo.notifications.models import NotificationSettings, PushNotification, UserDevice
 from repo.profiles.models import CustomUser
 from repo.records.models import Comment, Post, TastedRecord
 
@@ -153,6 +153,8 @@ class NotificationService:
             topic=topic_id,
         )
 
+        # TODO: 푸시 알림 저장
+
     def send_notification_like(self, object_type: Post | TastedRecord | Comment, liked_user: CustomUser):
         """
         게시물 좋아요 알림 전송
@@ -172,14 +174,19 @@ class NotificationService:
         else:
             object_str = "댓글"
 
+        title = "브루버즈"
+        body = f"{liked_user.nickname}님이 버디님의 {object_str}을 좋아해요."
+        data = {"object_id": object_type.id}
         device_token = self.get_device_token(author)
 
         self.fcm_service.send_push_notification_to_single_device(
-            title="브루버즈",
-            body=f"{liked_user.nickname}님이 버디님의 {object_str}을 좋아해요.",
-            data={"object_id": object_type.id},
+            title=title,
+            body=body,
+            data=data,
             device_token=device_token,
         )
+
+        self.save_push_notification(author, "like", title, body, data)
 
     def send_notification_follow(self, follower: CustomUser, followee: CustomUser):
         """
@@ -191,11 +198,22 @@ class NotificationService:
         if not self.check_notification_settings(followee, "follow_notify"):
             return
 
+        title = "브루버즈"
+        body = f"{follower.nickname}님이 버디님을 팔로우하기 시작했어요."
+        data = {"following_user_id": follower.id}
         device_token = self.get_device_token(followee)
 
         self.fcm_service.send_push_notification_to_single_device(
-            title="브루버즈",
-            body=f"{follower.nickname}님이 버디님을 팔로우하기 시작했어요.",
-            data={"following_user_id": follower.id},
+            title=title,
+            body=body,
+            data=data,
             device_token=device_token,
         )
+
+        self.save_push_notification(followee, "follow", title, body, data)
+
+    def save_push_notification(self, user: CustomUser, notification_type: str, title: str, body: str, data: dict):
+        """
+        푸시 알림 저장
+        """
+        PushNotification.objects.create(user=user, notification_type=notification_type, title=title, body=body, data=data)
