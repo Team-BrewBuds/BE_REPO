@@ -13,6 +13,7 @@ urlpatterns = [
     path("records/", include("repo.records.urls")),
     path("recommendation/", include("repo.recommendation.urls")),
     path("interactions/", include("repo.interactions.urls")),
+    path("notifications/", include("repo.notifications.urls")),
     # def-spectacular
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
