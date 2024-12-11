@@ -10,6 +10,8 @@ urlpatterns = [
     path("beans/", include("repo.beans.urls")),
     path("profiles/", include("repo.profiles.urls")),
     path("records/", include("repo.records.urls")),
+    path("search/", include("repo.search.urls")),
+
     # 스키마를 제공하는 엔드포인트
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     # Swagger UI
