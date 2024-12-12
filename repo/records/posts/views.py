@@ -1,151 +1,47 @@
-from django.db import transaction
 from django.shortcuts import get_object_or_404
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (
-    OpenApiExample,
-    OpenApiParameter,
-    OpenApiResponse,
-    extend_schema,
-    extend_schema_view,
-)
 from rest_framework import status
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.common.serializers import PageNumberSerializer
-from repo.common.utils import delete, get_object
+from repo.common.permissions import IsOwnerOrReadOnly
+from repo.common.utils import get_paginated_response_with_class
 from repo.common.view_counter import update_view_count
+from repo.records.posts.schemas import PostSchema
 from repo.records.posts.serializers import *
-from repo.records.services import get_post_detail, get_post_feed
+from repo.records.posts.services import *
 
 
-@extend_schema_view(
-    get=extend_schema(
-        parameters=[
-            PageNumberSerializer,
-            OpenApiParameter(
-                name="subject",
-                type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-                description="subject filter",
-                enum=[choice[0] for choice in Post.SUBJECT_TYPE_CHOICES],
-                examples=[
-                    OpenApiExample(
-                        name=f"{choice[0]} 조회",
-                        summary=f"{choice[0]} 카테고리 게시글 조회",
-                        description=f"홈 게시글에서 {choice[0]} 카테고리를 조회합니다.",
-                        value=choice[0],
-                    )
-                    for choice in Post.SUBJECT_TYPE_CHOICES
-                ],
-            ),
-        ],
-        responses=PostListSerializer,
-        summary="홈 게시글 리스트 조회",
-        description="""
-            홈 피드의 게시글 list 데이터를 가져옵니다.
-            담당자: hwstar1204
-        """,
-        tags=["posts"],
-    ),
-    post=extend_schema(
-        request=PostCreateUpdateSerializer,
-        responses={201: PostCreateUpdateSerializer, 400: OpenApiResponse(description="Bad Request")},
-        summary="게시글 생성",
-        description="""
-            단일 게시글을 생성합니다. (사진과 시음기록은 함께 등록할 수 없습니다.)
-            담당자: hwstar1204
-        """,
-        tags=["posts"],
-    ),
-)
+@PostSchema.post_list_create_schema_view
 class PostListCreateAPIView(APIView):
     """게시글 리스트 조회, 생성 API"""
 
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def __init__(self, **kwargs):
+        self.post_service = get_post_service()
+
     def get(self, request):
-        subject = request.GET.get("subject")
+        user = request.user
+        if not user.is_authenticated:
+            posts = self.post_service.get_record_list_for_anonymous()
+            return get_paginated_response_with_class(request, posts, PostListSerializer)
 
-        if subject not in [choice[0] for choice in Post.SUBJECT_TYPE_CHOICES]:
-            subject = "전체"
-        subject_mapping = dict(Post.SUBJECT_TYPE_CHOICES)
-
-        subject_value = subject_mapping.get(subject, "all")
-
-        posts = get_post_feed(request.user, subject_value)
-
-        paginator = PageNumberPagination()
-        paginator.page_size = 12
-        paginated_posts = paginator.paginate_queryset(posts, request)
-
-        serializer = PostListSerializer(paginated_posts, many=True, context={"request": request})
-        return paginator.get_paginated_response(serializer.data)
+        subject = request.query_params.get("subject", None)
+        posts = self.post_service.get_record_list(user, subject=subject, request=request)
+        return get_paginated_response_with_class(request, posts, PostListSerializer)
 
     def post(self, request):
         serializer = PostCreateUpdateSerializer(data=request.data)
-        if serializer.is_valid():
-            with transaction.atomic():
-                post = Post.objects.create(
-                    author=request.user,
-                    title=serializer.validated_data["title"],
-                    content=serializer.validated_data["content"],
-                    subject=serializer.validated_data["subject"],
-                    tag=serializer.validated_data["tag"],
-                )
+        serializer.is_valid(raise_exception=True)
 
-                tasted_records = serializer.validated_data.get("tasted_records", [])
-                post.tasted_records.set(tasted_records)
-
-                photos = serializer.validated_data.get("photos", [])
-                post.photo_set.set(photos)
-
-            return Response(PostCreateUpdateSerializer(post).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        post = self.post_service.create_record(request.user, serializer.validated_data)
+        serializer = PostDetailSerializer(post, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-@extend_schema_view(
-    get=extend_schema(
-        responses={200: PostDetailSerializer},
-        summary="게시글 상세 조회",
-        description="""
-            게시글의 상세 정보를 가져옵니다.
-            담당자: hwstar1204
-        """,
-        tags=["posts"],
-    ),
-    put=extend_schema(
-        request=PostCreateUpdateSerializer,
-        responses={200: PostCreateUpdateSerializer, 400: OpenApiResponse(description="Bad Request")},
-        summary="게시글 수정",
-        description="""
-            게시글의 정보를 수정합니다.
-            tasted_record, photo는 id로 수정합니다.
-            담당자: hwstar1204
-        """,
-        tags=["posts"],
-    ),
-    patch=extend_schema(
-        request=PostCreateUpdateSerializer,
-        responses={200: PostCreateUpdateSerializer, 400: OpenApiResponse(description="Bad Request")},
-        summary="게시글 수정",
-        description="""
-            게시글의 정보를 수정합니다.
-            tasted_record, photo는 id로 수정합니다.
-            담당자: hwstar1204
-        """,
-        tags=["posts"],
-    ),
-    delete=extend_schema(
-        responses={204: OpenApiResponse(description="No Content")},
-        summary="게시글 삭제",
-        description="""
-            게시글을 삭제합니다.
-            담당자: hwstar1204
-        """,
-        tags=["posts"],
-    ),
-)
-class PostDetailApiView(APIView):
+@PostSchema.post_detail_schema_view
+class PostDetailAPIView(APIView):
     """
     게시글 상세정보 조회, 생성, 수정, 삭제 API
     Args:
@@ -154,53 +50,70 @@ class PostDetailApiView(APIView):
     담당자 : hwstar1204
     """
 
+    permission_classes = [IsOwnerOrReadOnly]
+
+    def __init__(self, **kwargs):
+        self.post_service = get_post_service()
+
+    def get_object(self, pk):
+        post = get_object_or_404(Post, pk=pk)
+        self.check_object_permissions(self.request, post)
+        return post
+
     def get(self, request, pk):
-        _, response = get_object(pk, Post)
-        if response:
-            return response
+        post = self.get_object(pk)
+        post_detail = self.post_service.get_record_detail(post.id)
 
-        post = get_post_detail(pk)
-        instance, response = update_view_count(request, post, Response(), "post_viewed")
+        # 쿠키 기반 조회수 업데이트
+        response = update_view_count(request, post_detail, Response(), "post_viewed")
+        response.data = PostDetailSerializer(post_detail).data
+        response.status_code = status.HTTP_200_OK
 
-        serializer = PostDetailSerializer(instance, context={"request": request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return response
 
     def put(self, request, pk):
-        post = get_object_or_404(Post, pk=pk)
+        post = self.get_object(pk)
         serializer = PostCreateUpdateSerializer(post, data=request.data, partial=False)
+        serializer.is_valid(raise_exception=True)
 
-        if serializer.is_valid():
-            with transaction.atomic():
-                serializer.save()
-                self._update_tasted_records(serializer, post)
-                self._update_photos(serializer, post)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        updated_post = self.post_service.update_record(post, serializer.validated_data)
+        return Response(PostDetailSerializer(updated_post, context={"request": request}).data, status=status.HTTP_200_OK)
 
     def patch(self, request, pk):
-        post = get_object_or_404(Post, pk=pk)
+        post = self.get_object(pk)
         serializer = PostCreateUpdateSerializer(post, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
 
-        if serializer.is_valid():
-            with transaction.atomic():
-                serializer.save()
-                self._update_tasted_records(serializer, post)
-                self._update_photos(serializer, post)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def _update_tasted_records(self, serializer, post):
-        tasted_records = serializer.validated_data.get("tasted_records", [])
-        post.tasted_records.set(tasted_records)
-
-    def _update_photos(self, serializer, post):
-        photos = serializer.validated_data.get("photos", [])
-        post.photo_set.set(photos)
+        updated_post = self.post_service.update_record(post, serializer.validated_data)
+        return Response(PostDetailSerializer(updated_post, context={"request": request}).data, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
-        return delete(request, pk, Post)
+        post = self.get_object(pk)
+        self.post_service.delete_record(post)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@PostSchema.user_post_list_schema_view
+class UserPostListAPIView(APIView):
+    """특정 사용자의 게시글 조회 API"""
+
+    def __init__(self, **kwargs):
+        self.post_service = get_post_service()
+
+    def get(self, request, id):
+        subject = request.query_params.get("subject", "all")
+        valid_subjects = list(dict(Post.SUBJECT_TYPE_CHOICES).keys()) + ["all"]
+
+        if subject not in valid_subjects:
+            return Response({"error": "Invalid subject parameter"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = get_object_or_404(CustomUser, pk=id)
+        posts = self.post_service.get_user_records(user.id, subject=subject)
+
+        return get_paginated_response_with_class(request, posts, UserPostSerializer)
+
+
+@PostSchema.top_posts_schema_view
 class TopSubjectPostsAPIView(APIView):
     """
     홈 [전체] - 주제별 조회수 상위 12개 인기 게시글 조회 API
@@ -208,54 +121,19 @@ class TopSubjectPostsAPIView(APIView):
         - subject : 조회할 주제
     Returns:
         - status: 200
-    주제 종류 : 일반, 카페, 원두, 정보, 장비, 질문, 고민 (default: 전체)
+    주제 종류 : 일반, 카페, 원두, 정보, 질문, 고민 (default: 전체)
 
     담당자 : hwstar1204
     """
 
-    @extend_schema(
-        responses={200: TopPostSerializer},
-        summary="인기 게시글 조회",
-        description="""
-            홈 [전체] - 주제별 조회수 상위 10개 인기 게시글 조회 API
-            담당자 : hwstar1204
-        """,
-        tags=["posts"],
-        parameters=[
-            PageNumberSerializer,
-            OpenApiParameter(
-                name="subject",
-                type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-                description="subject filter",
-                enum=[choice[0] for choice in Post.SUBJECT_TYPE_CHOICES],
-                examples=[
-                    OpenApiExample(
-                        name=f"{choice[0]} 조회",
-                        summary=f"{choice[0]} 카테고리 인기 게시글 조회",
-                        description=f"홈의 인기 게시글에서 {choice[0]} 카테고리를 조회합니다.",
-                        value=choice[0],
-                    )
-                    for choice in Post.SUBJECT_TYPE_CHOICES
-                ],
-            ),
-        ],
-    )
+    permission_classes = [AllowAny]
+
+    def __init__(self, **kwargs):
+        self.post_service = get_post_service()
+
     def get(self, request):
-        subject = request.GET.get("subject")
+        user = request.user  # 비회원 = None
+        subject = request.query_params.get("subject")  # 주제 필터 없는 경우 = None
 
-        if subject not in [choice[0] for choice in Post.SUBJECT_TYPE_CHOICES]:
-            subject = "전체"
-        subject_mapping = dict(Post.SUBJECT_TYPE_CHOICES)
-
-        subject_value = subject_mapping.get(subject, "all")
-
-        # TODO 캐시 적용
-        posts = Post.objects.get_top_subject_weekly_posts(subject_value)
-
-        paginator = PageNumberPagination()
-        paginator.page_size = 12
-        paginated_posts = paginator.paginate_queryset(posts, request)
-
-        serializer = TopPostSerializer(paginated_posts, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        posts = self.post_service.get_top_subject_weekly_posts(user, subject)
+        return get_paginated_response_with_class(request, posts, TopPostSerializer)

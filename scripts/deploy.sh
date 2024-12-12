@@ -23,5 +23,8 @@ then
   sudo chmod +x /usr/local/bin/docker-compose
 fi
 
+echo "Stopping and removing existing containers: ubuntu"
+sudo docker-compose -f /home/ubuntu/srv/ubuntu/docker-compose.prod.yaml down
+
 echo "start docker-compose up: ubuntu"
-sudo docker-compose -f /home/ubuntu/srv/ubuntu/docker-compose.prod.yaml up --build -d # 하이라이트 명령어
+sudo docker-compose -f /home/ubuntu/srv/ubuntu/docker-compose.prod.yaml up --build -d

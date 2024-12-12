@@ -14,13 +14,7 @@ urlpatterns = [
     path("signup/", views.SignupView.as_view(), name="signup"),
     path("", views.MyProfileAPIView.as_view(), name="my_profile"),
     path("<int:id>/", views.OtherProfileAPIView.as_view(), name="other_profile"),
-    path("<int:id>/follow/", views.FollowListCreateDeleteAPIView.as_view(), name="follow"),
-    path("follow/", views.FollowListAPIView.as_view(), name="my_follow_list"),
-    path("recommend/", views.BudyRecommendAPIView.as_view(), name="budy-recommend"),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    path("<int:id>/posts/", views.UserPostListAPIView.as_view(), name="user_posts"),
-    path("<int:id>/tasted-records/", views.UserTastedRecordListView.as_view(), name="user_tasted_records"),
-    path("<int:id>/beans/", views.UserBeanListAPIView.as_view(), name="user_beans"),
     path("<int:id>/notes/", views.UserNoteAPIView.as_view(), name="user_notes"),
 ]

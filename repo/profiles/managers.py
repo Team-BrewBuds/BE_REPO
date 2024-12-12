@@ -1,5 +1,4 @@
 from django.contrib.auth.models import BaseUserManager
-from django.db import models
 from django.shortcuts import get_object_or_404
 
 
@@ -29,32 +28,3 @@ class CustomUserManager(BaseUserManager):
 
     def get_user_and_user_detail(self, id):
         return get_object_or_404(self.select_related("user_detail"), id=id)
-
-
-class RelationshipManager(models.Manager):
-
-    def check_relationship(self, from_user, to_user, relationship_type):
-        return self.filter(from_user=from_user, to_user=to_user, relationship_type=relationship_type).exists()
-
-    def follow(self, from_user, to_user):
-        relationship, created = self.get_or_create(from_user=from_user, to_user=to_user, relationship_type="follow")
-        return relationship, created
-
-    def unfollow(self, from_user, to_user):
-        relationship = self.filter(from_user=from_user, to_user=to_user, relationship_type="follow")
-        if relationship.exists():
-            relationship.delete()
-            return relationship.first(), True
-        return None, False
-
-    def following(self, user_id):  # 팔로우한 사용자
-        return self.filter(from_user=user_id, relationship_type="follow")
-
-    def followers(self, user_id):  # 나를 팔로우한 사용자
-        return self.filter(to_user=user_id, relationship_type="follow")
-
-    def blocking(self, user_id):  # 차단한 사용자
-        return self.filter(from_user=user_id, relationship_type="block")
-
-    def blocked(self, user_id):  # 나를 차단한 사용자
-        return self.filter(to_user=user_id, relationship_type="block")

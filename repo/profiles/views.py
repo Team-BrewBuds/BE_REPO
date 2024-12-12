@@ -1,5 +1,3 @@
-import random
-
 import jwt
 import requests
 from allauth.socialaccount.providers.kakao import views as kakao_view
@@ -11,37 +9,23 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
-from django_filters import rest_framework as filters
-from rest_framework import generics, status
-from rest_framework.pagination import PageNumberPagination
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from repo.beans.serializers import UserBeanSerializer
-from repo.common.utils import get_first_photo_url
-from repo.profiles.models import CustomUser, Relationship, UserDetail
+from repo.common.utils import get_first_photo_url, get_paginated_response_with_class
+from repo.profiles.models import CustomUser, UserDetail
 from repo.profiles.schemas import *
 from repo.profiles.serializers import (
-    BudyRecommendSerializer,
     UserDetailSignupSerializer,
-    UserFollowListSerializer,
     UserProfileSerializer,
     UserSignupSerializer,
     UserUpdateSerializer,
 )
-from repo.profiles.services import get_follower_list, get_following_list
-from repo.records.filters import BeanFilter, TastedRecordFilter
-from repo.records.models import Post
-from repo.records.posts.serializers import UserPostSerializer
+from repo.profiles.services import UserService
 from repo.records.serializers import UserNoteSerializer
-from repo.records.services import (
-    get_user_posts_by_subject,
-    get_user_saved_beans,
-    get_user_tasted_records_by_filter,
-)
-from repo.records.tasted_record.serializers import UserTastedRecordSerializer
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
 
@@ -339,220 +323,45 @@ class SignupView(APIView):
 
 @ProfileSchema.my_profile_schema_view
 class MyProfileAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def __init__(self, **kwargs):
+        self.user_service = UserService()
+
     def get(self, request):
         user = request.user
-        data = {
-            "nickname": user.nickname,
-            "profile_image": user.profile_image,
-            "coffee_life": user.user_detail.coffee_life,
-            "follower_cnt": Relationship.objects.followers(user).count(),
-            "following_cnt": Relationship.objects.following(user).count(),
-            "post_cnt": user.post_set.count(),
-        }
+        profile = self.user_service.get_user_profile(user)
 
-        serializer = UserProfileSerializer(data)
+        serializer = UserProfileSerializer(profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @transaction.atomic
     def patch(self, request):
         user = request.user
-        if not user.is_authenticated:
-            return Response({"error": "user not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+        serializer = UserUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
 
-        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
-        if serializer.is_valid():
-            fields = ["nickname", "profile_image"]
-            for field in fields:
-                setattr(user, field, serializer.validated_data.get(field, getattr(user, field)))
-            user.save()
+        user_validated_data = serializer.validated_data
+        self.user_service.update_user(user, user_validated_data)
 
-            user_detail_data = serializer.validated_data.get("user_detail", None)
-            if user_detail_data:
-                user_detail, created = UserDetail.objects.get_or_create(user=user)
-                fields = ["introduction", "profile_link", "coffee_life", "preferred_bean_taste", "is_certificated"]
-                for field in fields:
-                    setattr(user_detail, field, user_detail_data.get(field, getattr(user_detail, field)))
-                user_detail.save()
-
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = UserUpdateSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @OtherProfileSchema.other_proflie_schema_view
 class OtherProfileAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def __init__(self, **kwargs):
+        self.user_service = UserService()
+
     def get(self, request, id):
-        request_user = request.user
-        user = CustomUser.objects.get_user_and_user_detail(id=id)
-        data = {
-            "nickname": user.nickname,
-            "profile_image": user.profile_image,
-            "coffee_life": user.user_detail.coffee_life,
-            "follower_cnt": Relationship.objects.followers(user).count(),
-            "following_cnt": Relationship.objects.following(user).count(),
-            "post_cnt": user.post_set.count(),
-            "is_user_following": Relationship.objects.check_relationship(request_user, user, "follow"),
-        }
+        user_id = request.user.id
+        other_user_id = id
+        data = self.user_service.get_other_user_profile(user_id, other_user_id)
 
         serializer = UserProfileSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-@FollowListSchema.follow_list_schema_view
-class FollowListAPIView(APIView):
-    def get(self, request):
-        page = request.query_params.get("page", 1)
-        follow_type = request.query_params.get("type")  # 쿼리 파라미터로 type을 받음
-        user = request.user
-
-        if follow_type == "following":
-            data = get_following_list(user, True)
-        elif follow_type == "follower":
-            data = get_follower_list(user)
-        else:
-            return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
-
-        paginator = PageNumberPagination()
-        paginator.page_size = 12
-        page_obj = paginator.paginate_queryset(data, request)
-
-        serializer = UserFollowListSerializer(page_obj, many=True)
-        return paginator.get_paginated_response(serializer.data)
-
-
-@FollowListCreateDeleteSchema.follow_list_create_delete_schema_view
-class FollowListCreateDeleteAPIView(APIView):
-    def get(self, request, id):
-        follow_type = request.query_params.get("type")
-        user = get_object_or_404(CustomUser, id=id)
-
-        if follow_type == "following":
-            data = get_following_list(user, False)
-        elif follow_type == "follower":
-            data = get_follower_list(user)
-        else:
-            return Response({"detail": "Invalid type parameter"}, status=status.HTTP_400_BAD_REQUEST)
-
-        paginator = PageNumberPagination()
-        paginator.page_size = 12
-        page_obj = paginator.paginate_queryset(data, request)
-
-        serializer = UserFollowListSerializer(page_obj, many=True)
-        return paginator.get_paginated_response(serializer.data)
-
-    def post(self, request, id):
-        user = request.user
-        follow_user = get_object_or_404(CustomUser, id=id)
-
-        relationship, created = Relationship.objects.follow(user, follow_user)
-        if not created:
-            return Response({"error": "already following"}, status=status.HTTP_409_CONFLICT)
-        return Response({"success": "follow"}, status=status.HTTP_201_CREATED)
-
-    def delete(self, request, id):
-        user = request.user
-        following_user = get_object_or_404(CustomUser, id=id)
-
-        relationship, deleted = Relationship.objects.unfollow(user, following_user)
-        if not deleted:
-            return Response({"error": "not following"}, status=status.HTTP_404_NOT_FOUND)
-        return Response({"success": "unfollow"}, status=status.HTTP_200_OK)
-
-
-@BudyRecommendSchema.budy_recommend_schema_view
-class BudyRecommendAPIView(APIView):
-    """
-    유저의 커피 즐기는 방식 6개 중 한가지 방식에 해당 하는 유저 리스트 반환
-    Args:
-        request: 클라이언트로부터 받은 요청 객체
-    Returns:
-        users:
-            user: 유저의 커피 생활 방식에 해당 하는 유저 리스트 반환 (10명)
-            follower_cnt: 유저의 팔로워 수
-        category: 커피 생활 방식
-        실패 시: HTTP 404 Not Found
-
-    담당자: hwtar1204
-    """
-
-    def get(self, request):
-        user = request.user
-
-        user_detail = get_object_or_404(UserDetail, user=user)
-        coffee_life_helper = user_detail.get_coffee_life_helper()
-        true_categories = coffee_life_helper.get_true_categories()
-
-        if not true_categories:
-            # 커피 생활을 선택하지 않은 경우 무작위 카테고리에 해당 하는 유저 리스트 반환
-            random_category = random.choice(UserDetail.COFFEE_LIFE_CHOICES)
-            user_list = (
-                CustomUser.objects.select_related("user_detail")
-                .filter(user_detail__coffee_life__contains={random_category: True})
-                .order_by("?")[:10]
-            )
-        else:
-            random_true_category = random.choice(true_categories)
-            user_list = (
-                CustomUser.objects.select_related("user_detail")
-                .filter(user_detail__coffee_life__contains={random_true_category: True})
-                .order_by("?")[:10]
-            )
-
-        recommend_user_list = []
-        for user in user_list:
-            recommend_user_list.append({"user": user, "follower_cnt": Relationship.objects.followers(user).count()})
-
-        serializer = BudyRecommendSerializer(recommend_user_list, many=True)
-        category = random_true_category if true_categories else random_category
-        response_data = {"users": serializer.data, "category": category}
-
-        return Response(response_data, status=status.HTTP_200_OK)
-
-
-@UserPostListSchema.user_post_list_schema_view
-class UserPostListAPIView(APIView):
-    def get(self, request, id):
-        subject = request.query_params.get("subject", "전체")
-        subject_choice = dict(Post.SUBJECT_TYPE_CHOICES).get(subject)
-        user = get_object_or_404(CustomUser, id=id)
-
-        posts = get_user_posts_by_subject(user, subject_choice)
-
-        paginator = PageNumberPagination()
-        paginator.page_size = 12
-        paginated_posts = paginator.paginate_queryset(posts, request)
-
-        serializer = UserPostSerializer(paginated_posts, many=True)
-        return paginator.get_paginated_response(serializer.data)
-
-
-@UserTastedRecordListSchema.user_tasted_record_list_schema_view
-class UserTastedRecordListView(generics.ListAPIView):
-    serializer_class = UserTastedRecordSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    filterset_class = TastedRecordFilter
-    ordering_fields = ["-created_at", "-taste_review__star"]
-
-    def get_queryset(self):
-        user_id = self.kwargs.get("id")
-        user = get_object_or_404(CustomUser, id=user_id)
-        queryset = get_user_tasted_records_by_filter(user)
-        ordering = self.request.query_params.get("ordering", "-created_at")
-        return queryset.order_by(ordering)
-
-
-@UserBeanListSchema.user_bean_list_schema_view
-class UserBeanListAPIView(generics.ListAPIView):
-    serializer_class = UserBeanSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    filterset_class = BeanFilter
-    ordering_fields = ["-note__created_at", "-avg_star", "-tasted_records_cnt"]
-
-    def get_queryset(self):
-        user_id = self.kwargs.get("id")
-        user = get_object_or_404(CustomUser, id=user_id)
-        queryset = get_user_saved_beans(user)
-        ordering = self.request.query_params.get("ordering", "-note__created_at")
-        return queryset.order_by(ordering)
 
 
 @UserNoteSchema.user_note_schema_view
@@ -566,8 +375,4 @@ class UserNoteAPIView(APIView):
             note.photo_url = get_first_photo_url(note.post if note.post else note.tasted_record)
             notes_with_photos.append(note)
 
-        paginator = PageNumberPagination()
-        paginated_notes = paginator.paginate_queryset(notes_with_photos, request)
-
-        serializer = UserNoteSerializer(paginated_notes, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return get_paginated_response_with_class(request, notes_with_photos, UserNoteSerializer)

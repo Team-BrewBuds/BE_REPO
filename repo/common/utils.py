@@ -1,12 +1,16 @@
 from datetime import timedelta
 from typing import Optional, Tuple, Type
 
-from django.db.models import Model
+from django.db.models import Model, QuerySet
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import Serializer
+
+from repo.records.models import Post, TastedRecord
 
 
 def get_object(pk: int, model: Type[Model]) -> Tuple[Optional[Model], Optional[Response]]:
@@ -75,24 +79,22 @@ def update(request: Request, pk: int, model: Type[Model], serializer_class: Type
     return Response(data_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-def delete(request: Request, pk: int, model: Type[Model]) -> Response:
+def get_paginated_response_with_class(request: Request, queryset: QuerySet, serializer_class: Type[Serializer]) -> Response:
     """
-    주어진 primary key와 모델을 사용하여 객체를 삭제
+    페이지네이션된 응답을 생성하는 매서드 (직렬화 클래스 사용)
+
     Args:
         request (Request): 클라이언트로부터의 요청 객체
-        pk (int): 삭제할 객체의 primary key
-        model (Model): 삭제할 객체의 모델 클래스
+        queryset (QuerySet): 페이지네이션할 쿼리셋
+        serializer_class (Type[Serializer]): 데이터를 직렬화할 직렬화 클래스
+
     Returns:
-        Response: 삭제 결과에 따라 HTTP 응답을 반환
-    작성자 : hwstar1204
+        Response: 페이지네이션된 응답
     """
-
-    data, response = get_object(pk, model)
-    if response:
-        return response
-
-    data.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    paginator = PageNumberPagination()
+    data = paginator.paginate_queryset(queryset, request)
+    serialized_data = serializer_class(data, many=True, context={"request": request}).data
+    return paginator.get_paginated_response(serialized_data)
 
 
 def get_time_difference(object_created_at: timezone) -> str:
@@ -134,3 +136,27 @@ def get_first_photo_url(obj: Model) -> Optional[str]:
     if obj and hasattr(obj, "photo_set") and obj.photo_set.exists():
         return obj.photo_set.first().photo_url.url
     return None
+
+
+def get_post_or_tasted_record_detail(object_type, object_id):
+    """
+    게시글 또는 시음기록의 상세 정보를 반환합니다.
+
+    Args:
+        object_type: 객체 타입 ('post' 또는 'tasted_record')
+        object_id: 객체 ID
+
+    Returns:
+        Post or TastedRecord: 요청된 객체
+
+    Raises:
+        ValueError: 유효하지 않은 object_type이 전달된 경우
+    """
+    if object_type == "post":
+        obj = get_object_or_404(Post, pk=object_id)
+    elif object_type == "tasted_record":
+        obj = get_object_or_404(TastedRecord, pk=object_id)
+    else:
+        raise ValueError("invalid object_type")
+
+    return obj

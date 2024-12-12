@@ -1,285 +1,128 @@
 import random
-from datetime import timedelta
 from itertools import chain
 
-from django.db.models import Avg, Count, FloatField, Prefetch, Q
-from django.db.models.functions import Coalesce
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-
-from repo.beans.models import Bean
-from repo.common.view_counter import is_viewed
-from repo.profiles.models import Relationship
-from repo.records.models import Comment, Photo, Post, TastedRecord
-from repo.records.posts.serializers import PostListSerializer
-from repo.records.tasted_record.serializers import TastedRecordListSerializer
-
-
-def get_serialized_data(request, page_obj):
-    """
-    페이지 객체를 받아 시리얼라이즈된 데이터를 반환하는 함수
-    게시글 리스트 or 시음기록 리스트
-    """
-    obj_list = []
-    for item in page_obj.object_list:
-        serializer = TastedRecordListSerializer if isinstance(item, TastedRecord) else PostListSerializer
-        obj_list.append(serializer(item, context={"request": request}).data)
-
-    return obj_list
-
-
-def get_following_feed(request, user):
-    """
-    사용자가 팔로잉한 유저들의 1시간 이내 작성한 시음기록과 게시글을 랜덤순으로 가져오는 함수
-    30분이내 조회한 기록, 프라이빗한 시음기록은 제외
-    """
-    following_users = Relationship.objects.following(user.id).values_list("to_user", flat=True)
-    one_hour_ago = timezone.now() - timedelta(hours=1)
-
-    following_tasted_record = (
-        TastedRecord.objects.filter(author__in=following_users, is_private=False, created_at__gte=one_hour_ago)
-        .select_related("author", "bean", "taste_review")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-id")
-    )
-
-    following_post = (
-        Post.objects.filter(author__in=following_users, created_at__gte=one_hour_ago)
-        .select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-id")
-    )
-
-    # 30분 이내 조회한 시음 기록 제외
-    not_viewed_tasted_record = [
-        record for record in following_tasted_record if not is_viewed(request, cookie_name="tasted_record_viewed", content_id=record.id)
-    ]
-
-    # 30분 이내 조회한 게시글 제외
-    not_viewed_post = [post for post in following_post if not is_viewed(request, cookie_name="post_viewed", content_id=post.id)]
-
-    # 두 쿼리셋 결합
-    combined_data = list(chain(not_viewed_tasted_record, not_viewed_post))
-    random.shuffle(combined_data)
-
-    return combined_data
-
-
-def get_common_feed(request, user):
-    """
-    일반 시음기록과 게시글을 최신순으로 가져오는 함수
-    30분이내 조회한 기록, 프라이빗한 시음기록은 제외
-    팔로잉한 유저 기록 제외
-    """
-    following_users = Relationship.objects.following(user.id).values_list("to_user", flat=True)
-
-    common_tasted_record = (
-        TastedRecord.objects.filter(is_private=False)
-        .exclude(author__in=following_users)
-        .select_related("author", "bean", "taste_review")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-created_at")
-    )
-
-    common_post = (
-        Post.objects.exclude(author__in=following_users)
-        .select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-created_at")
-    )
-
-    not_viewed_tasted_record = [
-        record for record in common_tasted_record if not is_viewed(request, cookie_name="tasted_record_viewed", content_id=record.id)
-    ]
-
-    not_viewed_post = [post for post in common_post if not is_viewed(request, cookie_name="post_viewed", content_id=post.id)]
-
-    combined_data = sorted(chain(not_viewed_tasted_record, not_viewed_post), key=lambda x: x.created_at, reverse=True)
-
-    return combined_data
-
-
-def get_refresh_feed():
-    """
-    시음기록과 게시글을 랜덤순으로 가져오는 함수
-    프라이빗한 시음기록은 제외
-    """
-
-    tasted_records = (
-        TastedRecord.objects.filter(is_private=False)
-        .select_related("author", "bean", "taste_review")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("?")
-    )
-
-    posts = (
-        Post.objects.select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("?")
-    )
-
-    combined_data = list(chain(tasted_records, posts))
-    random.shuffle(combined_data)
-
-    return combined_data
+from repo.common.view_counter import get_not_viewed_contents
+from repo.records.posts.services import PostService, get_post_service
+from repo.records.tasted_record.services import (
+    TastedRecordService,
+    get_tasted_record_service,
+)
 
-
-def get_tasted_record_feed(user):
-    following_users = Relationship.objects.following(user.id).values_list("to_user", flat=True)
-
-    followed_records = (
-        TastedRecord.objects.filter(author__in=following_users, is_private=False)
-        .select_related("author", "bean", "taste_review")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-created_at")
-    )
 
-    if not following_users.exists() or followed_records.count() < 10:
-        additional_records = (
-            TastedRecord.objects.filter(is_private=False)
-            .exclude(author__in=following_users)
-            .select_related("author", "bean", "taste_review")
-            .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-            .order_by("-created_at")
-        )
-    else:
-        additional_records = TastedRecord.objects.none()
+def get_feed_service():
+    post_service = get_post_service()
+    tasted_record_service = get_tasted_record_service()
+    return FeedService(post_service, tasted_record_service)
 
-    all_records = list(chain(followed_records, additional_records))
 
-    return all_records
+class FeedService:
+    """피드 관련 비즈니스 로직을 처리하는 서비스"""
 
+    def __init__(self, post_service: PostService, tasted_record_service: TastedRecordService):
+        self.post_service = post_service
+        self.tasted_record_service = tasted_record_service
 
-def get_tasted_record_feed2():
-    tasted_records = (
-        TastedRecord.objects.filter(is_private=False)
-        .select_related("author", "bean", "taste_review")
-        .prefetch_related(Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-created_at")
-    )
+    def get_following_feed(self, request, user):
+        """
+        팔로잉 중인 사용자들의 최근 활동 피드를 반환합니다.
 
-    return tasted_records
+        - 1시간 이내 작성된 시음기록과 게시글을 포함
+        - 비공개 시음기록과 최근 조회한 기록은 제외
+        - 결과는 랜덤 순서로 정렬됨
 
+        Args:
+            request: HTTP 요청 객체
+            user: 사용자 객체
 
-def get_tasted_record_detail(pk):
-    record = (
-        TastedRecord.objects.select_related("author", "bean", "taste_review")
-        .prefetch_related(
-            Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
-        )
-        .get(pk=pk)
-    )
+        Returns:
+            list: 시음기록과 게시글이 혼합된 피드 리스트
+        """
 
-    return record
+        # 1. 팔로우한 유저의 시음기록, 게시글
+        following_tasted_records = self.tasted_record_service.get_following_feed_and_gte_one_hour(user)
 
+        following_posts = self.post_service.get_following_feed_and_gte_one_hour(user)
 
-def get_post_feed(user, subject):
-    """사용자가 팔로우한 유저와 추가 게시글을 가져오는 함수"""
+        # 2. 조회하지 않은 시음기록, 게시글
+        not_viewed_tasted_records = get_not_viewed_contents(request, following_tasted_records, "tasted_record_viewed")
+        not_viewed_posts = get_not_viewed_contents(request, following_posts, "post_viewed")
 
-    # 팔로우한 유저들의 ID 가져오기
-    following_users = Relationship.objects.following(user.id).values_list("to_user", flat=True)
+        # 3. 1 + 2
+        combined_data = list(chain(not_viewed_tasted_records, not_viewed_posts))
 
-    # 기본 필터 조건 (subject에 따른 필터 처리)
-    post_filter = Q(author__in=following_users)
-    if subject != "all":
-        post_filter &= Q(subject=subject)
+        # 4. 랜덤순으로 섞기
+        random.shuffle(combined_data)
+        return combined_data
 
-    # 팔로우한 유저들의 게시글 가져오기
-    following_posts = (
-        Post.objects.filter(post_filter)
-        .select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-created_at")
-    )
+    def get_common_feed(self, request, user):
+        """
+        일반 피드를 반환합니다.
 
-    # 팔로우한 유저가 없거나 게시글이 10개 미만일 경우 추가 게시글 가져오기
-    if not following_users.exists() or following_posts.count() < 10:
-        additional_filter = ~Q(author__in=following_users)  # 팔로우한 유저 제외
-        if subject != "all":
-            additional_filter &= Q(subject=subject)
+        - 팔로잉하지 않은 사용자들의 공개 시음기록과 게시글 포함
+        - 차단한 사용자의 컨텐츠 제외
+        - 최근 조회한 기록 제외
+        - 최신순으로 정렬
 
-        additional_posts = (
-            Post.objects.filter(additional_filter)
-            .select_related("author")
-            .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-            .order_by("-created_at")
-        )
-    else:
-        additional_posts = []
+        Args:
+            request: HTTP 요청 객체
+            user: 사용자 객체
 
-    posts = list(chain(following_posts, additional_posts))
-    return posts
+        Returns:
+            list: 시음기록과 게시글이 최신순으로 정렬된 피드 리스트
+        """
 
+        # 1. 팔로우하지 않고 차단하지 않은 유저들의 시음기록, 게시글
+        common_tasted_records = self.tasted_record_service.get_unfollowing_feed(user)
+        common_posts = self.post_service.get_unfollowing_feed(user)
 
-def get_post_detail(post_id):
+        # 2. 조회하지 않은 시음기록, 게시글
+        not_viewd_tasted_records = get_not_viewed_contents(request, common_tasted_records, "tasted_record_viewed")
+        not_viewd_posts = get_not_viewed_contents(request, common_posts, "post_viewed")
 
-    post = (
-        Post.objects.select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .get(pk=post_id)
-    )
+        # 3. 1 + 2
+        combined_data = list(chain(not_viewd_tasted_records, not_viewd_posts))
 
-    return post
+        # 4. 최신순으로 정렬
+        combined_data.sort(key=lambda x: x.created_at, reverse=True)
 
+        return combined_data
 
-def get_post_or_tasted_record_detail(object_type, object_id):
-    if object_type == "post":
-        obj = get_object_or_404(Post, pk=object_id)
-    elif object_type == "tasted_record":
-        obj = get_object_or_404(TastedRecord, pk=object_id)
+    def get_refresh_feed(self, user):
+        """
+        새로고침용 랜덤 피드를 반환합니다.
 
-    return obj
+        - 모든 공개 시음기록과 게시글 포함
+        - 차단한 사용자의 컨텐츠 제외
+        - 랜덤 순서로 정렬
 
+        Args:
+            user: 사용자 객체
 
-def get_comment_list(object_type, object_id):
-    obj = get_post_or_tasted_record_detail(object_type, object_id)
+        Returns:
+            list: 시음기록과 게시글이 랜덤으로 정렬된 피드 리스트
+        """
+        tasted_records = self.tasted_record_service.get_refresh_feed(user)
+        posts = self.post_service.get_refresh_feed(user)
 
-    comments = obj.comment_set.filter(parent=None).order_by("created_at")
-    for comment in comments:
-        comment.replies_list = comment.replies.all().order_by("created_at")
+        combined_data = list(chain(tasted_records, posts))
 
-    return comments
+        random.shuffle(combined_data)
+        return combined_data
 
+    def get_anonymous_feed(self):
+        """
+        비로그인 사용자를 위한 통합 피드를 반환합니다.
 
-def get_comment(comment_id):
-    comment = Comment.objects.get(pk=comment_id)
-    return comment
+        - 공개 시음기록과 모든 게시글 포함
+        - 랜덤 순서로 정렬
 
+        Returns:
+            list: 시음기록과 게시글이 랜덤으로 정렬된 피드 리스트
+        """
+        tasted_records = self.tasted_record_service.get_record_list_for_anonymous()
+        posts = self.post_service.get_record_list_for_anonymous()
 
-def get_user_posts_by_subject(user, subject):
-    """사용자가 작성한 주제별 게시글 리스트를 가져오는 함수"""
+        combined_data = list(chain(tasted_records, posts))
+        random.shuffle(combined_data)
 
-    subject_filter = Q(subject=subject) if subject != "all" else Q()
-    posts = (
-        user.post_set.filter(subject_filter)
-        .select_related("author")
-        .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-        .order_by("-id")
-    )
-
-    return posts
-
-
-def get_user_tasted_records_by_filter(user):
-    """사용자가 작성한 주제별 시음기록 리스트를 가져오는 함수"""
-
-    queryset = user.tastedrecord_set.select_related("author", "bean", "taste_review").prefetch_related(
-        Prefetch("photo_set", queryset=Photo.objects.only("photo_url"))
-    )
-    return queryset
-
-
-def get_user_saved_beans(user):
-    """사용자가 저장한 원두 리스트와 관련된 bean 및 평균 평점을 가져오는 함수 (찜한 원두 리스트 정보)"""
-
-    saved_beans = (
-        Bean.objects.filter(note__author=user)  # 사용자가 저장한 원두
-        .prefetch_related("tastedrecord_set__taste_review")  # tasted_record 관련된 taste_review
-        .annotate(
-            avg_star=Coalesce(  # 평균 평점 계산, null일 경우 0으로 설정
-                Avg("tastedrecord__taste_review__star"), 0, output_field=FloatField()
-            ),
-            tasted_records_cnt=Count("tastedrecord"),  # 시음기록 개수 계산
-        )
-    )
-    return saved_beans
+        return combined_data

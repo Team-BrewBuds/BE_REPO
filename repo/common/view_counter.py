@@ -17,24 +17,18 @@ def update_view_count(request, instance, response, cookie_name, expiration_minut
     담당자: hwstar1204
     """
 
-    if not is_viewed:
-        instance.view_cnt += 1
-        instance.save(update_fields=["view_cnt"])
+    if is_viewed(request, cookie_name, instance.id):
+        return response
 
-        viewed_contents = request.COOKIES.get(cookie_name)
-        if viewed_contents:
-            try:
-                viewed_contents = json.loads(viewed_contents)
-            except (json.JSONDecodeError, TypeError):
-                viewed_contents = []
-        else:
-            viewed_contents = []
+    instance.view_cnt += 1
+    instance.save(update_fields=["view_cnt"])
 
-        viewed_contents.append(str(instance.id))
+    viewed_contents = get_viewed_contents(request, cookie_name)
+    viewed_contents.append(str(instance.id))
 
-        response.set_cookie(cookie_name, json.dumps(viewed_contents), max_age=expiration_minutes * 60)
+    response.set_cookie(cookie_name, json.dumps(viewed_contents), max_age=expiration_minutes * 60, httponly=True)  # 초 단위
 
-    return instance, response
+    return response
 
 
 def is_viewed(request, cookie_name, content_id):
@@ -48,16 +42,35 @@ def is_viewed(request, cookie_name, content_id):
         bool: 조회한 게시글 목록에 포함되어 있는지 여부
     담당자: hwstar1204
     """
-    try:
-        # 쿠키에서 조회한 게시글 목록 가져오기 (JSON 형식 사용)
-        viewed_contents = request.COOKIES.get(cookie_name)
 
-        if viewed_contents:
-            viewed_contents = json.loads(viewed_contents)
-            if str(content_id) in viewed_contents:
-                return True
-    except (json.JSONDecodeError, TypeError):
-        # 쿠키 값이 잘못된 경우 False 반환
-        return False
+    viewed_contents = get_viewed_contents(request, cookie_name)
+    return str(content_id) in viewed_contents
 
-    return False
+
+def get_viewed_contents(request, cookie_name):
+    """
+    쿠키에서 조회한 게시글 목록을 가져오는 헬퍼 함수
+    Args:
+        request: request 객체
+        cookie_name: 쿠키 이름
+    Returns:
+        list: 조회한 게시글 목록
+    담당자: hwstar1204
+    """
+    viewed_contents = json.loads(request.COOKIES.get(cookie_name, "[]"))
+    return viewed_contents
+
+
+def get_not_viewed_contents(request, queryset, cookie_name):
+    """
+    사용자가 아직 조회하지 않은 데이터만 필터링하여 반환합니다.
+
+    Args:
+        request: HTTP 요청 객체
+        queryset: 필터링할 쿼리셋
+        cookie_name: 조회 여부를 확인할 쿠키 이름
+
+    Returns:
+        list: 조회하지 않은 데이터 리스트
+    """
+    return [content for content in queryset if not is_viewed(request, cookie_name=cookie_name, content_id=content.id)]

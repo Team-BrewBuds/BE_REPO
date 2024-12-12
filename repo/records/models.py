@@ -1,10 +1,7 @@
-from django.conf import settings
 from django.db import models
 
 from repo.beans.models import Bean, BeanTasteReview
-from repo.common.bucket import delete_photo_from_s3
 from repo.profiles.models import CustomUser
-from repo.records.managers import NoteManagers, PostManagers
 
 
 class TastedRecord(models.Model):
@@ -31,17 +28,12 @@ class TastedRecord(models.Model):
 
 
 class Post(models.Model):
-
+    # fmt: off
     SUBJECT_TYPE_CHOICES = (
-        ("전체", "all"),
-        ("일반", "normal"),
-        ("카페", "cafe"),
-        ("원두", "bean"),
-        ("정보", "info"),
-        ("장비", "gear"),
-        ("질문", "question"),
-        ("고민", "worry"),
+        ("normal", "일반"), ("cafe", "카페"), ("bean", "원두"),
+        ("info", "정보"), ("question", "질문"), ("worry", "고민"), ("gear", "장비"),
     )
+    # fmt: on
 
     author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
     tasted_records = models.ManyToManyField(TastedRecord, blank=True, related_name="posts", verbose_name="관련 시음 기록")
@@ -52,8 +44,6 @@ class Post(models.Model):
     like_cnt = models.ManyToManyField(CustomUser, related_name="like_posts")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
-
-    objects = PostManagers()
 
     def is_user_liked(self, user):
         return user in self.like_cnt.all()
@@ -76,15 +66,8 @@ class Post(models.Model):
 class Photo(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 게시글")
     tasted_record = models.ForeignKey(TastedRecord, on_delete=models.CASCADE, null=True, blank=True, verbose_name="관련 시음 기록")
-    photo_url = models.ImageField(upload_to="records/", null=True, blank=True, verbose_name="사진")
+    photo_url = models.ImageField(upload_to="records/%Y/%m/%d/", null=True, blank=True, verbose_name="사진")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="업로드 일자")
-
-    def delete(self, *args, **kwargs):
-        if settings.STORAGES["default"]["BACKEND"] == "repo.common.bucket.AwsMediaStorage":
-            delete_photo_from_s3(self.photo_url)  # S3에서 삭제
-        else:
-            self.photo_url.delete(save=False)  # 로컬에서 삭제
-        super().delete(*args, **kwargs)
 
     def __str__(self):
         return f"Photo: {self.id}"
@@ -112,22 +95,3 @@ class Comment(models.Model):
         db_table = "comment"
         verbose_name = "댓글"
         verbose_name_plural = "댓글"
-
-
-class Note(models.Model):
-    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
-    post = models.ForeignKey(Post, null=True, blank=True, on_delete=models.CASCADE, verbose_name="게시글")
-    tasted_record = models.ForeignKey(TastedRecord, null=True, blank=True, on_delete=models.CASCADE, verbose_name="시음 기록")
-    bean = models.ForeignKey(Bean, null=True, blank=True, on_delete=models.CASCADE, verbose_name="원두")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
-
-    # objects = models.Manager()  # The default manager
-    objects = NoteManagers()
-
-    def __str__(self):
-        return f"Note: {self.id}"
-
-    class Meta:
-        db_table = "note"
-        verbose_name = "노트"
-        verbose_name_plural = "노트"
