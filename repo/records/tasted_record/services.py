@@ -3,7 +3,7 @@ from itertools import chain
 from typing import Optional
 
 from django.db import transaction
-from django.db.models import BooleanField, Count, Exists, Prefetch, Q, QuerySet, Value
+from django.db.models import BooleanField, Count, Exists, Q, QuerySet, Value
 from django.utils import timezone
 
 from repo.beans.services import BeanService
@@ -14,7 +14,7 @@ from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.profiles.services import UserService
 from repo.records.base import BaseRecordService
-from repo.records.models import BeanTasteReview, Photo, TastedRecord
+from repo.records.models import BeanTasteReview, TastedRecord
 
 
 def get_tasted_record_service():
@@ -33,20 +33,14 @@ class TastedRecordService(BaseRecordService):
 
     def get_record_detail(self, pk: int) -> TastedRecord:
         """시음기록 상세 조회"""
-        return (
-            TastedRecord.objects.select_related("author", "bean", "taste_review")
-            .prefetch_related(
-                Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
-            )
-            .get(pk=pk)
-        )
+        return TastedRecord.objects.select_related("author", "bean", "taste_review").prefetch_related("photo_set").get(pk=pk)
 
     def get_user_records(self, user_id: int, **kwargs) -> QuerySet[TastedRecord]:
         """유저가 작성한 시음기록 조회"""
         user = self.user_service.get_user_by_id(user_id)
         return (
             user.tastedrecord_set.select_related("bean", "taste_review")
-            .prefetch_related("like_cnt", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+            .prefetch_related("like_cnt", "photo_set")
             .only("id", "bean__name", "taste_review__star", "created_at", "like_cnt")
             .annotate(
                 likes=Count("like_cnt", distinct=True),
@@ -128,7 +122,7 @@ class TastedRecordService(BaseRecordService):
         """공통적으로 사용하는 기본 시음기록 리스트 쿼리셋 생성"""
         return (
             TastedRecord.objects.select_related("author", "bean", "taste_review")
-            .prefetch_related("comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+            .prefetch_related("comment_set", "note_set", "photo_set")
             .annotate(
                 likes=Count("like_cnt", distinct=True),
                 comments=Count("comment", distinct=True),

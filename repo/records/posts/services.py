@@ -12,7 +12,7 @@ from repo.interactions.note.services import NoteService
 from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.records.base import BaseRecordService
-from repo.records.models import Photo, Post, TastedRecord
+from repo.records.models import Post, TastedRecord
 
 
 def get_post_service():
@@ -39,10 +39,7 @@ class PostService(BaseRecordService):
         return (
             Post.objects.filter(pk=pk)
             .select_related("author")
-            .prefetch_related(
-                Prefetch("tasted_records", queryset=TastedRecord.objects.select_related("bean", "taste_review")),
-                Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
-            )
+            .prefetch_related(Prefetch("tasted_records", queryset=TastedRecord.objects.select_related("bean", "taste_review")), "photo_set")
             .first()
         )
 
@@ -54,10 +51,7 @@ class PostService(BaseRecordService):
         subject_filter = Q(subject=subject) if subject else Q()
 
         posts = (
-            user.post_set.filter(subject_filter)
-            .select_related("author")
-            .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-            .order_by("-id")
+            user.post_set.filter(subject_filter).select_related("author").prefetch_related("tasted_records", "photo_set").order_by("-id")
         )
         return posts
 
@@ -121,7 +115,7 @@ class PostService(BaseRecordService):
         """공통적으로 사용하는 기본 쿼리셋 생성"""
         return (
             Post.objects.select_related("author")
-            .prefetch_related("tasted_records", "comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+            .prefetch_related("tasted_records", "comment_set", "note_set", "photo_set")
             .annotate(
                 likes=Count("like_cnt", distinct=True),
                 comments=Count("comment", distinct=True),
