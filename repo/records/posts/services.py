@@ -22,6 +22,12 @@ def get_post_service():
     return PostService(relationship_service, like_service, note_service)
 
 
+def get_top_post_service():
+    relationship_service = RelationshipService()
+    like_service = LikeService("post")
+    return TopPostService(relationship_service, like_service)
+
+
 class PostService(BaseRecordService):
     """게시글 관련 비즈니스 로직을 처리하는 서비스"""
 
@@ -40,12 +46,12 @@ class PostService(BaseRecordService):
             .first()
         )
 
-    def get_user_records(self, user_id, **kwargs) -> QuerySet[Post]:
+    def get_user_records(self, user_id: int, **kwargs) -> QuerySet[Post]:
         """유저가 작성한 게시글 조회"""
         user = CustomUser.objects.get(id=user_id)
         subject = kwargs.get("subject", None)
 
-        subject_filter = Q(subject=subject) if subject != "all" else Q()
+        subject_filter = Q(subject=subject) if subject else Q()
 
         posts = (
             user.post_set.filter(subject_filter)
@@ -57,14 +63,13 @@ class PostService(BaseRecordService):
 
     def get_record_list(self, user: CustomUser, **kwargs) -> QuerySet[Post]:
         """홈 게시글 리스트 조회"""
-        subject = kwargs.get("subject", None)
         request = kwargs.get("request", None)
+        subject = kwargs.get("subject", None)
 
-        following_users = self.relationship_service.get_following_user_list(user.id)
+        filters = Q(subject=subject) if subject else Q()
 
-        add_filter = {"author__in": following_users}
-        following_posts = self.get_feed_queryset(user, add_filter, None, subject)
-        unfollowing_posts = self.get_unfollowing_feed(user)
+        following_posts = self.get_feed_by_follow_relation(user, True).filter(filters).order_by("-id")
+        unfollowing_posts = self.get_feed_by_follow_relation(user, False).filter(filters).order_by("-id")
 
         posts = list(chain(following_posts, unfollowing_posts))
 
@@ -103,42 +108,6 @@ class PostService(BaseRecordService):
         """게시글 삭제"""
         post.delete()
 
-    def get_top_subject_weekly_posts(self, user: Optional[CustomUser], subject: str) -> QuerySet[Post]:
-        """특정 주제의 게시글 중 일주일 안에 조회수 상위 60개를 가져오는 함수"""
-        top_posts_base = self._get_base_weekly_posts()
-
-        if subject:
-            top_posts_base = top_posts_base.filter(subject=subject)
-
-        if user is None:
-            return self._get_anonymous_top_posts(top_posts_base)
-
-        return self._get_authenticated_top_posts(user, top_posts_base)
-
-    def _get_base_weekly_posts(self) -> QuerySet[Post]:
-        """일주일 이내의 기본 게시글 쿼리셋을 반환"""
-        time_threshold = timezone.now() - timedelta(days=7)
-        return Post.objects.filter(created_at__gte=time_threshold).annotate(
-            likes=Count("like_cnt", distinct=True),
-            comments=Count("comment", distinct=True),
-        )
-
-    def _get_anonymous_top_posts(self, queryset: QuerySet[Post]) -> QuerySet[Post]:
-        """비로그인 사용자를 위한 상위 게시글 반환"""
-        return queryset.order_by("-view_cnt")[:60]
-
-    def _get_authenticated_top_posts(self, user: CustomUser, queryset: QuerySet[Post]) -> QuerySet[Post]:
-        """로그인 사용자를 위한 상위 게시글 반환"""
-        block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
-
-        return (
-            queryset.exclude(author__in=block_users)
-            .annotate(
-                is_user_liked=Exists(self.like_service.get_like_subquery_for_post(user)),
-            )
-            .order_by("-view_cnt")[:60]
-        )
-
     def _set_post_relations(self, post: Post, data: dict):
         """게시글 관계 데이터 설정"""
         if tasted_records := data.get("tasted_records"):
@@ -147,10 +116,10 @@ class PostService(BaseRecordService):
             post.photo_set.set(photos)
 
     ## 피드 조회 관련 메서드
-
-    def get_base_record_list_queryset(self, user: Optional[CustomUser] = None):
+    @staticmethod
+    def get_base_record_list_queryset() -> QuerySet[Post]:
         """공통적으로 사용하는 기본 쿼리셋 생성"""
-        base_queryset = (
+        return (
             Post.objects.select_related("author")
             .prefetch_related("tasted_records", "comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
             .annotate(
@@ -158,81 +127,119 @@ class PostService(BaseRecordService):
                 comments=Count("comment", distinct=True),
             )
         )
-        if user:
-            base_queryset = base_queryset.annotate(
-                is_user_liked=Exists(self.like_service.get_like_subquery_for_post(user)),
-                is_user_noted=Exists(self.note_service.get_note_subquery_for_post(user)),
-            )
-        return base_queryset
 
-    def get_feed_queryset(self, user, add_filter=None, exclude_filter=None, subject=None):
+    def get_feed_queryset(self, user: CustomUser, add_filter: Optional[Q] = None, subject: Optional[str] = None) -> QuerySet[Post]:
         """
         게시글 피드를 위한 필터링된 쿼리셋 생성
 
         Args:
             user: 사용자 객체
-            add_filter: 추가할 필터 조건 (dict)
-            exclude_filter: 제외할 필터 조건 (dict)
+            add_filter: 추가할 필터 조건 (Q)
             subject: 게시글 주제
 
         Returns:
             QuerySet: 필터링된 게시글 쿼리셋
         """
+        base_queryset = self.get_base_record_list_queryset().annotate(
+            is_user_liked=Exists(self.like_service.get_like_subquery_for_post(user)),
+            is_user_noted=Exists(self.note_service.get_note_subquery_for_post(user)),
+        )
 
-        base_queryset = self.get_base_record_list_queryset(user)
+        block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
 
-        filters = Q(**add_filter) if add_filter else Q()
-        excludes = Q(**exclude_filter) if exclude_filter else Q()
+        filters = add_filter if add_filter else Q()
+        filters &= ~Q(author__in=block_users)  # 차단한 유저 필터링
+        filters &= Q(subject=subject) if subject else Q()  # 주제 필터링
 
-        if user:  # 기본적으로 차단한 사용자는 제외
-            block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
-            filters &= ~Q(author__in=block_users)
+        return base_queryset.filter(filters)
 
-        if subject:
-            filters &= Q(subject=subject)
-
-        return base_queryset.filter(filters).exclude(excludes)
-
-    def get_following_feed(self, user: CustomUser) -> QuerySet[Post]:
+    def get_feed_by_follow_relation(self, user: CustomUser, follow: bool) -> QuerySet[Post]:
+        """팔로잉 관계에 따른 피드 조회"""
         following_users = self.relationship_service.get_following_user_list(user.id)
 
-        add_filter = {"author__in": following_users}
+        filters = Q(author__in=following_users) if follow else ~Q(author__in=following_users)
 
-        return self.get_feed_queryset(user, add_filter, None, None)
+        return self.get_feed_queryset(user, filters, None)
 
     # home following feed
     def get_following_feed_and_gte_one_hour(self, user: CustomUser) -> QuerySet[Post]:
         """팔로잉한 사용자의 최근 1시간 이내 피드 조회"""
-        following_feed = self.get_following_feed(user)
+        following_feed = self.get_feed_by_follow_relation(user, True)
 
         one_hour_ago = timezone.now() - timedelta(hours=1)
         add_filter = Q(created_at__gte=one_hour_ago)
 
         return following_feed.filter(add_filter)
 
-    # home common feed
-    def get_unfollowing_feed(self, user: CustomUser) -> QuerySet[Post]:
-        following_users = self.relationship_service.get_following_user_list(user.id)
-
-        exclude_filter = {"author__in": following_users}
-
-        return self.get_feed_queryset(user, None, exclude_filter, None)
-
     # home refresh feed
     def get_refresh_feed(self, user: CustomUser) -> QuerySet[Post]:
-        return self.get_feed_queryset(user, None, None, None)
+        return self.get_feed_queryset(user, None, None)
 
     # 비로그인 사용자를 위한 게시글 피드
     def get_record_list_for_anonymous(self) -> QuerySet[Post]:
         """비로그인 사용자 게시글 피드 조회"""
+        base_queryset = self.get_base_record_list_queryset()
+
+        record_queryset = base_queryset.annotate(
+            is_user_liked=Value(False, output_field=BooleanField()),  # False 고정
+            is_user_noted=Value(False, output_field=BooleanField()),  # False 고정
+        )
+
+        return record_queryset.order_by("?")
+
+
+class TopPostService:
+    TOP_POSTS_LIMIT = 60  # 최대 60개 조회
+
+    def __init__(self, relationship_service: RelationshipService, like_service: LikeService):
+        self.relationship_service = relationship_service
+        self.like_service = like_service
+
+    def get_top_subject_weekly_posts(self, user: Optional[CustomUser], subject: Optional[str]) -> QuerySet[Post]:
+        """특정 주제의 주간 인기 게시글 조회"""
+
+        time_threshold = timezone.now() - timedelta(days=7)
+
+        # 기본 필터링
+        base_filters = self._get_base_filters(subject, time_threshold)
+        top_posts_base = self._get_base_queryset(base_filters)
+
+        if not user or not user.is_authenticated:
+            return self._get_public_posts(top_posts_base)
+
+        return self._get_authenticated_user_posts(user, top_posts_base)
+
+    def _get_base_filters(self, subject: Optional[str], time_threshold) -> Q:
+        """기본 필터 구성"""
+        filters = Q(created_at__gte=time_threshold)
+        if subject:
+            filters &= Q(subject=subject)
+        return filters
+
+    def _get_base_queryset(self, filters: Q) -> QuerySet[Post]:
+        """기본 쿼리셋 생성"""
         return (
             Post.objects.select_related("author")
-            .prefetch_related("tasted_records", "comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+            .filter(filters)
             .annotate(
                 likes=Count("like_cnt", distinct=True),
                 comments=Count("comment", distinct=True),
-                is_user_liked=Value(False, output_field=BooleanField()),  # False 고정
-                is_user_noted=Value(False, output_field=BooleanField()),  # False 고정
             )
-            .order_by("?")
+        )
+
+    def _get_public_posts(self, queryset: QuerySet[Post]) -> QuerySet[Post]:
+        """비회원용 쿼리셋"""
+        return queryset.annotate(is_user_liked=Value(False, output_field=BooleanField())).order_by("-view_cnt")[: self.TOP_POSTS_LIMIT]
+
+    def _get_authenticated_user_posts(self, user: CustomUser, queryset: QuerySet[Post]) -> QuerySet[Post]:
+        """회원용 쿼리셋"""
+        blocked_users = self.relationship_service.get_unique_blocked_user_list(user.id)
+        like_subquery = self.like_service.get_like_subquery_for_post(user)
+
+        return (
+            queryset.exclude(author__in=blocked_users)
+            .annotate(
+                is_user_liked=Exists(like_subquery),
+            )
+            .order_by("-view_cnt")[: self.TOP_POSTS_LIMIT]
         )

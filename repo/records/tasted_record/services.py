@@ -1,6 +1,6 @@
 from datetime import timedelta
 from itertools import chain
-from typing import Dict, Optional
+from typing import Optional
 
 from django.db import transaction
 from django.db.models import BooleanField, Count, Exists, Prefetch, Q, QuerySet, Value
@@ -31,7 +31,7 @@ class TastedRecordService(BaseRecordService):
         self.bean_service = BeanService()
         self.user_service = UserService()
 
-    def get_record_detail(self, pk):
+    def get_record_detail(self, pk: int) -> TastedRecord:
         """시음기록 상세 조회"""
         return (
             TastedRecord.objects.select_related("author", "bean", "taste_review")
@@ -41,7 +41,7 @@ class TastedRecordService(BaseRecordService):
             .get(pk=pk)
         )
 
-    def get_user_records(self, user_id, **kwargs):
+    def get_user_records(self, user_id: int, **kwargs) -> QuerySet[TastedRecord]:
         """유저가 작성한 시음기록 조회"""
         user = self.user_service.get_user_by_id(user_id)
         return (
@@ -57,11 +57,8 @@ class TastedRecordService(BaseRecordService):
         """홈 시음기록 리스트 조회"""
         request = kwargs.get("request", None)
 
-        following_users = self.relationship_service.get_following_user_list(user.id)
-        add_filter = {"author__in": following_users}
-
-        following_tasted_records = self.get_feed_queryset(user, add_filter, None)
-        unfollowing_tasted_records = self.get_unfollowing_feed(user)
+        following_tasted_records = self.get_feed_by_follow_relation(user, True).order_by("-id")
+        unfollowing_tasted_records = self.get_feed_by_follow_relation(user, False).order_by("-id")
 
         tasted_records = list(chain(following_tasted_records, unfollowing_tasted_records))
 
@@ -71,7 +68,7 @@ class TastedRecordService(BaseRecordService):
         return tasted_records
 
     @transaction.atomic
-    def create_record(self, user, validated_data):
+    def create_record(self, user: CustomUser, validated_data: dict) -> TastedRecord:
         """시음기록 생성"""
 
         bean = self.bean_service.create(validated_data["bean"])
@@ -91,7 +88,7 @@ class TastedRecordService(BaseRecordService):
         return tasted_record
 
     @transaction.atomic
-    def update_record(self, tasted_record: TastedRecord, validated_data):
+    def update_record(self, tasted_record: TastedRecord, validated_data: dict) -> TastedRecord:
         """시음기록 업데이트"""
 
         for attr, value in validated_data.items():
@@ -126,10 +123,10 @@ class TastedRecordService(BaseRecordService):
             tasted_record.photo_set.set(photos)
 
     # 피드 조회 관련 메서드
-
-    def get_base_record_list_queryset(self, user: Optional[CustomUser] = None) -> QuerySet[TastedRecord]:
+    @staticmethod
+    def get_base_record_list_queryset() -> QuerySet[TastedRecord]:
         """공통적으로 사용하는 기본 시음기록 리스트 쿼리셋 생성"""
-        base_queryset = (
+        return (
             TastedRecord.objects.select_related("author", "bean", "taste_review")
             .prefetch_related("comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
             .annotate(
@@ -138,84 +135,61 @@ class TastedRecordService(BaseRecordService):
             )
         )
 
-        if user:
-            base_queryset = base_queryset.annotate(
-                is_user_liked=Exists(self.like_service.get_like_subquery_for_tasted_record(user)),
-                is_user_noted=Exists(self.note_service.get_note_subquery_for_tasted_record(user)),
-            )
-
-        return base_queryset
-
-    def get_feed_queryset(
-        self, user: CustomUser, add_filter: Optional[Dict] = None, exclude_filter: Optional[Dict] = None, **kwargs
-    ) -> QuerySet[TastedRecord]:
+    def get_feed_queryset(self, user: CustomUser, filters: Optional[Q] = None) -> QuerySet[TastedRecord]:
         """
         시음기록 피드 쿼리셋 조회
 
         Args:
             user: 사용자 객체
-            add_filter: 추가할 필터 조건 (dict)
-            exclude_filter: 제외할 필터 조건 (dict)
+            add_filter: 추가할 필터 조건 (Q)
 
         Returns:
             QuerySet: 필터링된 시음기록 쿼리셋
         """
-        base_queryset = self.get_base_record_list_queryset(user)
+        base_queryset = self.get_base_record_list_queryset().annotate(
+            is_user_liked=Exists(self.like_service.get_like_subquery_for_tasted_record(user)),
+            is_user_noted=Exists(self.note_service.get_note_subquery_for_tasted_record(user)),
+        )
 
-        filters = Q(**add_filter) if add_filter else Q()
-        excludes = Q(**exclude_filter) if exclude_filter else Q()
+        block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
 
-        if user:
-            # 차단한 유저 필터링
-            filters &= ~Q(author__in=self.relationship_service.get_unique_blocked_user_list(user.id))
-        # 비공개 시음기록 필터링
-        filters &= Q(is_private=False)
+        filters = filters if filters else Q()
+        filters &= ~Q(author__in=block_users)  # 차단한 유저 필터링
+        filters &= Q(is_private=False)  # 비공개 시음기록 필터링
 
-        return base_queryset.filter(filters).exclude(excludes)
+        return base_queryset.filter(filters)
 
-    def get_following_feed(self, user: CustomUser) -> QuerySet[TastedRecord]:
-        """팔로잉한 사용자의 피드 쿼리셋 조회"""
+    def get_feed_by_follow_relation(self, user: CustomUser, follow: bool) -> QuerySet[TastedRecord]:
+        """팔로잉 관계에 따른 피드 조회"""
         following_users = self.relationship_service.get_following_user_list(user.id)
 
-        add_filter = {"author__in": following_users}
+        filters = Q(author__in=following_users) if follow else ~Q(author__in=following_users)
 
-        return self.get_feed_queryset(user, add_filter, None)
+        return self.get_feed_queryset(user, filters)
 
     # home following feed
     def get_following_feed_and_gte_one_hour(self, user: CustomUser) -> QuerySet[TastedRecord]:
         """팔로잉한 사용자의 최근 1시간 이내 피드 조회"""
-        following_feed = self.get_following_feed(user)
+        following_feed = self.get_feed_by_follow_relation(user, True)
 
         one_hour_ago = timezone.now() - timedelta(hours=1)
         add_filter = Q(created_at__gte=one_hour_ago)
 
         return following_feed.filter(add_filter)
 
-    # home common feed
-    def get_unfollowing_feed(self, user: CustomUser) -> QuerySet[TastedRecord]:
-        """팔로잉하지 않은 사용자의 피드 조회"""
-        following_users = self.relationship_service.get_following_user_list(user.id)
-        exclude_filter = {"author__in": following_users}
-
-        return self.get_feed_queryset(user, None, exclude_filter)
-
     # home refresh feed
     def get_refresh_feed(self, user: CustomUser) -> QuerySet[TastedRecord]:
         """새로고침용 피드 조회"""
-        return self.get_feed_queryset(user, None, None)
+        return self.get_feed_queryset(user, None)
 
     # 비로그인 사용자 시음기록 피드 조회
     def get_record_list_for_anonymous(self) -> QuerySet[TastedRecord]:
         """비로그인 사용자 시음기록 피드 조회"""
-        return (
-            TastedRecord.objects.filter(is_private=False)
-            .select_related("author", "bean", "taste_review")
-            .prefetch_related("comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-            .annotate(
-                likes=Count("like_cnt", distinct=True),
-                comments=Count("comment", distinct=True),
-                is_user_liked=Value(False, output_field=BooleanField()),  # False 고정
-                is_user_noted=Value(False, output_field=BooleanField()),  # False 고정
-            )
-            .order_by("?")
+        base_queryset = self.get_base_record_list_queryset()
+
+        record_queryset = base_queryset.filter(is_private=False).annotate(
+            is_user_liked=Value(False, output_field=BooleanField()),  # False 고정
+            is_user_noted=Value(False, output_field=BooleanField()),  # False 고정
         )
+
+        return record_queryset.order_by("?")

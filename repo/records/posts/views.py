@@ -129,11 +129,11 @@ class TopSubjectPostsAPIView(APIView):
     permission_classes = [AllowAny]
 
     def __init__(self, **kwargs):
-        self.post_service = get_post_service()
+        self.top_post_service = get_top_post_service()
 
     def get(self, request):
         user = request.user  # 비회원 = None
         subject = request.query_params.get("subject")  # 주제 필터 없는 경우 = None
 
-        posts = self.post_service.get_top_subject_weekly_posts(user, subject)
+        posts = self.top_post_service.get_top_subject_weekly_posts(user, subject)
         return get_paginated_response_with_class(request, posts, TopPostSerializer)

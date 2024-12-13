@@ -72,8 +72,8 @@ class FeedService:
         """
 
         # 1. 팔로우하지 않고 차단하지 않은 유저들의 시음기록, 게시글
-        common_tasted_records = self.tasted_record_service.get_unfollowing_feed(user)
-        common_posts = self.post_service.get_unfollowing_feed(user)
+        common_tasted_records = self.tasted_record_service.get_feed_by_follow_relation(user, False)
+        common_posts = self.post_service.get_feed_by_follow_relation(user, False)
 
         # 2. 조회하지 않은 시음기록, 게시글
         not_viewd_tasted_records = get_not_viewed_contents(request, common_tasted_records, "tasted_record_viewed")
