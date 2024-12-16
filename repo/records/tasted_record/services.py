@@ -2,6 +2,7 @@ from datetime import timedelta
 from itertools import chain
 from typing import Optional
 
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import BooleanField, Count, Exists, Q, QuerySet, Value
 from django.utils import timezone
@@ -15,6 +16,8 @@ from repo.profiles.models import CustomUser
 from repo.profiles.services import UserService
 from repo.records.base import BaseRecordService
 from repo.records.models import BeanTasteReview, TastedRecord
+
+cache_key = "tasted_record_list_ids"
 
 
 def get_tasted_record_service():
@@ -79,6 +82,7 @@ class TastedRecordService(BaseRecordService):
         photos = validated_data.get("photos", [])
         tasted_record.photo_set.set(photos)
 
+        cache.delete(cache_key)
         return tasted_record
 
     @transaction.atomic
@@ -99,6 +103,7 @@ class TastedRecordService(BaseRecordService):
         """시음기록 삭제"""
         # TODO: bean 데이터 비지니스 로직 추가
         tasted_record.delete()
+        cache.delete(cache_key)
 
     def _set_tasted_record_relations(self, tasted_record: TastedRecord, data: dict):
         """시음기록 관계 데이터 설정"""
@@ -120,8 +125,14 @@ class TastedRecordService(BaseRecordService):
     @staticmethod
     def get_base_record_list_queryset() -> QuerySet[TastedRecord]:
         """공통적으로 사용하는 기본 시음기록 리스트 쿼리셋 생성"""
+        cached_record_ids = cache.get(cache_key)
+        if not cached_record_ids:
+            cached_record_ids = list(TastedRecord.objects.filter(is_private=False).order_by("-id").values_list("id", flat=True)[:1000])
+            cache.set(cache_key, cached_record_ids, timeout=60 * 15, nx=True)
+
         return (
-            TastedRecord.objects.select_related("author", "bean", "taste_review")
+            TastedRecord.objects.filter(id__in=cached_record_ids)
+            .select_related("author", "bean", "taste_review")
             .prefetch_related("comment_set", "note_set", "photo_set")
             .annotate(
                 likes=Count("like_cnt", distinct=True),

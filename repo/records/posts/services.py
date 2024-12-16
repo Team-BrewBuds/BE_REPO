@@ -2,6 +2,7 @@ from datetime import timedelta
 from itertools import chain
 from typing import Optional
 
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import BooleanField, Count, Exists, Prefetch, Q, QuerySet, Value
 from django.utils import timezone
@@ -13,6 +14,8 @@ from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.records.base import BaseRecordService
 from repo.records.models import Post, TastedRecord
+
+cache_key = "post_list_ids"
 
 
 def get_post_service():
@@ -83,6 +86,7 @@ class PostService(BaseRecordService):
             tag=validated_data.get("tag", None),
         )
         self._set_post_relations(post, validated_data)
+        cache.delete(cache_key)
         return post
 
     @transaction.atomic
@@ -101,6 +105,7 @@ class PostService(BaseRecordService):
     def delete_record(self, post: Post):
         """게시글 삭제"""
         post.delete()
+        cache.delete(cache_key)
 
     def _set_post_relations(self, post: Post, data: dict):
         """게시글 관계 데이터 설정"""
@@ -113,8 +118,14 @@ class PostService(BaseRecordService):
     @staticmethod
     def get_base_record_list_queryset() -> QuerySet[Post]:
         """공통적으로 사용하는 기본 쿼리셋 생성"""
+        cached_post_ids = cache.get(cache_key)
+        if not cached_post_ids:
+            cached_post_ids = list(Post.objects.order_by("-id").values_list("id", flat=True)[:1000])
+            cache.set(cache_key, cached_post_ids, timeout=60 * 15, nx=True)
+
         return (
-            Post.objects.select_related("author")
+            Post.objects.filter(id__in=cached_post_ids)
+            .select_related("author")
             .prefetch_related("tasted_records", "comment_set", "note_set", "photo_set")
             .annotate(
                 likes=Count("like_cnt", distinct=True),
