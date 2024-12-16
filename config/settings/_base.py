@@ -172,5 +172,6 @@ ROOT_URLCONF = "config.urls"
 from .settings_modules.auth import *  # noqa: E402
 from .settings_modules.cors import *  # noqa: E402
 from .settings_modules.jwt import *  # noqa: E402
+from .settings_modules.redis import *  # noqa: E402
 from .settings_modules.social_auth import *  # noqa: E402
 from .settings_modules.spectacular import *  # noqa: E402
