@@ -1,15 +1,7 @@
-# create user model with additional fields
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 
-from repo.profiles.helpers import CoffeeLifeHelper, PreferredBeanTasteHelper
-
-# from profiles.managers import CustomUserManager
-from repo.profiles.managers import (
-    CustomUserManager,
-    RelationshipManager,
-    UserDetailManager,
-)
+from repo.profiles.managers import CustomUserManager
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -67,17 +59,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         verbose_name_plural = "사용자"
 
 
-# class User(models.Model):
-#     user_id = models.AutoField(primary_key=True)
-#     nickname = models.CharField(max_length=100, null=False, unique=True, verbose_name="닉네임")
-#     gender = models.BooleanField(null=True, verbose_name="성별")  # 남/여 구분
-#     birth = models.DateField(null=True, verbose_name="생일")
-#     email = models.EmailField(null=False, unique=True, verbose_name="이메일")
-#     login_type = models.CharField(max_length=50, choices=login_type_choices, verbose_name="로그인 방식")
-#     profile_image = models.URLField(max_length=500, null=True, verbose_name="프로필 이미지 URL")
-#     created_at = models.DateTimeField(auto_now_add=True, verbose_name="가입일")
-
-
 class UserDetail(models.Model):
 
     COFFEE_LIFE_CHOICES = ["cafe_tour", "coffee_extraction", "coffee_study", "cafe_alba", "cafe_work", "cafe_operation"]
@@ -96,14 +77,6 @@ class UserDetail(models.Model):
     preferred_bean_taste = models.JSONField(default=default_coffee_life, verbose_name="선호하는 원두 맛")
     is_certificated = models.BooleanField(default=False, verbose_name="인증 여부")
 
-    objects = UserDetailManager()
-
-    def get_coffee_life_helper(self):
-        return CoffeeLifeHelper(self.coffee_life)
-
-    def get_preferred_bean_taste_helper(self):
-        return PreferredBeanTasteHelper(self.preferred_bean_taste)
-
     def __str__(self):
         return f"{self.user.nickname}의 상세정보"
 
@@ -111,26 +84,3 @@ class UserDetail(models.Model):
         db_table = "user_detail"
         verbose_name = "사용자 상세 정보"
         verbose_name_plural = "사용자 상세 정보"
-
-
-class Relationship(models.Model):
-
-    RELATIONSHIP_TYPE_CHOICES = [
-        ("follow", "팔로우"),
-        ("block", "차단"),
-    ]
-
-    from_user = models.ForeignKey(CustomUser, related_name="relationships_from", on_delete=models.CASCADE)
-    to_user = models.ForeignKey(CustomUser, related_name="relationships_to", on_delete=models.CASCADE)
-    relationship_type = models.CharField(max_length=10, choices=RELATIONSHIP_TYPE_CHOICES, verbose_name="관계 유형")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일")
-
-    objects = RelationshipManager()
-
-    def __str__(self):
-        return f"{self.from_user.nickname} {self.get_relationship_type_display()} {self.to_user.nickname}"
-
-    class Meta:
-        db_table = "relationship"
-        verbose_name = "관계"
-        verbose_name_plural = "관계"

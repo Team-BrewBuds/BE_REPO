@@ -2,8 +2,9 @@ from django.core.management.base import BaseCommand
 from faker import Faker
 
 from repo.beans.models import Bean
+from repo.interactions.note.models import Note
 from repo.profiles.models import CustomUser
-from repo.records.models import Note, Post, TastedRecord
+from repo.records.models import Post, TastedRecord
 
 
 class Command(BaseCommand):

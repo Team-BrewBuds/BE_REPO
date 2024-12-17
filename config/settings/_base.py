@@ -17,6 +17,7 @@ LOCAL_APPS = [
     "repo.search",
     "repo.recommendation",
     "repo.common",
+    "repo.interactions",
 ]
 
 THIRD_PARTY_APPS = [
@@ -68,6 +69,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "repo.common.exception.handler.custom_exception_handler",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 12,
 }

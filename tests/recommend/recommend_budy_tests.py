@@ -16,6 +16,9 @@ class TestBudyRecommendAPIView:
     - [예외] 인증되지 않은 사용자의 경우 401 에러 반환 테스트
     """
 
+    def setup_method(self):
+        self.url = "/recommendation/budy/"
+
     @pytest.mark.parametrize(
         "coffee_life",
         ["cafe_tour", "coffee_extraction", "coffee_study", "cafe_alba", "cafe_work", "cafe_operation"],
@@ -43,16 +46,14 @@ class TestBudyRecommendAPIView:
             user.coffee_life[coffee_life] = True
             user.save()
 
-        url = "/profiles/recommend/"
-
         # When
-        response = api_client.get(url)
+        response = api_client.get(self.url)
 
         # Then
-        recommended_user_ids = [user["user"]["id"] for user in response.data["users"]]
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["users"]) == 10  # 추천 유저 10명인지 확인
         assert response.data["category"] == coffee_life  # 선택된 카테고리가 올바른지 확인
+        recommended_user_ids = [user["user"]["id"] for user in response.data["users"]]
         assert user.id not in recommended_user_ids  # 나는 추천 유저에 포함되지 않았는지 확인
 
         for recommended_user_id in recommended_user_ids:  # 모든 추천 유저가 해당 coffee_life 값이 True인지 확인
@@ -75,10 +76,8 @@ class TestBudyRecommendAPIView:
         # 추천할 유저 10명 생성
         recommend_users = [UserDetailFactory(user=CustomUserFactory()) for _ in range(10)]
 
-        url = "/profiles/recommend/"
-
         # When
-        response = api_client.get(url)
+        response = api_client.get(self.url)
 
         # Then
         assert response.status_code == status.HTTP_200_OK
@@ -91,10 +90,9 @@ class TestBudyRecommendAPIView:
         인증되지 않은 사용자의 경우 401 에러 반환 테스트
         """
         # Given
-        url = "/profiles/recommend/"
 
         # When
-        response = api_client.get(url)
+        response = api_client.get(self.url)
 
         # Then
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

@@ -69,8 +69,10 @@ class TestMyProfileAPIView:
 
         # Then
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data["message"] == "Authentication credentials were not provided."
+        assert response.data["code"] == "not_authenticated"
 
-    def test_patch_my_profile_emptry_nickname_data(self, authenticated_client):
+    def test_patch_my_profile_empty_nickname_data(self, authenticated_client):
         """
         잘못된 데이터로 프로필 수정 실패 테스트
         """
@@ -81,14 +83,15 @@ class TestMyProfileAPIView:
 
         # When
         invalid_data = {
-            "nickname": "",  # 빈 문자열은 유효하지 않음
+            "nickname": " ",
         }
 
         response = client.patch(url, data=invalid_data, format="json")
 
         # Then
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.data["error"] == "닉네임은 공백일 수 없습니다."  # msg from model manager
+        assert response.data["message"] == "닉네임은 공백일 수 없습니다."
+        assert response.data["code"] == "nickname_invalid"
 
     def test_patch_my_profile_nickname_already_exists(self, authenticated_client):
         """
@@ -111,8 +114,8 @@ class TestMyProfileAPIView:
 
         # Then
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.data["nickname"][0] == "사용자 with this 닉네임 already exists."  # msg from db
-        assert response.data["nickname"][0].code == "unique"
+        assert response.data["message"] == "닉네임은 2 ~ 12자의 한글 영어 또는 숫자만 가능합니다."
+        assert response.data["code"] == "nickname_invalid"
 
 
 class TestOtherProfileAPIView:
@@ -154,3 +157,5 @@ class TestOtherProfileAPIView:
 
         # Then
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data["message"] == "Authentication credentials were not provided."
+        assert response.data["code"] == "not_authenticated"

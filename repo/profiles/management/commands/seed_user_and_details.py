@@ -2,7 +2,8 @@ from django.core.management.base import BaseCommand
 from django_seed import Seed
 from faker import Faker
 
-from repo.profiles.models import CustomUser, Relationship, UserDetail
+from repo.interactions.relationship.models import Relationship
+from repo.profiles.models import CustomUser, UserDetail
 
 
 class Command(BaseCommand):

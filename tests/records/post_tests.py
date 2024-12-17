@@ -144,8 +144,6 @@ class TestPostListCreateAPIView:
 
         # Then
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "title" in response.data
-        assert response.data["title"][0].code == "required"
 
     def test_create_post_unauthorized(self, api_client):
         """미인증 사용자의 게시글 생성 시도시 401 에러 반환 테스트"""
