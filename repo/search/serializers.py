@@ -11,7 +11,7 @@ class BuddySearchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ["nickname", "email", "profile_image", "record_cnt", "follower_cnt"]
+        fields = ["id", "nickname", "email", "profile_image", "record_cnt", "follower_cnt"]
 
 
 class BeanSearchSerializer(serializers.ModelSerializer):
@@ -20,7 +20,7 @@ class BeanSearchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bean
-        fields = ["name", "avg_star", "record_cnt"]
+        fields = ["id", "name", "avg_star", "record_cnt"]
 
 
 class TastedRecordSearchSerializer(serializers.ModelSerializer):
@@ -32,7 +32,7 @@ class TastedRecordSearchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TastedRecord
-        fields = ["bean_name", "star", "bean_type", "bean_taste", "photo_url"]
+        fields = ["id", "bean_name", "star", "bean_type", "bean_taste", "photo_url"]
 
     def get_photo_url(self, obj):
         photo = Photo.objects.filter(tasted_record=obj).first()
@@ -48,6 +48,7 @@ class PostSearchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = [
+            "id",
             "title",
             "content",
             "photos",
