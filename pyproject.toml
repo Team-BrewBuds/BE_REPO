@@ -32,6 +32,9 @@ psycopg2-binary = "^2.9.10"
 factory-boy = "^3.3.1"
 django-debug-toolbar = "^4.4.6"
 django-redis = "^5.4.0"
+celery = "^5.4.0"
+django-celery-beat = "^2.7.0"
+django-celery-results = "^2.5.1"
 
 
 [tool.poetry.group.dev.dependencies]
