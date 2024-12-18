@@ -34,6 +34,9 @@ THIRD_PARTY_APPS = [
     "storages",  # s3
     "django_filters",  # filtering
     "django_seed",  # seed
+    "celery",
+    "django_celery_beat",
+    "django_celery_results",
 ]
 
 DJANGO_APPS = [
