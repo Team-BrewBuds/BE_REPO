@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -132,8 +133,11 @@ class TopSubjectPostsAPIView(APIView):
         self.top_post_service = get_top_post_service()
 
     def get(self, request):
-        user = request.user  # 비회원 = None
-        subject = request.query_params.get("subject")  # 주제 필터 없는 경우 = None
+        user = request.user
+        subject = request.query_params.get("subject", None)
 
-        posts = self.top_post_service.get_top_subject_weekly_posts(user, subject)
-        return get_paginated_response_with_class(request, posts, TopPostSerializer)
+        posts = self.top_post_service.get_top_posts(subject=subject, user=user)
+
+        paginator = PageNumberPagination()
+        paginated_posts = paginator.paginate_queryset(posts, request)
+        return paginator.get_paginated_response(paginated_posts)

@@ -14,6 +14,7 @@ from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.records.base import BaseRecordService
 from repo.records.models import Post, TastedRecord
+from repo.records.posts.tasks import cache_top_posts
 
 cache_key = "post_list_ids"
 
@@ -248,3 +249,39 @@ class TopPostService:
             )
             .order_by("-view_cnt")[: self.TOP_POSTS_LIMIT]
         )
+
+    def get_top_posts(self, subject: str, user: Optional[CustomUser] = None):
+        try:
+            if not subject:
+                subject = ""
+            cache_key = f"top_posts:{subject}:weekly"
+            cached_data = cache.get(cache_key)
+
+            if not cached_data:
+                cache_top_posts()  # 캐시 업데이트
+                cached_data = cache.get(cache_key)
+
+            posts = cached_data
+            if not user or not user.is_authenticated:  # 비회원
+                return self.get_top_posts_for_anonymous_user(posts)
+
+            return self.get_top_posts_for_authenticated_user(user.id, posts)
+        except (ConnectionError, TypeError, Exception) as e:
+            error_msg = {ConnectionError: "Redis 연결 실패", TypeError: "TypeError", Exception: "Error fetching top posts"}.get(type(e))
+            print(f"{error_msg}: {str(e)}")
+            return []
+
+    def get_top_posts_for_authenticated_user(self, user_id: int, posts: list):
+        # 차단한 유저 필터링
+        blocked_users = self.relationship_service.get_unique_blocked_user_list(user_id)
+        posts = [post for post in posts if post["author"]["id"] not in blocked_users]
+
+        # 좋아요 여부 확인
+        for post in posts:
+            post["is_user_liked"] = Post.objects.filter(id=post["id"], like_cnt__id=user_id).exists()
+        return posts
+
+    def get_top_posts_for_anonymous_user(self, posts: list):
+        for post in posts:
+            post["is_user_liked"] = False
+        return posts
