@@ -23,10 +23,7 @@ services:
       - redis
     entrypoint:
       - sh
-      - -c
-      - |
-        poetry run python manage.py migrate
-        poetry run python manage.py runserver 0.0.0.0:8000
+      - ./scripts/entrypoint.dev.sh
 
   redis:
     container_name: redis-dev
