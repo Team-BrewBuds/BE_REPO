@@ -185,7 +185,9 @@ class TastedRecordService(BaseRecordService):
     # home refresh feed
     def get_refresh_feed(self, user: CustomUser) -> QuerySet[TastedRecord]:
         """새로고침용 피드 조회"""
-        return self.get_feed_queryset(user, None)
+        return self.get_feed_queryset(user).annotate(
+            is_user_following=Exists(self.relationship_service.get_following_subquery_for_record(user))
+        )
 
     # 비로그인 사용자 시음기록 피드 조회
     def get_record_list_for_anonymous(self) -> QuerySet[TastedRecord]:

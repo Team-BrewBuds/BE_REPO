@@ -181,7 +181,9 @@ class PostService(BaseRecordService):
 
     # home refresh feed
     def get_refresh_feed(self, user: CustomUser) -> QuerySet[Post]:
-        return self.get_feed_queryset(user, None, None)
+        return self.get_feed_queryset(user, None, None).annotate(
+            is_user_following=Exists(self.relationship_service.get_following_subquery_for_record(user))
+        )
 
     # 비로그인 사용자를 위한 게시글 피드
     def get_record_list_for_anonymous(self) -> QuerySet[Post]:
