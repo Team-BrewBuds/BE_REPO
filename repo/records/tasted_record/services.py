@@ -170,7 +170,7 @@ class TastedRecordService(BaseRecordService):
 
         filters = Q(author__in=following_users) if follow else ~Q(author__in=following_users)
 
-        return self.get_feed_queryset(user, filters)
+        return self.get_feed_queryset(user, filters).annotate(is_user_following=Value(follow, output_field=BooleanField())).order_by("?")
 
     # home following feed
     def get_following_feed_and_gte_one_hour(self, user: CustomUser) -> QuerySet[TastedRecord]:
@@ -195,6 +195,7 @@ class TastedRecordService(BaseRecordService):
         record_queryset = base_queryset.filter(is_private=False).annotate(
             is_user_liked=Value(False, output_field=BooleanField()),  # False 고정
             is_user_noted=Value(False, output_field=BooleanField()),  # False 고정
+            is_user_following=Value(False, output_field=BooleanField()),  # False 고정
         )
 
         return record_queryset.order_by("?")
