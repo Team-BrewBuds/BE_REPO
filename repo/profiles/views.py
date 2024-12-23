@@ -240,28 +240,6 @@ class AppleLoginView(APIView):
             return Response({"detail": "Invalid id_token."}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class CheckNicknameView(APIView):
-    """
-    사용자의 nickname이 저장되었는지 확인하는 API
-    Args:
-        request: 클라이언트 요청.
-    Returns:
-        JSON 응답: 사용자 nickname 저장 여부.
-
-    담당자: blakej2432
-    """
-
-    # permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        user = request.user
-
-        if user.nickname:
-            return Response({"nickname_saved": True, "nickname": user.nickname}, status=200)
-        else:
-            return Response(status=204)
-
-
 class SignupView(APIView):
     """
     사용자 회원가입을 처리하는 API.
