@@ -123,6 +123,17 @@ def get_time_difference(object_created_at: timezone) -> str:
     return "방금 전"
 
 
+def get_last_monday(date: timezone) -> timezone:
+    """
+    주어진 날짜의 지난주 월요일을 반환
+    Args:
+        date (timezone): 날짜
+    Returns:
+        timezone: 지난주 월요일
+    """
+    return date - timedelta(days=date.weekday() + 7)
+
+
 def get_first_photo_url(obj: Model) -> Optional[str]:
     """
     주어진 객체의 첫 번째 사진 URL을 반환

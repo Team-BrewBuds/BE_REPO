@@ -3,22 +3,25 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV POETRY_VERSION=1.8.3
-ENV POETRY_HOME=/opt/poetry
-ENV POETRY_VENV=/opt/poetry-venv
 
-RUN python3 -m venv $POETRY_VENV \
-	&& $POETRY_VENV/bin/pip install -U pip setuptools \
-	&& $POETRY_VENV/bin/pip install poetry==${POETRY_VERSION}
+# 시스템 패키지 설치
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    default-libmysqlclient-dev \
+    pkg-config \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV PATH="${PATH}:${POETRY_VENV}/bin"
+# Poetry 설치
+RUN curl -sSL https://install.python-poetry.org | python3 - && \
+    ln -s /root/.local/bin/poetry /usr/local/bin/poetry
 
-RUN mkdir /app/
-WORKDIR /app/
+WORKDIR /usr/src/app
 
-COPY pyproject.toml .
+# Poetry 설정 및 의존성 설치
+COPY pyproject.toml poetry.lock ./
+RUN poetry config virtualenvs.create false \
+    && poetry install --only main --no-interaction --no-ansi
 
-RUN poetry install
-
-COPY . /app
-
-#CMD ["python3", "manage.py", "runserver", "localhost:8000"]
+# 프로젝트 파일 복사
+COPY . .

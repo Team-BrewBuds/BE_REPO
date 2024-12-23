@@ -138,7 +138,7 @@ class PostSchema:
         responses={200: TopPostSerializer},
         summary="인기 게시글 조회",
         description="""
-            홈 [전체] - 주제별 조회수 상위 60개 인기 게시글 조회 API
+            홈 [전체] - 주제별 지난주 조회수 상위 60개 인기 게시글 조회 API
             - 정렬: 조회수
             - 페이지네이션 적용
 
