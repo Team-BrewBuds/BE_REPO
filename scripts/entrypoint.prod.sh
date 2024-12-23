@@ -14,3 +14,16 @@ python manage.py migrate
 # Start the Gunicorn server
 echo "Starting Gunicorn"
 gunicorn config.wsgi.prod:application --bind 0.0.0.0:8000
+
+# start celery worker
+echo "Starting celery worker"
+celery -A config worker -l info &
+
+# start celery beat
+echo "Starting celery beat"
+celery -A config beat -l info &
+
+# Wait for all background processes to complete
+# print background jobs
+jobs -l
+wait
