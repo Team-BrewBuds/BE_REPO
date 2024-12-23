@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import BooleanField, Count, Exists, Prefetch, Q, QuerySet, Value
 from django.utils import timezone
 
+from repo.common.utils import get_last_monday
 from repo.common.view_counter import get_not_viewed_contents
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
@@ -209,7 +210,8 @@ class TopPostService:
     def get_top_subject_weekly_posts(self, user: Optional[CustomUser], subject: Optional[str]) -> QuerySet[Post]:
         """특정 주제의 주간 인기 게시글 조회"""
 
-        time_threshold = timezone.now() - timedelta(days=7)
+        current = timezone.now()
+        time_threshold = get_last_monday(current)
 
         # 기본 필터링
         base_filters = self._get_base_filters(subject, time_threshold)
@@ -220,9 +222,10 @@ class TopPostService:
 
         return self._get_authenticated_user_posts(user, top_posts_base)
 
-    def _get_base_filters(self, subject: Optional[str], time_threshold) -> Q:
+    def _get_base_filters(self, subject: Optional[str], time_threshold: timezone) -> Q:
         """기본 필터 구성"""
-        filters = Q(created_at__gte=time_threshold)
+        filters = Q(created_at__range=(time_threshold, time_threshold + timedelta(days=7)))
+
         if subject:
             filters &= Q(subject=subject)
         return filters

@@ -5,6 +5,7 @@ from django.core.cache import cache
 from django.db.models import Count
 from django.utils import timezone
 
+from repo.common.utils import get_last_monday
 from repo.records.models import Post
 from repo.records.posts.serializers import TopPostSerializer
 
@@ -19,8 +20,9 @@ TOP_POST_COUNT = 60
 @shared_task(name="repo.records.posts.tasks.cache_top_posts", bind=True, default_retry_delay=10, max_retries=3)
 def cache_top_posts(self):
     try:
-        end_date = timezone.now()
-        start_date = end_date - timedelta(days=7)
+        current = timezone.now()
+        start_date = get_last_monday(current)
+        end_date = start_date + timedelta(days=7)
 
         base_query = (
             Post.objects.filter(created_at__range=(start_date, end_date))
