@@ -259,7 +259,7 @@ class CheckNicknameView(APIView):
         if user.nickname:
             return Response({"nickname_saved": True, "nickname": user.nickname}, status=200)
         else:
-            return Response({"nickname_saved": False}, status=200)
+            return Response(status=204)
 
 
 class SignupView(APIView):
