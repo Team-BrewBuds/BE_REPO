@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 from itertools import chain
 from typing import Optional
@@ -6,6 +7,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.db.models import BooleanField, Count, Exists, Q, QuerySet, Value
 from django.utils import timezone
+from redis.exceptions import ConnectionError
 
 from repo.beans.services import BeanService
 from repo.common.view_counter import get_not_viewed_contents
@@ -17,6 +19,7 @@ from repo.profiles.services import UserService
 from repo.records.base import BaseRecordService
 from repo.records.models import BeanTasteReview, TastedRecord
 
+redis_logger = logging.getLogger("redis.server")
 cache_key = "tasted_record_list_ids"
 
 
@@ -125,10 +128,14 @@ class TastedRecordService(BaseRecordService):
     @staticmethod
     def get_base_record_list_queryset() -> QuerySet[TastedRecord]:
         """공통적으로 사용하는 기본 시음기록 리스트 쿼리셋 생성"""
-        cached_record_ids = cache.get(cache_key)
-        if not cached_record_ids:
+        try:
+            cached_record_ids = cache.get(cache_key)
+            if not cached_record_ids:
+                cached_record_ids = list(TastedRecord.objects.filter(is_private=False).order_by("-id").values_list("id", flat=True)[:1000])
+                cache.set(cache_key, cached_record_ids, timeout=60 * 15, nx=True)
+        except ConnectionError as e:
+            redis_logger.error(f"Redis 연결 실패 tasted_record_list_ids: {str(e)}", exc_info=True)
             cached_record_ids = list(TastedRecord.objects.filter(is_private=False).order_by("-id").values_list("id", flat=True)[:1000])
-            cache.set(cache_key, cached_record_ids, timeout=60 * 15, nx=True)
 
         return (
             TastedRecord.objects.filter(id__in=cached_record_ids)

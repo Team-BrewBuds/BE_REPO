@@ -136,7 +136,10 @@ class TopSubjectPostsAPIView(APIView):
         user = request.user
         subject = request.query_params.get("subject", None)
 
-        posts = self.top_post_service.get_top_posts(subject=subject, user=user)
+        posts = self.top_post_service.get_top_posts(subject, user)
+
+        if isinstance(posts, QuerySet):  # 캐싱 서버 연결 실패시 직접 DB 조회
+            return get_paginated_response_with_class(request, posts, TopPostSerializer)
 
         paginator = PageNumberPagination()
         paginated_posts = paginator.paginate_queryset(posts, request)

@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 from itertools import chain
 from typing import Optional
@@ -6,6 +7,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.db.models import BooleanField, Count, Exists, Prefetch, Q, QuerySet, Value
 from django.utils import timezone
+from redis.exceptions import ConnectionError
 
 from repo.common.utils import get_last_monday
 from repo.common.view_counter import get_not_viewed_contents
@@ -17,6 +19,7 @@ from repo.records.base import BaseRecordService
 from repo.records.models import Post, TastedRecord
 from repo.records.posts.tasks import cache_top_posts
 
+redis_logger = logging.getLogger("redis.server")
 cache_key = "post_list_ids"
 
 
@@ -120,10 +123,14 @@ class PostService(BaseRecordService):
     @staticmethod
     def get_base_record_list_queryset() -> QuerySet[Post]:
         """공통적으로 사용하는 기본 쿼리셋 생성"""
-        cached_post_ids = cache.get(cache_key)
-        if not cached_post_ids:
+        try:
+            cached_post_ids = cache.get(cache_key)
+            if not cached_post_ids:
+                cached_post_ids = list(Post.objects.order_by("-id").values_list("id", flat=True)[:1000])
+                cache.set(cache_key, cached_post_ids, timeout=60 * 15, nx=True)
+        except ConnectionError as e:
+            redis_logger.error(f"Redis 연결 실패 post_list_ids: {str(e)}", exc_info=True)
             cached_post_ids = list(Post.objects.order_by("-id").values_list("id", flat=True)[:1000])
-            cache.set(cache_key, cached_post_ids, timeout=60 * 15, nx=True)
 
         return (
             Post.objects.filter(id__in=cached_post_ids)
@@ -259,6 +266,7 @@ class TopPostService:
         )
 
     def get_top_posts(self, subject: str, user: Optional[CustomUser] = None):
+        """인기 게시글 조회 (레디스 연결 실패시 직접 DB 조회)"""
         try:
             if not subject:
                 subject = ""
@@ -270,14 +278,14 @@ class TopPostService:
                 cached_data = cache.get(cache_key)
 
             posts = cached_data
+
             if not user or not user.is_authenticated:  # 비회원
                 return self.get_top_posts_for_anonymous_user(posts)
 
             return self.get_top_posts_for_authenticated_user(user.id, posts)
-        except (ConnectionError, TypeError, Exception) as e:
-            error_msg = {ConnectionError: "Redis 연결 실패", TypeError: "TypeError", Exception: "Error fetching top posts"}.get(type(e))
-            print(f"{error_msg}: {str(e)}")
-            return []
+        except ConnectionError as e:
+            redis_logger.error(f"Redis 연결 실패 post_list_ids: {str(e)}", exc_info=True)
+            return self.get_top_subject_weekly_posts(user, subject)
 
     def get_top_posts_for_authenticated_user(self, user_id: int, posts: list):
         # 차단한 유저 필터링

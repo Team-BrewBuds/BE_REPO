@@ -157,6 +157,12 @@ LOGGING = {
             "filters": ["exclude_debug_toolbar"],
             "propagate": False,
         },
+        "redis.server": {
+            "handlers": ["console", "file"],
+            "level": "ERROR",
+            "filters": ["exclude_debug_toolbar"],
+            "propagate": False,
+        },
     },
 }
 
