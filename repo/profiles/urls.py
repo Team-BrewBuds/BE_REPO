@@ -11,7 +11,6 @@ urlpatterns = [
     path("login/naver/finish/", views.NaverLoginView.as_view(), name="naver_login_todjango"),
     path("login/oauth/apple/", views.AppleCallbackView.as_view(), name="apple_callback"),
     path("login/apple/finish/", views.AppleLoginView.as_view(), name="apple_login_todjango"),
-    path("login/check_nickname/", views.CheckNicknameView.as_view(), name="check_nickname"),
     path("signup/", views.SignupView.as_view(), name="signup"),
     path("", views.MyProfileAPIView.as_view(), name="my_profile"),
     path("<int:id>/", views.OtherProfileAPIView.as_view(), name="other_profile"),
