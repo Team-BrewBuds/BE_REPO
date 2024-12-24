@@ -22,7 +22,6 @@ class FCMService:
 
     _instance = None
     _initialized = False
-    cred = credentials.Certificate(SERVICE_ACCOUNT_FILE)
 
     def __new__(cls):
         if cls._instance is None:
@@ -32,10 +31,12 @@ class FCMService:
     def __init__(self):
         if not self._initialized:
             try:
-                firebase_admin.initialize_app(self.cred)
-            except ValueError:
-                # 이미 초기화된 경우 무시
-                pass
+                cred = credentials.Certificate(SERVICE_ACCOUNT_FILE)
+                self.app = firebase_admin.initialize_app(cred)
+            except (ValueError, FileNotFoundError) as e:
+                logger.error(f"Firebase 초기화 실패: {str(e)}")
+                if not settings.DEBUG:
+                    raise
             self._initialized = True
 
     def send_push_notification_to_single_device(self, device_token: str, title: str, body: str, data: dict = None):
