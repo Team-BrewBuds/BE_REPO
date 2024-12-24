@@ -102,10 +102,10 @@ class UserPostListAPIView(APIView):
         self.post_service = get_post_service()
 
     def get(self, request, id):
-        subject = request.query_params.get("subject", "all")
-        valid_subjects = list(dict(Post.SUBJECT_TYPE_CHOICES).keys()) + ["all"]
+        subject = request.query_params.get("subject", None)
+        valid_subjects = list(dict(Post.SUBJECT_TYPE_CHOICES).keys())
 
-        if subject not in valid_subjects:
+        if subject and subject not in valid_subjects:
             return Response({"error": "Invalid subject parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
         user = get_object_or_404(CustomUser, pk=id)

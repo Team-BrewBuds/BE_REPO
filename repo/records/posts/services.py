@@ -56,11 +56,10 @@ class PostService(BaseRecordService):
         user = CustomUser.objects.get(id=user_id)
         subject = kwargs.get("subject", None)
 
-        subject_filter = Q(subject=subject) if subject else Q()
+        filters = Q(author=user)
+        filters &= Q(subject=subject) if subject else Q()
 
-        posts = (
-            user.post_set.filter(subject_filter).select_related("author").prefetch_related("tasted_records", "photo_set").order_by("-id")
-        )
+        posts = Post.objects.filter(filters).select_related("author").prefetch_related("tasted_records", "photo_set").order_by("-id")
         return posts
 
     def get_record_list(self, user: CustomUser, **kwargs) -> QuerySet[Post]:
