@@ -35,6 +35,9 @@ THIRD_PARTY_APPS = [
     "storages",  # s3
     "django_filters",  # filtering
     "django_seed",  # seed
+    "celery",
+    "django_celery_beat",
+    "django_celery_results",
 ]
 
 DJANGO_APPS = [
@@ -155,6 +158,12 @@ LOGGING = {
             "filters": ["exclude_debug_toolbar"],
             "propagate": False,
         },
+        "redis.server": {
+            "handlers": ["console", "file"],
+            "level": "ERROR",
+            "filters": ["exclude_debug_toolbar"],
+            "propagate": False,
+        },
     },
 }
 
@@ -173,5 +182,6 @@ ROOT_URLCONF = "config.urls"
 from .settings_modules.auth import *  # noqa: E402
 from .settings_modules.cors import *  # noqa: E402
 from .settings_modules.jwt import *  # noqa: E402
+from .settings_modules.redis import *  # noqa: E402
 from .settings_modules.social_auth import *  # noqa: E402
 from .settings_modules.spectacular import *  # noqa: E402

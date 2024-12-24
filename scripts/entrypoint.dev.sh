@@ -11,9 +11,9 @@ python manage.py migrate
 #echo "Collecting static files"
 #python manage.py collectstatic --noinput
 
-# Start the Gunicorn server
-echo "Starting Gunicorn"
-gunicorn config.wsgi.prod:application --bind 0.0.0.0:8000
+# Start the Dev server
+echo "Starting dev server"
+gunicorn config.wsgi.dev:application --bind 0.0.0.0:8000 &
 
 # start celery worker
 echo "Starting celery worker"
