@@ -21,8 +21,9 @@ class TastedRecordListSerializer(serializers.ModelSerializer):
     created_at = serializers.SerializerMethodField()
     likes = serializers.IntegerField()
     comments = serializers.IntegerField()
-    is_user_liked = serializers.BooleanField()
-    is_user_noted = serializers.BooleanField()
+    is_user_liked = serializers.BooleanField(default=False, read_only=True)
+    is_user_noted = serializers.BooleanField(default=False, read_only=True)
+    is_user_following = serializers.BooleanField(default=False, read_only=True)
 
     def get_created_at(self, obj):
         return get_time_difference(obj.created_at)

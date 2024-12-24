@@ -1,18 +1,26 @@
+import logging
 from datetime import timedelta
 from itertools import chain
 from typing import Optional
 
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import BooleanField, Count, Exists, Prefetch, Q, QuerySet, Value
 from django.utils import timezone
+from redis.exceptions import ConnectionError
 
+from repo.common.utils import get_last_monday
 from repo.common.view_counter import get_not_viewed_contents
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
 from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.records.base import BaseRecordService
-from repo.records.models import Photo, Post, TastedRecord
+from repo.records.models import Post, TastedRecord
+from repo.records.posts.tasks import cache_top_posts
+
+redis_logger = logging.getLogger("redis.server")
+cache_key = "post_list_ids"
 
 
 def get_post_service():
@@ -39,10 +47,7 @@ class PostService(BaseRecordService):
         return (
             Post.objects.filter(pk=pk)
             .select_related("author")
-            .prefetch_related(
-                Prefetch("tasted_records", queryset=TastedRecord.objects.select_related("bean", "taste_review")),
-                Prefetch("photo_set", queryset=Photo.objects.only("photo_url")),
-            )
+            .prefetch_related(Prefetch("tasted_records", queryset=TastedRecord.objects.select_related("bean", "taste_review")), "photo_set")
             .first()
         )
 
@@ -54,10 +59,7 @@ class PostService(BaseRecordService):
         subject_filter = Q(subject=subject) if subject else Q()
 
         posts = (
-            user.post_set.filter(subject_filter)
-            .select_related("author")
-            .prefetch_related("tasted_records", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
-            .order_by("-id")
+            user.post_set.filter(subject_filter).select_related("author").prefetch_related("tasted_records", "photo_set").order_by("-id")
         )
         return posts
 
@@ -89,6 +91,7 @@ class PostService(BaseRecordService):
             tag=validated_data.get("tag", None),
         )
         self._set_post_relations(post, validated_data)
+        cache.delete(cache_key)
         return post
 
     @transaction.atomic
@@ -107,6 +110,7 @@ class PostService(BaseRecordService):
     def delete_record(self, post: Post):
         """게시글 삭제"""
         post.delete()
+        cache.delete(cache_key)
 
     def _set_post_relations(self, post: Post, data: dict):
         """게시글 관계 데이터 설정"""
@@ -119,9 +123,19 @@ class PostService(BaseRecordService):
     @staticmethod
     def get_base_record_list_queryset() -> QuerySet[Post]:
         """공통적으로 사용하는 기본 쿼리셋 생성"""
+        try:
+            cached_post_ids = cache.get(cache_key)
+            if not cached_post_ids:
+                cached_post_ids = list(Post.objects.order_by("-id").values_list("id", flat=True)[:1000])
+                cache.set(cache_key, cached_post_ids, timeout=60 * 15, nx=True)
+        except ConnectionError as e:
+            redis_logger.error(f"Redis 연결 실패 post_list_ids: {str(e)}", exc_info=True)
+            cached_post_ids = list(Post.objects.order_by("-id").values_list("id", flat=True)[:1000])
+
         return (
-            Post.objects.select_related("author")
-            .prefetch_related("tasted_records", "comment_set", "note_set", Prefetch("photo_set", queryset=Photo.objects.only("photo_url")))
+            Post.objects.filter(id__in=cached_post_ids)
+            .select_related("author")
+            .prefetch_related("tasted_records", "comment_set", "note_set", "photo_set")
             .annotate(
                 likes=Count("like_cnt", distinct=True),
                 comments=Count("comment", distinct=True),
@@ -159,7 +173,9 @@ class PostService(BaseRecordService):
 
         filters = Q(author__in=following_users) if follow else ~Q(author__in=following_users)
 
-        return self.get_feed_queryset(user, filters, None)
+        return (
+            self.get_feed_queryset(user, filters, None).annotate(is_user_following=Value(follow, output_field=BooleanField())).order_by("?")
+        )
 
     # home following feed
     def get_following_feed_and_gte_one_hour(self, user: CustomUser) -> QuerySet[Post]:
@@ -173,7 +189,9 @@ class PostService(BaseRecordService):
 
     # home refresh feed
     def get_refresh_feed(self, user: CustomUser) -> QuerySet[Post]:
-        return self.get_feed_queryset(user, None, None)
+        return self.get_feed_queryset(user, None, None).annotate(
+            is_user_following=Exists(self.relationship_service.get_following_subquery_for_record(user))
+        )
 
     # 비로그인 사용자를 위한 게시글 피드
     def get_record_list_for_anonymous(self) -> QuerySet[Post]:
@@ -183,6 +201,7 @@ class PostService(BaseRecordService):
         record_queryset = base_queryset.annotate(
             is_user_liked=Value(False, output_field=BooleanField()),  # False 고정
             is_user_noted=Value(False, output_field=BooleanField()),  # False 고정
+            is_user_following=Value(False, output_field=BooleanField()),  # False 고정
         )
 
         return record_queryset.order_by("?")
@@ -198,7 +217,8 @@ class TopPostService:
     def get_top_subject_weekly_posts(self, user: Optional[CustomUser], subject: Optional[str]) -> QuerySet[Post]:
         """특정 주제의 주간 인기 게시글 조회"""
 
-        time_threshold = timezone.now() - timedelta(days=7)
+        current = timezone.now()
+        time_threshold = get_last_monday(current)
 
         # 기본 필터링
         base_filters = self._get_base_filters(subject, time_threshold)
@@ -209,9 +229,10 @@ class TopPostService:
 
         return self._get_authenticated_user_posts(user, top_posts_base)
 
-    def _get_base_filters(self, subject: Optional[str], time_threshold) -> Q:
+    def _get_base_filters(self, subject: Optional[str], time_threshold: timezone) -> Q:
         """기본 필터 구성"""
-        filters = Q(created_at__gte=time_threshold)
+        filters = Q(created_at__range=(time_threshold, time_threshold + timedelta(days=7)))
+
         if subject:
             filters &= Q(subject=subject)
         return filters
@@ -243,3 +264,40 @@ class TopPostService:
             )
             .order_by("-view_cnt")[: self.TOP_POSTS_LIMIT]
         )
+
+    def get_top_posts(self, subject: str, user: Optional[CustomUser] = None):
+        """인기 게시글 조회 (레디스 연결 실패시 직접 DB 조회)"""
+        try:
+            if not subject:
+                subject = ""
+            cache_key = f"top_posts:{subject}:weekly"
+            cached_data = cache.get(cache_key)
+
+            if not cached_data:
+                cache_top_posts()  # 캐시 업데이트
+                cached_data = cache.get(cache_key)
+
+            posts = cached_data
+
+            if not user or not user.is_authenticated:  # 비회원
+                return self.get_top_posts_for_anonymous_user(posts)
+
+            return self.get_top_posts_for_authenticated_user(user.id, posts)
+        except ConnectionError as e:
+            redis_logger.error(f"Redis 연결 실패 post_list_ids: {str(e)}", exc_info=True)
+            return self.get_top_subject_weekly_posts(user, subject)
+
+    def get_top_posts_for_authenticated_user(self, user_id: int, posts: list):
+        # 차단한 유저 필터링
+        blocked_users = self.relationship_service.get_unique_blocked_user_list(user_id)
+        posts = [post for post in posts if post["author"]["id"] not in blocked_users]
+
+        # 좋아요 여부 확인
+        for post in posts:
+            post["is_user_liked"] = Post.objects.filter(id=post["id"], like_cnt__id=user_id).exists()
+        return posts
+
+    def get_top_posts_for_anonymous_user(self, posts: list):
+        for post in posts:
+            post["is_user_liked"] = False
+        return posts
