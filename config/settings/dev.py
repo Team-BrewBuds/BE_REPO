@@ -34,3 +34,6 @@ STORAGES = {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
+
+# FCM
+FCM_SERVICE_ACCOUNT_FILE = env.str("FCM_SERVICE_ACCOUNT_FILE")
