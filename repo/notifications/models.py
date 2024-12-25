@@ -6,6 +6,10 @@ from repo.profiles.models import CustomUser
 
 
 class UserDevice(models.Model):
+    """
+    사용자 디바이스 정보
+    """
+
     DEVICE_TYPE_CHOICES = [
         ("ios", "iOS"),
         ("android", "Android"),
@@ -27,6 +31,10 @@ class UserDevice(models.Model):
 
 
 class PushNotification(models.Model):
+    """
+    푸시 알림 기록
+    """
+
     NOTIFICATION_TYPE_CHOICES = [
         # ('new_post', '새 게시물'),
         # ("new_tasted_record", "새 시음 기록"),
@@ -45,6 +53,10 @@ class PushNotification(models.Model):
 
 
 class NotificationSettings(models.Model):
+    """
+    사용자별 알림 설정
+    """
+
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     like_notify = models.BooleanField(default=True)
     comment_notify = models.BooleanField(default=True)
