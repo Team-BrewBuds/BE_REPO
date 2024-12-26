@@ -63,6 +63,14 @@ class NotificationSettingsAPIView(APIView):
         serializer = NotificationSettingsSerializer(settings)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def post(self, request):
+        """
+        알림 설정 생성 (회원가입 시 설정)
+        """
+        settings = NotificationSettings.objects.create(user=request.user)
+        serializer = NotificationSettingsSerializer(settings)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     def patch(self, request):
         """알림 설정 수정"""
         settings = NotificationSettings.objects.get(user=request.user)

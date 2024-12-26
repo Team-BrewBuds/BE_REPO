@@ -102,6 +102,21 @@ class NotificationSchema:
         tags=[NOTIFICATION_TAG],
     )
 
+    settings_post_schema = extend_schema(
+        summary="알림 설정 생성",
+        description="""
+            사용자의 알림 설정을 생성합니다.
+
+            담당자: hwstar1204
+        """,
+        request=NotificationSettingsSerializer,
+        responses={
+            201: NotificationSettingsSerializer,
+            401: OpenApiResponse(description="Unauthorized"),
+        },
+        tags=[NOTIFICATION_TAG],
+    )
+
     settings_patch_schema = extend_schema(
         summary="알림 설정 수정",
         description="""
@@ -131,5 +146,6 @@ class NotificationSchema:
 
     notification_settings_schema_view = extend_schema_view(
         get=settings_get_schema,
+        post=settings_post_schema,
         patch=settings_patch_schema,
     )
