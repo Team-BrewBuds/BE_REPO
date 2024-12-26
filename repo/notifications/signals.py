@@ -84,7 +84,7 @@ def send_comment_notification(sender, instance: Comment, created: bool, **kwargs
     댓글 생성 시 알림 전송
     """
 
-    if not created or settings.DEBUG:
+    if not created:
         return
 
     try:
@@ -104,7 +104,7 @@ def send_follow_notification(sender, instance: Relationship, created: bool, **kw
     팔로우 생성 시 알림 전송
     """
 
-    if any((not created, settings.DEBUG, instance.relationship_type != "follow")):
+    if not created or instance.relationship_type != "follow":
         return
 
     try:

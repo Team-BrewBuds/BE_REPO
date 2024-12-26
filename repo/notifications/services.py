@@ -13,6 +13,7 @@ from repo.records.models import Comment, Post, TastedRecord
 logger = logging.getLogger("django.server")
 
 SERVICE_ACCOUNT_FILE = getattr(settings, "FCM_SERVICE_ACCOUNT_FILE", None)
+DRY_RUN = True if settings.DEBUG else False
 
 
 class FCMService:
@@ -43,14 +44,18 @@ class FCMService:
         """
         단일 디바이스에 알림 전송
         """
-        message = Message(
-            notification=Notification(title=title, body=body),
-            token=device_token,
-            data=data if data else None,
-        )
+        try:
+            message = Message(
+                notification=Notification(title=title, body=body),
+                token=device_token,
+                data=data if data else None,
+            )
 
-        response = messaging.send(message, dry_run=True)
-        logger.info(f"Successfully sent single message: {response}")
+            response = messaging.send(message, dry_run=DRY_RUN)
+            logger.info(f"Successfully sent single message: {response}")
+        except exceptions.UnauthenticatedError as e:
+            UserDevice.objects.filter(device_token=device_token).delete()
+            logger.error(f"UnauthenticatedError: {e}")
 
     def send_push_notification_to_multiple_devices(self, device_tokens: list[str], title: str, body: str, data: dict = None):
         """
@@ -58,17 +63,32 @@ class FCMService:
         """
         message = MulticastMessage(notification=Notification(title=title, body=body), tokens=device_tokens, data=data if data else None)
 
-        response = messaging.send_multicast(message)
+        response: messaging.BatchResponse = messaging.send_each_for_multicast(message, dry_run=DRY_RUN)
         logger.info(f"Successfully sent multiple message: {response}")
+
+        # 실패한 토큰 처리
+        if response.failure_count > 0:
+            failed_tokens = []
+            for idx, resp in enumerate(response.responses):
+                if not resp.success:
+                    failed_tokens.append(device_tokens[idx])
+
+            if failed_tokens:
+                UserDevice.objects.filter(device_token__in=failed_tokens).delete()
+                logger.info(f"Removed {len(failed_tokens)} invalid tokens")
 
     def send_push_notification_silent(self, device_token: str, data: dict):
         """
         단일 디바이스에 무음 알림 전송
         """
-        message = Message(token=device_token, data=data)
+        try:
+            message = Message(token=device_token, data=data)
 
-        response = messaging.send(message)
-        logger.info(f"Successfully sent silent message: {response}")
+            response = messaging.send(message, dry_run=DRY_RUN)
+            logger.info(f"Successfully sent silent message: {response}")
+        except exceptions.UnauthenticatedError as e:
+            UserDevice.objects.filter(device_token=device_token).delete()
+            logger.error(f"UnauthenticatedError: {e}")
 
     def send_push_notification_to_topic(self, topic: str, title: str, body: str, data: dict = None):
         """
@@ -77,7 +97,7 @@ class FCMService:
 
         message = Message(notification=Notification(title=title, body=body), topic=topic, data=data if data else None)
 
-        response = messaging.send(message)
+        response = messaging.send(message, dry_run=DRY_RUN)
         logger.info(f"Successfully sent topic message: {response}")
 
     def subscribe_topic(self, topic: str, token: str):
