@@ -6,7 +6,11 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
-from .serializers import NotificationSettingsSerializer, PushNotificationSerializer
+from .serializers import (
+    NotificationSettingsSerializer,
+    PushNotificationSerializer,
+    UserDeviceSerializer,
+)
 
 NOTIFICATION_TAG = "notifications"
 
@@ -138,6 +142,36 @@ class NotificationSchema:
 
     notification_test_schema_view = extend_schema_view(post=test_notification_schema)
 
+    user_device_token_post_schema = extend_schema(
+        summary="사용자의 디바이스 토큰 저장 횩은 갱신",
+        description="""
+            사용자의 디바이스 토큰을 생성 혹은 갱신합니다. (로그인 시 호출)
+
+            담당자: hwstar1204
+        """,
+        request=UserDeviceSerializer,
+        responses={
+            200: OpenApiResponse(description="디바이스 토큰 생성 혹은 갱신 성공"),
+            400: OpenApiResponse(description="유효하지 않은 요청"),
+            401: OpenApiResponse(description="Unauthorized"),
+        },
+        tags=[NOTIFICATION_TAG],
+    )
+
+    user_device_token_delete_schema = extend_schema(
+        summary="사용자의 디바이스 토큰 삭제",
+        description="""
+            사용자의 디바이스 토큰을 삭제합니다. (로그아웃 시 호출)
+
+            담당자: hwstar1204
+        """,
+        responses={
+            204: OpenApiResponse(description="디바이스 토큰 삭제 성공"),
+            401: OpenApiResponse(description="Unauthorized"),
+        },
+        tags=[NOTIFICATION_TAG],
+    )
+
     user_notification_schema_view = extend_schema_view(
         get=user_notification_get_schema,
         post=user_notification_post_schema,
@@ -148,4 +182,9 @@ class NotificationSchema:
         get=settings_get_schema,
         post=settings_post_schema,
         patch=settings_patch_schema,
+    )
+
+    user_device_token_schema_view = extend_schema_view(
+        post=user_device_token_post_schema,
+        delete=user_device_token_delete_schema,
     )

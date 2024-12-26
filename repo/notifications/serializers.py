@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import NotificationSettings, PushNotification
+from .models import NotificationSettings, PushNotification, UserDevice
 
 
 class PushNotificationSerializer(serializers.ModelSerializer):
@@ -21,3 +21,13 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = NotificationSettings
         fields = ["like_notify", "comment_notify", "follow_notify", "marketing_notify"]
+
+
+class UserDeviceSerializer(serializers.ModelSerializer):
+    """
+    사용자 디바이스 정보 시리얼라이저
+    """
+
+    class Meta:
+        model = UserDevice
+        fields = ["device_token", "device_type"]

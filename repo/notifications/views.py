@@ -3,9 +3,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import NotificationSettings, PushNotification
+from .models import NotificationSettings, PushNotification, UserDevice
 from .schemas import NotificationSchema
-from .serializers import NotificationSettingsSerializer, PushNotificationSerializer
+from .serializers import (
+    NotificationSettingsSerializer,
+    PushNotificationSerializer,
+    UserDeviceSerializer,
+)
 from .services import FCMService
 
 
@@ -81,3 +85,30 @@ class NotificationSettingsAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@NotificationSchema.user_device_token_schema_view
+class NotificationTokenAPIView(APIView):
+    """
+    사용자 디바이스 토큰 관리 API
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """사용자의 디바이스 토큰 저장 횩은 갱신"""
+        serializer = UserDeviceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token, created = UserDevice.objects.update_or_create(
+            user=request.user,
+            defaults=serializer.validated_data,
+        )
+
+        message = "user device token" + "created" if created else "updated"
+        return Response({"message": message}, status=status.HTTP_200_OK)
+
+    def delete(self, request):
+        """사용자의 디바이스 토큰 삭제"""
+        UserDevice.objects.filter(user=request.user, is_active=True).delete()
+        return Response({"message": "user device token deleted"}, status=status.HTTP_204_NO_CONTENT)

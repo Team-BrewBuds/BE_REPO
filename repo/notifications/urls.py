@@ -9,4 +9,5 @@ urlpatterns = [
     path("user/", UserNotificationAPIView.as_view(), name="user-notifications"),
     # 알림 설정 관리 API
     path("settings/", NotificationSettingsAPIView.as_view(), name="notification-settings"),
+    path("token/", NotificationTokenAPIView.as_view(), name="notification-token"),
 ]
