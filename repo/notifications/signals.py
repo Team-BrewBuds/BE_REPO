@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
@@ -16,7 +17,7 @@ def subscribe_post_topic(sender, instance: Post, created: bool, **kwargs):
     """
     게시글 생성 시 토픽 구독
     """
-    if not created:
+    if not created or settings.DEBUG:
         return
 
     notification_service = NotificationService()
@@ -33,7 +34,7 @@ def subscribe_tasted_record_topic(sender, instance: TastedRecord, created: bool,
     """
     시음기록 생성 시 토픽 구독
     """
-    if not created:
+    if not created or settings.DEBUG:
         return
 
     notification_service = NotificationService()
@@ -47,6 +48,12 @@ def subscribe_tasted_record_topic(sender, instance: TastedRecord, created: bool,
 
 @receiver(post_delete, sender=Post)
 def unsubscribe_post_topic(sender, instance: Post, **kwargs):
+    """
+    게시글 삭제 시 토픽 구독 해지
+    """
+    if settings.DEBUG:
+        return
+
     notification_service = NotificationService()
     topic_id = Topic.POST.get_topic_id(instance.id)
     token = notification_service.get_fcm_token(instance.author.id)
@@ -57,6 +64,12 @@ def unsubscribe_post_topic(sender, instance: Post, **kwargs):
 
 @receiver(post_delete, sender=TastedRecord)
 def unsubscribe_tasted_record_topic(sender, instance: TastedRecord, **kwargs):
+    """
+    시음기록 삭제 시 토픽 구독 해지
+    """
+    if settings.DEBUG:
+        return
+
     notification_service = NotificationService()
     topic_id = Topic.TASTED_RECORD.get_topic_id(instance.id)
     token = notification_service.get_fcm_token(instance.author.id)
@@ -69,13 +82,9 @@ def unsubscribe_tasted_record_topic(sender, instance: TastedRecord, **kwargs):
 def send_comment_notification(sender, instance: Comment, created: bool, **kwargs):
     """
     댓글 생성 시 알림 전송
-    자신의 게시물에 댓글을 작성한 경우 알림을 전송하지 않음
     """
-    if not created:
-        return
-    if instance.post and instance.author == instance.post.author:
-        return
-    if instance.tasted_record and instance.author == instance.tasted_record.author:
+
+    if not created or settings.DEBUG:
         return
 
     try:
@@ -94,7 +103,8 @@ def send_follow_notification(sender, instance: Relationship, created: bool, **kw
     """
     팔로우 생성 시 알림 전송
     """
-    if not created or instance.relationship_type != "follow":
+
+    if any((not created, settings.DEBUG, instance.relationship_type != "follow")):
         return
 
     try:
