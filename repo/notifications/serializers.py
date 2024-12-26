@@ -20,4 +20,4 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = NotificationSettings
-        fields = ["like_notify", "comment_notify", "marketing_notify"]
+        fields = ["like_notify", "comment_notify", "follow_notify", "marketing_notify"]
