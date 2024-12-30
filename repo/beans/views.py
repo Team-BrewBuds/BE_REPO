@@ -1,12 +1,21 @@
+from django.db.models import Avg, Count
+from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from repo.beans.models import Bean
 from repo.beans.schemas import *
-from repo.beans.serializers import BeanSerializer, UserBeanSerializer
+from repo.beans.serializers import (
+    BeanDetailSerializer,
+    BeanSerializer,
+    UserBeanSerializer,
+)
 from repo.beans.services import BeanService
 from repo.common.filters import BeanFilter
+from repo.records.models import TastedRecord
 
 
 @BeanSchema.bean_name_search_schema
@@ -39,3 +48,19 @@ class UserBeanListAPIView(generics.ListAPIView):
         ordering = self.request.query_params.get("ordering", "-note__created_at")
         queryset = BeanService().get_user_saved(user_id)
         return queryset.order_by(ordering)
+
+
+class BeanDetailView(APIView):
+    """
+    원두 상세 정보 API
+    담당자: blakej2432
+    """
+
+    def get(self, request, id):
+        bean = get_object_or_404(Bean, id=id)
+
+        stats = TastedRecord.objects.filter(bean=bean).aggregate(avg_star=Avg("taste_review__star"), record_count=Count("id"))
+
+        serializer = BeanDetailSerializer(bean, context={"avg_star": stats["avg_star"] or 0, "record_count": stats["record_count"] or 0})
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
