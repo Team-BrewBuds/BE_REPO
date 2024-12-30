@@ -22,3 +22,18 @@ class UserBeanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bean
         fields = ["id", "name", "origin_country", "roast_point", "avg_star", "tasted_records_cnt"]
+
+
+class BeanDetailSerializer(serializers.ModelSerializer):
+    avg_star = serializers.SerializerMethodField()
+    record_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Bean
+        fields = ["id", "name", "bean_type", "is_decaf", "origin_country", "region", "process", "roast_point", "avg_star", "record_count"]
+
+    def get_avg_star(self, obj):
+        return self.context.get("avg_star", 0)
+
+    def get_record_count(self, obj):
+        return self.context.get("record_count", 0)
