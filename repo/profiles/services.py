@@ -49,6 +49,8 @@ class UserService:
             introduction=F("user_detail__introduction"),
             profile_link=F("user_detail__profile_link"),
             coffee_life=F("user_detail__coffee_life"),
+            preferred_bean_taste=F("user_detail__preferred_bean_taste"),
+            is_certificated=F("user_detail__is_certificated"),
             following_cnt=Value(follower_cnt),
             follower_cnt=Value(following_cnt),
             post_cnt=Count("post"),
