@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 
 from .models import Comment, Photo, Post, TastedRecord
 
@@ -27,7 +28,7 @@ class PostAdmin(admin.ModelAdmin):
 
 
 class CommentAdmin(admin.ModelAdmin):
-    list_display = ["author", "get_comment_content", "post", "tasted_record", "created_at"]
+    list_display = ["id", "author_link", "get_comment_content", "get_parent_content", "post_link", "tasted_record_link", "created_at"]
     list_filter = [
         ("post", admin.EmptyFieldListFilter),
         ("tasted_record", admin.EmptyFieldListFilter),
@@ -35,10 +36,30 @@ class CommentAdmin(admin.ModelAdmin):
     ]
     search_fields = ["author__username", "post__title", "content"]
 
+    @admin.display(description="작성자")
+    def author_link(self, obj):
+        url = f"/admin/profiles/customuser/{obj.author.id}/change/"
+        return format_html('<a href="{}">{}</a>', url, obj.author.nickname)
+
+    @admin.display(description="댓글 내용")
     def get_comment_content(self, obj):
         return obj.content[:20] + "..." if not obj.is_deleted else "삭제된 댓글"
 
-    get_comment_content.short_description = "댓글 내용"
+    @admin.display(description="상위 댓글 내용")
+    def get_parent_content(self, obj):
+        return obj.parent.content[:20] + "..." if obj.parent else "상위 댓글 없음"
+
+    @admin.display(description="게시글")
+    def post_link(self, obj):
+        if obj.post:
+            url = f"/admin/records/post/{obj.post.id}/change/"
+            return format_html('<a href="{}">{}</a>', url, obj.post.title[:20] + "...")
+
+    @admin.display(description="시음 기록")
+    def tasted_record_link(self, obj):
+        if obj.tasted_record:
+            url = f"/admin/records/tastedrecord/{obj.tasted_record.id}/change/"
+            return format_html('<a href="{}">{}</a>', url, obj.tasted_record.bean.name[:20] + "...")
 
 
 admin.site.register(TastedRecord, TastedRecordAdmin)
