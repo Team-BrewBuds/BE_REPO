@@ -8,6 +8,6 @@ SPECTACULAR_SETTINGS = {
     + "- 홈 게시글, 시음기록 피드 조회시 팔로우 관계 여부 데이터 추가"
     + "\n\n"
     + "- 사용자의 nickname이 저장되었는지 확인하는 API 추가",
-    "VERSION": "v0.0.8",
+    "VERSION": "v0.0.10",
     "SERVE_INCLUDE_SCHEMA": False,
 }
