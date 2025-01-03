@@ -5,7 +5,7 @@ from .models import Comment, Photo, Post, TastedRecord
 
 
 class TastedRecordAdmin(admin.ModelAdmin):
-    list_display = ["author", "bean", "view_cnt", "created_at", "is_private"]
+    list_display = ["id", "author", "bean", "view_cnt", "created_at", "is_private"]
     list_filter = ["created_at", "is_private"]
     search_fields = ["author__username", "bean__name"]
     actions = ["make_tasted_record_private", "make_tasted_record_public"]
@@ -22,7 +22,7 @@ class TastedRecordAdmin(admin.ModelAdmin):
 
 
 class PostAdmin(admin.ModelAdmin):
-    list_display = ["author", "title", "view_cnt", "subject", "created_at"]
+    list_display = ["id", "author", "title", "view_cnt", "subject", "created_at"]
     list_filter = ["subject", "created_at"]
     search_fields = ["author__username", "title"]
 
