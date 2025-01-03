@@ -51,7 +51,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.email}"
+        return f"{self.nickname}"
 
     class Meta:
         db_table = "user"
@@ -75,7 +75,7 @@ class UserDetail(models.Model):
     profile_link = models.URLField(max_length=200, null=True, blank=True, verbose_name="프로필 링크")
     coffee_life = models.JSONField(default=default_coffee_life, verbose_name="커피 생활")
     preferred_bean_taste = models.JSONField(default=default_coffee_life, verbose_name="선호하는 원두 맛")
-    is_certificated = models.BooleanField(default=False, verbose_name="인증 여부")
+    is_certificated = models.BooleanField(default=False, verbose_name="자격증 여부")
 
     def __str__(self):
         return f"{self.user.nickname}의 상세정보"
