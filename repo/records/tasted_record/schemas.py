@@ -135,6 +135,8 @@ class UserTastedRecordListSchema:
             OpenApiParameter(name="star_min", type=float, enum=[x / 2 for x in range(11)], required=False),
             OpenApiParameter(name="star_max", type=float, enum=[x / 2 for x in range(11)], required=False),
             OpenApiParameter(name="is_decaf", type=bool, enum=[True, False], required=False),
+            OpenApiParameter(name="roast_point_min", type=float, required=False),
+            OpenApiParameter(name="roast_point_max", type=float, required=False),
             OpenApiParameter(name="ordering", type=str, enum=["-created_at", "-taste_review__star", "-likes"], required=False),
         ],
         responses={

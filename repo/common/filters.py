@@ -10,10 +10,12 @@ class TastedRecordFilter(filters.FilterSet):
     is_decaf = filters.BooleanFilter(field_name="bean__is_decaf")
     star_min = filters.NumberFilter(field_name="taste_review__star", lookup_expr="gte")
     star_max = filters.NumberFilter(field_name="taste_review__star", lookup_expr="lte")
+    roast_point_min = filters.NumberFilter(field_name="bean__roast_point", lookup_expr="gte")
+    roast_point_max = filters.NumberFilter(field_name="bean__roast_point", lookup_expr="lte")
 
     class Meta:
         model = TastedRecord
-        fields = ["bean_type", "origin_country", "is_decaf", "star_min", "star_max"]
+        fields = ["bean_type", "origin_country", "is_decaf", "star_min", "star_max", "roast_point_min", "roast_point_max"]
 
 
 class BeanFilter(filters.FilterSet):
