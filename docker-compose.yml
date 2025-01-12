@@ -1,30 +1,37 @@
-version: '3.8'
+version: '3'
 
 services:
-
-  backend:
-    container_name: web
+  web:
+    container_name: web-dev
     build:
-      context: .
-      dockerfile: prod.Dockerfile
+      context: ./
+      dockerfile: ./docker/dev.Dockerfile
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      LOCAL_MYSQL_HOST: host.docker.internal
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - .:/usr/src/app/
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
     entrypoint:
       - sh
-      - -c
-      - |
-        poetry run python manage.py migrate &&
-        poetry run gunicorn config.wsgi.dev -b 0.0.0.0:8000
-    volumes:
-      - ./backend/django/:/app/
-      - /etc/localtime:/etc/localtime:ro
-      - django_media:/app/media/
-      - django_static:/app/static/
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.prod
-    expose:
-      - "8000"
-    restart: always
+      - ./scripts/entrypoint.dev.sh
 
+  redis:
+    container_name: redis-dev
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
 
 volumes:
-  static:
-  media:
+  redis-data:

@@ -14,7 +14,7 @@ class Report(models.Model):
         PROCESSING = "processing", "처리 중"
         COMPLETED = "completed", "완료됨"
 
-    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="작성자")
+    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, verbose_name="신고자")
     object_type = models.CharField(max_length=50, choices=ReportObjectType.choices, verbose_name="신고 대상 종류")
     object_id = models.PositiveIntegerField(verbose_name="신고 대상 ID")
     reason = models.TextField(verbose_name="신고 사유")

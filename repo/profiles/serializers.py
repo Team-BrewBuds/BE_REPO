@@ -77,6 +77,8 @@ class UserProfileSerializer(UserSimpleSerializer):
     introduction = serializers.CharField(required=False, default="")
     profile_link = serializers.CharField(required=False, default="")
     coffee_life = serializers.JSONField()
+    preferred_bean_taste = serializers.JSONField()
+    is_certificated = serializers.BooleanField()
     following_cnt = serializers.IntegerField()
     follower_cnt = serializers.IntegerField()
     post_cnt = serializers.IntegerField()
@@ -88,6 +90,8 @@ class UserProfileSerializer(UserSimpleSerializer):
             "introduction",
             "profile_link",
             "coffee_life",
+            "preferred_bean_taste",
+            "is_certificated",
             "following_cnt",
             "follower_cnt",
             "post_cnt",

@@ -1,5 +1,5 @@
 from django.db import models, transaction
-from django.db.models import Exists, Q
+from django.db.models import Exists, OuterRef, Q
 
 from repo.common.exception.exceptions import (
     BadRequestException,
@@ -136,3 +136,6 @@ class RelationshipService:
             {"user": getattr(relationship, query_config["user_field"]), "is_following": relationship.is_following}
             for relationship in relationships
         ]
+
+    def get_following_subquery_for_record(self, user):
+        return Relationship.objects.filter(relationship_type=FOLLOW_TYPE, from_user=user.id, to_user=OuterRef("author_id"))
