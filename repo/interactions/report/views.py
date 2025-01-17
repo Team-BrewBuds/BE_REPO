@@ -9,7 +9,7 @@ from .services import ContentReportService, UserReportService
 
 
 @ReportSchema.report_schema_view
-class ReportAPIView(APIView):
+class ContentReportAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, object_type, object_id):
