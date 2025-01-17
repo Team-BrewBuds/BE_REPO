@@ -3,14 +3,13 @@ from django.utils.html import format_html
 
 from repo.interactions.note.models import Note
 from repo.interactions.relationship.models import Relationship
-from repo.interactions.report.models import Report
+from repo.interactions.report.models import ContentReport, UserReport
 
 
-class ReportAdmin(admin.ModelAdmin):
+class ContentReportAdmin(admin.ModelAdmin):
     list_display = ["id", "author_link", "object_type", "reason", "object_link", "status", "created_at"]
     list_filter = ["status", "object_type", "reason", "created_at"]
     search_fields = ["author__username", "object_type", "object_id"]
-    ordering = ["id"]
 
     @admin.display(description="신고자")
     def author_link(self, obj):
@@ -30,6 +29,23 @@ class ReportAdmin(admin.ModelAdmin):
         return format_html('<a href="{}">{}</a>', url, obj.object_id)
 
 
+class UserReportAdmin(admin.ModelAdmin):
+    list_display = ["id", "author_link", "target_user_link", "reason", "status", "created_at"]
+    list_filter = ["status", "reason", "created_at"]
+    search_fields = ["author__username", "target_user__username"]
+
+    @admin.display(description="신고자")
+    def author_link(self, obj):
+        url = f"/admin/profiles/customuser/{obj.author.id}/change/"
+        return format_html('<a href="{}">{}</a>', url, obj.author.nickname)
+
+    @admin.display(description="신고 대상")
+    def target_user_link(self, obj):
+        url = f"/admin/profiles/customuser/{obj.target_user.id}/change/"
+        return format_html('<a href="{}">{}</a>', url, obj.target_user.nickname)
+
+
 admin.site.register(Relationship)
 admin.site.register(Note)
-admin.site.register(Report, ReportAdmin)
+admin.site.register(ContentReport, ContentReportAdmin)
+admin.site.register(UserReport, UserReportAdmin)
