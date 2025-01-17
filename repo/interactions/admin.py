@@ -20,14 +20,9 @@ class ContentReportAdmin(admin.ModelAdmin):
 
     @admin.display(description="신고 대상")
     def object_link(self, obj):
-        if obj.object_type == "post":
-            url = f"/admin/records/post/{obj.object_id}/change/"
-        elif obj.object_type == "tasted_record":
-            url = f"/admin/records/tastedrecord/{obj.object_id}/change/"
-        elif obj.object_type == "comment":
-            url = f"/admin/records/comment/{obj.object_id}/change/"
-        else:
-            return obj.object_id
+        if obj.object_type == "tasted_record":
+            obj.object_type = "tastedrecord"
+        url = f"/admin/records/{obj.object_type}/{obj.object_id}/change/"
         return format_html('<a href="{}">{}</a>', url, obj.object_id)
 
     def related_comment(self, obj):
