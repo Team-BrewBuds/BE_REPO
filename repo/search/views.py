@@ -191,7 +191,7 @@ class TastedRecordSearchView(APIView):
                 | Q(tag__icontains=query)
                 | Q(taste_review__flavor__icontains=query)
             )
-            .select_related("bean", "taste_review")
+            .select_related("bean", "author", "taste_review")
             .distinct()
         )
 
