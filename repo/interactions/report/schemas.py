@@ -6,7 +6,7 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
-from .serializers import ReportSerializer
+from .serializers import ContentReportSerializer, UserReportSerializer
 
 Report_TAG = "Report"
 
@@ -23,9 +23,9 @@ class ReportSchema:
             ),
             OpenApiParameter(name="object_id", type=OpenApiTypes.INT, location=OpenApiParameter.PATH, description="신고할 대상의 ID"),
         ],
-        request=ReportSerializer,
+        request=ContentReportSerializer,
         responses={
-            201: ReportSerializer,
+            201: ContentReportSerializer,
             400: OpenApiResponse(description="잘못된 요청"),
             401: OpenApiResponse(description="인증되지 않은 사용자"),
             404: OpenApiResponse(description="신고할 대상을 찾을 수 없음"),
@@ -47,6 +47,24 @@ class ReportSchema:
         tags=[Report_TAG],
     )
 
+    user_report_schema = extend_schema(
+        request=UserReportSerializer,
+        responses={
+            201: UserReportSerializer,
+            400: OpenApiResponse(description="잘못된 요청"),
+            401: OpenApiResponse(description="인증되지 않은 사용자"),
+            404: OpenApiResponse(description="신고할 대상을 찾을 수 없음"),
+            409: OpenApiResponse(description="이미 신고한 컨텐츠입니다"),
+        },
+        summary="사용자 신고",
+        description="사용자에 대한 신고를 생성합니다.",
+        tags=[Report_TAG],
+    )
+
     report_schema_view = extend_schema_view(
         post=report_post_schema,
+    )
+
+    user_report_schema_view = extend_schema_view(
+        post=user_report_schema,
     )
