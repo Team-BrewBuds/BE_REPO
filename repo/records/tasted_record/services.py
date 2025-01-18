@@ -80,6 +80,7 @@ class TastedRecordService(BaseRecordService):
             bean=bean,
             taste_review=taste_review,
             content=validated_data["content"],
+            tasted_at=validated_data["tasted_at"],
         )
 
         photos = validated_data.get("photos", [])
@@ -104,7 +105,6 @@ class TastedRecordService(BaseRecordService):
     @transaction.atomic
     def delete_record(self, tasted_record: TastedRecord):
         """시음기록 삭제"""
-        # TODO: bean 데이터 비지니스 로직 추가
         tasted_record.delete()
         cache.delete(cache_key)
 
