@@ -75,6 +75,7 @@ class TastedRecordSchema:
         summary="시음기록 수정",
         description="""
             시음기록의 정보를 수정합니다. (전체 수정)
+            원두 정보는 수정 불가능합니다.
             담당자 : hwstar1204
         """,
         tags=[TastedRecord_Tag],
@@ -89,6 +90,7 @@ class TastedRecordSchema:
         summary="시음기록 수정",
         description="""
             시음기록의 정보를 수정합니다. (일부 수정)
+            원두 정보는 수정 불가능합니다.
             담당자 : hwstar1204
         """,
         tags=[TastedRecord_Tag],
