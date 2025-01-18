@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Bean, BeanTasteReview, OfficialBean
+from .models import Bean, BeanTasteReview
 
 
 class BeanSerializer(serializers.ModelSerializer):
@@ -35,8 +35,9 @@ class BeanDetailSerializer(serializers.ModelSerializer):
     image_url = serializers.ImageField()
     top_flavors = serializers.SerializerMethodField()
 
+    # TODO : OfficialBean 삭제 -> Bean 사용하도록 수정 필요함
     class Meta:
-        model = OfficialBean
+        model = Bean
         fields = [
             "id",
             "name",
