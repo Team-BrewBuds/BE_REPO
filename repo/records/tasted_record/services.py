@@ -110,9 +110,6 @@ class TastedRecordService(BaseRecordService):
 
     def _set_tasted_record_relations(self, tasted_record: TastedRecord, data: dict):
         """시음기록 관계 데이터 설정"""
-        if bean_data := data.get("bean"):
-            bean = self.bean_service.update(bean_data, tasted_record.author)
-            tasted_record.bean = bean
 
         if taste_review_data := data.get("taste_review"):
             taste_review, _ = BeanTasteReview.objects.update_or_create(

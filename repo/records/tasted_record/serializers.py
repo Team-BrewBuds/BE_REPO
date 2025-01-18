@@ -58,7 +58,7 @@ class TastedRecordDetailSerializer(serializers.ModelSerializer):
 
 
 class TastedRecordCreateUpdateSerializer(serializers.ModelSerializer):
-    bean = BeanSerializer("bean")
+    bean = BeanSerializer("bean", required=False)
     taste_review = BeanTasteReviewSerializer("taste_review")
     photos = serializers.PrimaryKeyRelatedField(
         many=True,
