@@ -1,10 +1,13 @@
 from django.contrib import admin
+from django.utils.safestring import mark_safe
+
+from repo.common.admin_filters import IsCertificatedFilter, IsCoffeeLifeFilter
 
 from .models import CustomUser, UserDetail
 
 
 class CustomUserAdmin(admin.ModelAdmin):
-    list_display = ["nickname", "email", "gender", "login_type", "created_at", "is_staff"]
+    list_display = ["id", "nickname", "gender", "birth", "login_type", "email", "created_at", "is_superuser", "is_active"]
     list_filter = ["login_type", "gender", "created_at"]
     search_fields = ["nickname", "email"]
     actions = ["make_user_admin", "make_user_normal"]
@@ -22,12 +25,10 @@ class CustomUserAdmin(admin.ModelAdmin):
 
 class UserDetailAdmin(admin.ModelAdmin):
     list_display = ["user", "introduction", "is_certificated", "get_coffee_life_display", "get_preferred_bean_taste_display"]
-    list_filter = ["is_certificated"]
+    list_filter = [IsCertificatedFilter, IsCoffeeLifeFilter]
     search_fields = ["user__nickname", "user__email"]
 
     def get_coffee_life_display(self, obj):
-        coffee_life = obj.coffee_life
-        active_choices = [key for key, value in coffee_life.items() if value]
         formatted_choices = {
             "cafe_tour": "카페 투어",
             "coffee_extraction": "커피 추출",
@@ -36,13 +37,24 @@ class UserDetailAdmin(admin.ModelAdmin):
             "cafe_work": "카페 일 경험",
             "cafe_operation": "카페 운영",
         }
-        return ", ".join([formatted_choices[choice] for choice in active_choices]) or "-"
+
+        result = []
+        for key, label in formatted_choices.items():
+            value = obj.coffee_life.get(key, False)
+            result.append(f"{label}: {'✔' if value else '✘'}")
+
+        return mark_safe(" | ".join(result))
 
     def get_preferred_bean_taste_display(self, obj):
         preferred_bean_taste = obj.preferred_bean_taste
-        active_choices = [key for key, value in preferred_bean_taste.items() if value]
         formatted_choices = {"body": "바디", "acidity": "산미", "bitterness": "쓴맛", "sweetness": "단맛"}
-        return ", ".join([formatted_choices[choice] for choice in active_choices]) or "-"
+
+        result = []
+        for key, label in formatted_choices.items():
+            value = preferred_bean_taste.get(key, 3)
+            result.append(f"{label}: {value}")
+
+        return mark_safe(" | ".join(result))
 
     get_coffee_life_display.short_description = "커피 생활"
     get_preferred_bean_taste_display.short_description = "선호하는 원두 맛"
