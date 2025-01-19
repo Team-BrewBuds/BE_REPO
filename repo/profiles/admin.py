@@ -8,7 +8,7 @@ from .models import CustomUser, UserDetail
 
 class CustomUserAdmin(admin.ModelAdmin):
     list_display = ["id", "nickname", "gender", "birth", "login_type", "email", "created_at", "is_superuser", "is_active"]
-    list_filter = ["login_type", "gender", "created_at"]
+    list_filter = ["gender", "login_type", "created_at", "is_superuser", "is_staff", "is_active", "birth"]
     search_fields = ["nickname", "email"]
     actions = ["make_user_admin", "make_user_normal"]
 
@@ -24,8 +24,8 @@ class CustomUserAdmin(admin.ModelAdmin):
 
 
 class UserDetailAdmin(admin.ModelAdmin):
-    list_display = ["user", "introduction", "is_certificated", "get_coffee_life_display", "get_preferred_bean_taste_display"]
-    list_filter = [IsCertificatedFilter, IsCoffeeLifeFilter]
+    list_display = ["user", "introduction", "get_coffee_life_display", "get_preferred_bean_taste_display", "is_certificated"]
+    list_filter = [IsCoffeeLifeFilter, IsCertificatedFilter]
     search_fields = ["user__nickname", "user__email"]
 
     def get_coffee_life_display(self, obj):
