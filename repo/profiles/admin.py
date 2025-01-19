@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.utils.safestring import mark_safe
+from rangefilter.filters import DateRangeFilter, NumericRangeFilter
 
 from repo.common.admin_filters import IsCertificatedFilter, IsCoffeeLifeFilter
 
@@ -8,7 +9,16 @@ from .models import CustomUser, UserDetail
 
 class CustomUserAdmin(admin.ModelAdmin):
     list_display = ["id", "nickname", "gender", "birth", "login_type", "email", "created_at", "is_superuser", "is_active"]
-    list_filter = ["gender", "login_type", "created_at", "is_superuser", "is_staff", "is_active", "birth"]
+    list_filter = [
+        "gender",
+        "login_type",
+        "created_at",
+        ("created_at", DateRangeFilter),
+        "is_superuser",
+        "is_staff",
+        "is_active",
+        ("birth", NumericRangeFilter),
+    ]
     search_fields = ["nickname", "email"]
     actions = ["make_user_admin", "make_user_normal"]
 
