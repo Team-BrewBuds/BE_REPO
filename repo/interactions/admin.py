@@ -7,6 +7,7 @@ from repo.interactions.report.models import ContentReport, UserReport
 from repo.records.models import Comment
 
 
+@admin.register(ContentReport)
 class ContentReportAdmin(admin.ModelAdmin):
     list_display = ["id", "author_link", "object_type", "reason", "object_link", "status", "created_at"]
     list_filter = ["status", "object_type", "reason", "created_at"]
@@ -43,6 +44,7 @@ class ContentReportAdmin(admin.ModelAdmin):
             return "\n".join([f"ID: {comment[0]}, 닉네임: {comment[1]}, 내용: {comment[2]}" for comment in comments])
 
 
+@admin.register(UserReport)
 class UserReportAdmin(admin.ModelAdmin):
     list_display = ["id", "author_link", "target_user_link", "reason", "status", "created_at"]
     list_filter = ["status", "reason", "created_at"]
@@ -61,5 +63,3 @@ class UserReportAdmin(admin.ModelAdmin):
 
 admin.site.register(Relationship)
 admin.site.register(Note)
-admin.site.register(ContentReport, ContentReportAdmin)
-admin.site.register(UserReport, UserReportAdmin)

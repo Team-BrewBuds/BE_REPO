@@ -7,6 +7,7 @@ from repo.common.admin_filters import IsCertificatedFilter, IsCoffeeLifeFilter
 from .models import CustomUser, UserDetail
 
 
+@admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
     list_display = ["id", "nickname", "gender", "birth", "login_type", "email", "created_at", "is_superuser", "is_active"]
     list_filter = [
@@ -33,6 +34,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         self.message_user(request, f"{queryset.count()} 명의 사용자가 일반 사용자로 수정되었습니다.")
 
 
+@admin.register(UserDetail)
 class UserDetailAdmin(admin.ModelAdmin):
     list_display = ["user", "introduction", "get_coffee_life_display", "get_preferred_bean_taste_display", "is_certificated"]
     list_filter = [IsCoffeeLifeFilter, IsCertificatedFilter]
@@ -68,7 +70,3 @@ class UserDetailAdmin(admin.ModelAdmin):
 
     get_coffee_life_display.short_description = "커피 생활"
     get_preferred_bean_taste_display.short_description = "선호하는 원두 맛"
-
-
-admin.site.register(CustomUser, CustomUserAdmin)
-admin.site.register(UserDetail, UserDetailAdmin)

@@ -1,9 +1,10 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Comment, Photo, Post, TastedRecord
+from .models import Comment, Post, TastedRecord
 
 
+@admin.register(TastedRecord)
 class TastedRecordAdmin(admin.ModelAdmin):
     list_display = ["id", "author", "bean", "view_cnt", "created_at", "is_private"]
     list_filter = ["created_at", "is_private"]
@@ -21,12 +22,14 @@ class TastedRecordAdmin(admin.ModelAdmin):
         self.message_user(request, f"{queryset.count()} 개의 시음기록이 공개로 수정되었습니다.")
 
 
+@admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
     list_display = ["id", "author", "title", "view_cnt", "subject", "created_at"]
     list_filter = ["subject", "created_at"]
     search_fields = ["author__username", "title"]
 
 
+@admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     list_display = ["id", "author_link", "get_comment_content", "get_parent_content", "post_link", "tasted_record_link", "created_at"]
     list_filter = [
@@ -60,9 +63,3 @@ class CommentAdmin(admin.ModelAdmin):
         if obj.tasted_record:
             url = f"/admin/records/tastedrecord/{obj.tasted_record.id}/change/"
             return format_html('<a href="{}">{}</a>', url, obj.tasted_record.bean.name[:20] + "...")
-
-
-admin.site.register(TastedRecord, TastedRecordAdmin)
-admin.site.register(Post, PostAdmin)
-admin.site.register(Photo)
-admin.site.register(Comment, CommentAdmin)
