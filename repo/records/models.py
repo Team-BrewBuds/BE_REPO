@@ -13,6 +13,7 @@ class TastedRecord(models.Model):
     like_cnt = models.ManyToManyField(CustomUser, default=0, related_name="like_tasted_records")
     is_private = models.BooleanField(default=False, verbose_name="비공개 여부")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
+    tasted_at = models.DateField(null=True, blank=True, verbose_name="시음일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
 
     def is_user_liked(self, user):

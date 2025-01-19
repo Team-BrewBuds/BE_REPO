@@ -58,7 +58,7 @@ class TastedRecordDetailSerializer(serializers.ModelSerializer):
 
 
 class TastedRecordCreateUpdateSerializer(serializers.ModelSerializer):
-    bean = BeanSerializer("bean")
+    bean = BeanSerializer("bean", required=False)
     taste_review = BeanTasteReviewSerializer("taste_review")
     photos = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -68,7 +68,7 @@ class TastedRecordCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TastedRecord
-        fields = ["content", "is_private", "tag", "bean", "taste_review", "photos"]
+        fields = ["content", "is_private", "tag", "bean", "taste_review", "photos", "tasted_at"]
 
 
 class TastedRecordInPostSerializer(serializers.ModelSerializer):

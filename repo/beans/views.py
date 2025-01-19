@@ -9,7 +9,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.beans.models import OfficialBean
+from repo.beans.models import Bean
 from repo.beans.schemas import *
 from repo.beans.serializers import (
     BeanDetailSerializer,
@@ -65,7 +65,8 @@ class BeanDetailView(APIView):
     """
 
     def get(self, request, id):
-        official_bean = get_object_or_404(OfficialBean.objects.select_related("bean_taste"), id=id)
+        # TODO : OfficialBean 삭제 -> Bean 사용하도록 수정 필요함
+        official_bean = get_object_or_404(Bean.objects.select_related("bean_taste"), id=id)
 
         stats = TastedRecord.objects.filter(bean__name=official_bean.name).aggregate(
             avg_star=Avg("taste_review__star"), record_count=Count("id")
@@ -102,7 +103,8 @@ class BeanTastedRecordView(APIView):
     """
 
     def get(self, request, id):
-        official_bean = get_object_or_404(OfficialBean, id=id)
+        # TODO : OfficialBean 삭제 -> Bean 사용하도록 수정 필요함
+        official_bean = get_object_or_404(Bean, id=id)
         records = TastedRecord.objects.filter(bean__name=official_bean.name).select_related("author", "bean", "taste_review")
 
         paginator = PageNumberPagination()
