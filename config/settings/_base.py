@@ -37,6 +37,7 @@ THIRD_PARTY_APPS = [
     "celery",
     "django_celery_beat",
     "django_celery_results",
+    "rangefilter",
 ]
 
 DJANGO_APPS = [
