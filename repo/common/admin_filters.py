@@ -41,3 +41,21 @@ class IsCoffeeLifeFilter(admin.SimpleListFilter):
         if value:
             return queryset.filter(**{f"coffee_life__{value}": True})
         return queryset
+
+
+class IsPublicFilter(admin.SimpleListFilter):
+    title = "공개 여부"
+    parameter_name = "is_private"
+
+    def lookups(self, request, model_admin):
+        return (
+            (False, "공개"),
+            (True, "비공개"),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == "False":
+            return queryset.filter(is_private=False)
+        elif self.value() == "True":
+            return queryset.filter(is_private=True)
+        return queryset
