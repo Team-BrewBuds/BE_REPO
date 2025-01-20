@@ -20,7 +20,7 @@ class TastedRecord(models.Model):
         return user in self.like_cnt.all()
 
     def __str__(self):
-        return f"{self.author.nickname} - {self.bean.name}"
+        return f"{self.bean.id} - {self.bean.name}"
 
     class Meta:
         db_table = "tasted_record"

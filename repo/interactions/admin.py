@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
+from repo.common.admin_mixins import CreatedAtMixin, RelatedRecordsMixin
 from repo.interactions.note.models import Note
 from repo.interactions.relationship.models import Relationship
 from repo.interactions.report.models import ContentReport, UserReport
@@ -8,9 +9,9 @@ from repo.records.models import Comment
 
 
 @admin.register(ContentReport)
-class ContentReportAdmin(admin.ModelAdmin):
-    list_display = ["id", "author_link", "object_type", "reason", "object_link", "status", "created_at"]
-    list_filter = ["status", "object_type", "reason", "created_at"]
+class ContentReportAdmin(CreatedAtMixin, admin.ModelAdmin):
+    list_display = ["id", "author_link", "object_type", "reason", "object_link", "status"]
+    list_filter = ["object_type", "reason", "status"]
     search_fields = ["author__username", "object_type", "object_id"]
     readonly_fields = ["related_comment"]
 
@@ -45,9 +46,9 @@ class ContentReportAdmin(admin.ModelAdmin):
 
 
 @admin.register(UserReport)
-class UserReportAdmin(admin.ModelAdmin):
-    list_display = ["id", "author_link", "target_user_link", "reason", "status", "created_at"]
-    list_filter = ["status", "reason", "created_at"]
+class UserReportAdmin(CreatedAtMixin, admin.ModelAdmin):
+    list_display = ["id", "author_link", "target_user_link", "reason", "status"]
+    list_filter = ["reason", "status"]
     search_fields = ["author__username", "target_user__username"]
 
     @admin.display(description="신고자")
@@ -61,5 +62,37 @@ class UserReportAdmin(admin.ModelAdmin):
         return format_html('<a href="{}">{}</a>', url, obj.target_user.nickname)
 
 
-admin.site.register(Relationship)
-admin.site.register(Note)
+@admin.register(Note)
+class NoteAdmin(RelatedRecordsMixin, admin.ModelAdmin):
+    list_display = ["id", "bean_link", "author"]
+    list_filter = [
+        ("post", admin.EmptyFieldListFilter),
+        ("tasted_record", admin.EmptyFieldListFilter),
+        ("bean", admin.EmptyFieldListFilter),
+    ]
+
+    @admin.display(description="작성자")
+    def author(self, obj):
+        return obj.author.nickname
+
+    @admin.display(description="원두")
+    def bean_link(self, obj):
+        if obj.bean:
+            url = f"/admin/beans/bean/{obj.bean.id}/change/"
+            return format_html('<a href="{}">{}</a>', url, obj.bean.name)
+
+
+@admin.register(Relationship)
+class RelationshipAdmin(CreatedAtMixin, admin.ModelAdmin):
+    list_display = ["id", "from_user_link", "relationship_type", "to_user_link"]
+    list_filter = ["relationship_type"]
+
+    @admin.display(description="신고자")
+    def from_user_link(self, obj):
+        url = f"/admin/profiles/customuser/{obj.from_user.id}/change/"
+        return format_html('<a href="{}">{}</a>', url, obj.from_user.nickname)
+
+    @admin.display(description="신고 대상")
+    def to_user_link(self, obj):
+        url = f"/admin/profiles/customuser/{obj.to_user.id}/change/"
+        return format_html('<a href="{}">{}</a>', url, obj.to_user.nickname)

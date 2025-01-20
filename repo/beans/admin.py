@@ -1,4 +1,5 @@
 from django.contrib import admin
+from rangefilter.filters import NumericRangeFilter
 
 from .models import Bean, BeanTaste, BeanTasteReview
 
@@ -27,6 +28,13 @@ class BeanAdmin(admin.ModelAdmin):
 @admin.register(BeanTaste)
 class BeanTasteAdmin(admin.ModelAdmin):
     list_display = ["id", "flavor", "body", "acidity", "bitterness", "sweetness"]
+    list_filter = [
+        "flavor",
+        ("body", NumericRangeFilter),
+        ("acidity", NumericRangeFilter),
+        ("bitterness", NumericRangeFilter),
+        ("sweetness", NumericRangeFilter),
+    ]
     search_fields = ["flavor"]
 
 

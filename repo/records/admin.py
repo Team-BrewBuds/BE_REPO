@@ -1,15 +1,23 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Comment, Post, TastedRecord
+from repo.common.admin_filters import IsPublicFilter
+from repo.common.admin_mixins import RecordsInfoMixin, RelatedRecordsMixin
+
+from .models import Comment, Photo, Post, TastedRecord
 
 
 @admin.register(TastedRecord)
-class TastedRecordAdmin(admin.ModelAdmin):
-    list_display = ["id", "author", "bean", "view_cnt", "created_at", "is_private"]
-    list_filter = ["created_at", "is_private"]
+class TastedRecordAdmin(RecordsInfoMixin, admin.ModelAdmin):
+    list_display = ["id", "bean", "view_cnt", "is_public"]
+    list_filter = [IsPublicFilter]
     search_fields = ["author__username", "bean__name"]
     actions = ["make_tasted_record_private", "make_tasted_record_public"]
+    list_select_related = ["author", "bean"]
+
+    @admin.display(description="공개 여부", boolean=True)
+    def is_public(self, obj):
+        return not obj.is_private
 
     @admin.action(description="비공개로 수정")
     def make_tasted_record_private(self, request, queryset):
@@ -23,26 +31,20 @@ class TastedRecordAdmin(admin.ModelAdmin):
 
 
 @admin.register(Post)
-class PostAdmin(admin.ModelAdmin):
-    list_display = ["id", "author", "title", "view_cnt", "subject", "created_at"]
-    list_filter = ["subject", "created_at"]
+class PostAdmin(RecordsInfoMixin, admin.ModelAdmin):
+    list_display = ["id", "subject", "title", "view_cnt"]
+    list_filter = ["subject"]
     search_fields = ["author__username", "title"]
 
 
 @admin.register(Comment)
-class CommentAdmin(admin.ModelAdmin):
-    list_display = ["id", "author_link", "get_comment_content", "get_parent_content", "post_link", "tasted_record_link", "created_at"]
+class CommentAdmin(RecordsInfoMixin, admin.ModelAdmin):
+    list_display = ["id", "get_comment_content", "get_parent_content", "post_link", "tasted_record_link"]
     list_filter = [
         ("post", admin.EmptyFieldListFilter),
         ("tasted_record", admin.EmptyFieldListFilter),
-        "created_at",
     ]
     search_fields = ["author__username", "post__title", "content"]
-
-    @admin.display(description="작성자")
-    def author_link(self, obj):
-        url = f"/admin/profiles/customuser/{obj.author.id}/change/"
-        return format_html('<a href="{}">{}</a>', url, obj.author.nickname)
 
     @admin.display(description="댓글 내용")
     def get_comment_content(self, obj):
@@ -63,3 +65,17 @@ class CommentAdmin(admin.ModelAdmin):
         if obj.tasted_record:
             url = f"/admin/records/tastedrecord/{obj.tasted_record.id}/change/"
             return format_html('<a href="{}">{}</a>', url, obj.tasted_record.bean.name[:20] + "...")
+
+
+@admin.register(Photo)
+class PhotoAdmin(RelatedRecordsMixin, admin.ModelAdmin):
+    list_display = ["id", "author"]
+    list_filter = [("post", admin.EmptyFieldListFilter), ("tasted_record", admin.EmptyFieldListFilter)]
+
+    @admin.display(description="작성자")
+    def author(self, obj):
+        if obj.post:
+            return obj.post.author
+        elif obj.tasted_record:
+            return obj.tasted_record.author
+        return None
