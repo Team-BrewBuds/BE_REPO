@@ -35,6 +35,7 @@ django-redis = "^5.4.0"
 celery = "^5.4.0"
 django-celery-beat = "^2.7.0"
 django-celery-results = "^2.5.1"
+django-admin-rangefilter = "^0.13.2"
 
 
 [tool.poetry.group.dev.dependencies]
