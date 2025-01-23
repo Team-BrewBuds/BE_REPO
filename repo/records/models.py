@@ -10,7 +10,7 @@ class TastedRecord(models.Model):
     taste_review = models.OneToOneField(BeanTasteReview, on_delete=models.CASCADE, verbose_name="맛&평가")
     content = models.TextField(verbose_name="노트 내용")
     view_cnt = models.IntegerField(default=0, verbose_name="조회수")
-    like_cnt = models.ManyToManyField(CustomUser, default=0, related_name="like_tasted_records")
+    like_cnt = models.ManyToManyField(CustomUser, blank=True, related_name="like_tasted_records")
     is_private = models.BooleanField(default=False, verbose_name="비공개 여부")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tasted_at = models.DateField(null=True, blank=True, verbose_name="시음일")
@@ -42,7 +42,7 @@ class Post(models.Model):
     content = models.TextField(verbose_name="내용")
     subject = models.CharField(max_length=100, choices=SUBJECT_TYPE_CHOICES, verbose_name="주제")
     view_cnt = models.IntegerField(default=0, verbose_name="조회수")
-    like_cnt = models.ManyToManyField(CustomUser, related_name="like_posts")
+    like_cnt = models.ManyToManyField(CustomUser, blank=True, related_name="like_posts")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
 
