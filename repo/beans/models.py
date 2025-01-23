@@ -63,11 +63,11 @@ class BeanTasteReview(BeanTasteBase):
     star_choices = [(x * 0.5, x * 0.5) for x in range(0, 11)]  # 0~10
 
     star = models.FloatField(choices=star_choices, verbose_name="별점")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
+    tasted_at = models.DateField(null=True, blank=True, verbose_name="시음일")
     place = models.CharField(max_length=100, verbose_name="시음 장소")
 
     def __str__(self):
-        return f"bean :{self.flavor} - {self.created_at}"
+        return f"bean :{self.flavor} - {self.tasted_at}"
 
     class Meta:
         db_table = "taste_review"
