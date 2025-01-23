@@ -73,3 +73,10 @@ class BeanTasteReview(BeanTasteBase):
         db_table = "taste_review"
         verbose_name = "원두 맛&평가"
         verbose_name_plural = "원두 맛&평가"
+
+
+class NotUsedBean(Bean):
+    class Meta:
+        proxy = True
+        verbose_name = "사용하지 않는 원두"
+        verbose_name_plural = "사용하지 않는 원두"
