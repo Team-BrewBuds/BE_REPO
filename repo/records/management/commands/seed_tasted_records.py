@@ -18,6 +18,12 @@ class Command(BaseCommand):
             help="시음기록, 맛&평가더미 데이터를 생성할 개수",
         )
 
+    @staticmethod
+    def get_random_tag_sentence(faker):
+        tag_count = faker.random_int(min=1, max=3)
+        tag_sentence = faker.words(nb=tag_count, unique=True)
+        return ", ".join(tag_sentence)
+
     def handle(self, *args, **kwargs):
         number = kwargs["number"]
         seeder = Seed.seeder()
@@ -60,7 +66,7 @@ class Command(BaseCommand):
                 view_cnt=faker.random_int(min=0, max=1000),
                 is_private=faker.random_element(elements=(True, False)),
                 created_at=faker.date_time_this_year(),
-                tag=faker.word(),
+                tag=self.get_random_tag_sentence(faker),
             )
             tasted_records.append(tasted_record)
 
