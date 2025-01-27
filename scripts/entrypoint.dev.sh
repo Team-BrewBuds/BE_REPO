@@ -13,7 +13,7 @@ python manage.py migrate
 
 # Start the Dev server
 echo "Starting dev server"
-gunicorn config.wsgi.dev:application --bind 0.0.0.0:8000 &
+gunicorn config.wsgi.dev:application --bind 0.0.0.0:8000 --reload &
 
 # start celery worker
 echo "Starting celery worker"
