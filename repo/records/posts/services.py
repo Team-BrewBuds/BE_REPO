@@ -1,6 +1,5 @@
 import logging
 from datetime import timedelta
-from itertools import chain
 from typing import Optional
 
 from django.core.cache import cache
@@ -73,7 +72,7 @@ class PostService(BaseRecordService):
         following_posts = self.get_feed_by_follow_relation(user, True).filter(filters).order_by("-id")
         unfollowing_posts = self.get_feed_by_follow_relation(user, False).filter(filters).order_by("-id")
 
-        posts = list(chain(following_posts, unfollowing_posts))
+        posts = following_posts.union(unfollowing_posts)
 
         if request:
             posts = get_not_viewed_contents(request, posts, "post_viewed")
@@ -123,23 +122,19 @@ class PostService(BaseRecordService):
     @staticmethod
     def get_base_record_list_queryset() -> QuerySet[Post]:
         """공통적으로 사용하는 기본 쿼리셋 생성"""
-        try:
-            cached_post_ids = cache.get(cache_key)
-            if not cached_post_ids:
-                cached_post_ids = list(Post.objects.order_by("-id").values_list("id", flat=True)[:1000])
-                cache.set(cache_key, cached_post_ids, timeout=60 * 15, nx=True)
-        except ConnectionError as e:
-            redis_logger.error(f"Redis 연결 실패 post_list_ids: {str(e)}", exc_info=True)
-            cached_post_ids = list(Post.objects.order_by("-id").values_list("id", flat=True)[:1000])
-
         return (
-            Post.objects.filter(id__in=cached_post_ids)
-            .select_related("author")
-            .prefetch_related("tasted_records", "comment_set", "note_set", "photo_set")
-            .annotate(
-                likes=Count("like_cnt", distinct=True),
-                comments=Count("comment", distinct=True),
+            Post.objects.select_related("author")
+            .prefetch_related(
+                "tasted_records",
+                "tasted_records__bean",
+                "tasted_records__taste_review",
+                "tasted_records__photo_set",
+                "note_set",
+                "photo_set",
+                "like_cnt",
+                "comment_set",
             )
+            .order_by("-id")
         )
 
     def get_feed_queryset(self, user: CustomUser, add_filter: Optional[Q] = None, subject: Optional[str] = None) -> QuerySet[Post]:
@@ -173,9 +168,7 @@ class PostService(BaseRecordService):
 
         filters = Q(author__in=following_users) if follow else ~Q(author__in=following_users)
 
-        return (
-            self.get_feed_queryset(user, filters, None).annotate(is_user_following=Value(follow, output_field=BooleanField())).order_by("?")
-        )
+        return self.get_feed_queryset(user, filters, None).annotate(is_user_following=Value(follow, output_field=BooleanField()))
 
     # home following feed
     def get_following_feed_and_gte_one_hour(self, user: CustomUser) -> QuerySet[Post]:
@@ -204,7 +197,7 @@ class PostService(BaseRecordService):
             is_user_following=Value(False, output_field=BooleanField()),  # False 고정
         )
 
-        return record_queryset.order_by("?")
+        return record_queryset
 
 
 class TopPostService:
