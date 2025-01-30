@@ -1,13 +1,10 @@
 import logging
 from datetime import timedelta
-from itertools import chain
 from typing import Optional
 
-from django.core.cache import cache
 from django.db import transaction
 from django.db.models import BooleanField, Count, Exists, Q, QuerySet, Value
 from django.utils import timezone
-from redis.exceptions import ConnectionError
 
 from repo.beans.services import BeanService
 from repo.common.view_counter import get_not_viewed_contents
@@ -20,7 +17,6 @@ from repo.records.base import BaseRecordService
 from repo.records.models import BeanTasteReview, TastedRecord
 
 redis_logger = logging.getLogger("redis.server")
-cache_key = "tasted_record_list_ids"
 
 
 def get_tasted_record_service():
@@ -60,7 +56,7 @@ class TastedRecordService(BaseRecordService):
         following_tasted_records = self.get_feed_by_follow_relation(user, True).order_by("-id")
         unfollowing_tasted_records = self.get_feed_by_follow_relation(user, False).order_by("-id")
 
-        tasted_records = list(chain(following_tasted_records, unfollowing_tasted_records))
+        tasted_records = following_tasted_records.union(unfollowing_tasted_records)
 
         if request:
             tasted_records = get_not_viewed_contents(request, tasted_records, "tasted_record_viewed")
@@ -86,7 +82,6 @@ class TastedRecordService(BaseRecordService):
         photos = validated_data.get("photos", [])
         tasted_record.photo_set.set(photos)
 
-        cache.delete(cache_key)
         return tasted_record
 
     @transaction.atomic
@@ -106,7 +101,6 @@ class TastedRecordService(BaseRecordService):
     def delete_record(self, tasted_record: TastedRecord):
         """시음기록 삭제"""
         tasted_record.delete()
-        cache.delete(cache_key)
 
     def _set_tasted_record_relations(self, tasted_record: TastedRecord, data: dict):
         """시음기록 관계 데이터 설정"""
@@ -125,23 +119,8 @@ class TastedRecordService(BaseRecordService):
     @staticmethod
     def get_base_record_list_queryset() -> QuerySet[TastedRecord]:
         """공통적으로 사용하는 기본 시음기록 리스트 쿼리셋 생성"""
-        try:
-            cached_record_ids = cache.get(cache_key)
-            if not cached_record_ids:
-                cached_record_ids = list(TastedRecord.objects.filter(is_private=False).order_by("-id").values_list("id", flat=True)[:1000])
-                cache.set(cache_key, cached_record_ids, timeout=60 * 15, nx=True)
-        except ConnectionError as e:
-            redis_logger.error(f"Redis 연결 실패 tasted_record_list_ids: {str(e)}", exc_info=True)
-            cached_record_ids = list(TastedRecord.objects.filter(is_private=False).order_by("-id").values_list("id", flat=True)[:1000])
-
-        return (
-            TastedRecord.objects.filter(id__in=cached_record_ids)
-            .select_related("author", "bean", "taste_review")
-            .prefetch_related("comment_set", "note_set", "photo_set")
-            .annotate(
-                likes=Count("like_cnt", distinct=True),
-                comments=Count("comment", distinct=True),
-            )
+        return TastedRecord.objects.select_related("author", "bean", "taste_review").prefetch_related(
+            "note_set", "photo_set", "comment_set", "like_cnt"
         )
 
     def get_feed_queryset(self, user: CustomUser, filters: Optional[Q] = None) -> QuerySet[TastedRecord]:
@@ -174,7 +153,7 @@ class TastedRecordService(BaseRecordService):
 
         filters = Q(author__in=following_users) if follow else ~Q(author__in=following_users)
 
-        return self.get_feed_queryset(user, filters).annotate(is_user_following=Value(follow, output_field=BooleanField())).order_by("?")
+        return self.get_feed_queryset(user, filters).annotate(is_user_following=Value(follow, output_field=BooleanField()))
 
     # home following feed
     def get_following_feed_and_gte_one_hour(self, user: CustomUser) -> QuerySet[TastedRecord]:
@@ -204,4 +183,4 @@ class TastedRecordService(BaseRecordService):
             is_user_following=Value(False, output_field=BooleanField()),  # False 고정
         )
 
-        return record_queryset.order_by("?")
+        return record_queryset
