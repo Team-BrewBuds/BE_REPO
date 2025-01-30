@@ -86,15 +86,18 @@ class UserPostSerializer(serializers.ModelSerializer):
     created_at = serializers.SerializerMethodField()
 
     def get_represent_post_photo(self, obj):
-        photos = obj.photo_set.all()
-        if photos.exists():
-            return PhotoSerializer(photos.first()).data
+        """게시글의 첫번째 사진 URL 반환"""
+        if photos := obj.photo_set.all():
+            return photos[0].photo_url.url
         return None
 
     def get_tasted_records_photo(self, obj):
-        for tasted_record in obj.tasted_records.all():
-            if tasted_record.photo_set.exists():
-                return PhotoSerializer(tasted_record.photo_set.first()).data
+        """게시글에 연결된 시음기록의 첫번째 사진 URL 반환"""
+        if not (tasted_records := obj.tasted_records.all()):
+            return None
+
+        if photos := tasted_records[0].photo_set.all():
+            return photos[0].photo_url.url
         return None
 
     def get_created_at(self, obj):

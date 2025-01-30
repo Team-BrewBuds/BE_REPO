@@ -108,8 +108,7 @@ class UserPostListAPIView(APIView):
         if subject not in valid_subjects:
             return Response({"error": "Invalid subject parameter"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = get_object_or_404(CustomUser, pk=id)
-        posts = self.post_service.get_user_records(user.id, subject=subject)
+        posts = self.post_service.get_user_records(id, subject=subject)
 
         return get_paginated_response_with_class(request, posts, UserPostSerializer)
 

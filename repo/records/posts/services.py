@@ -55,10 +55,15 @@ class PostService(BaseRecordService):
         user = CustomUser.objects.get(id=user_id)
         subject = kwargs.get("subject", None)
 
-        subject_filter = Q(subject=subject) if subject else Q()
+        filters = Q(author=user)
+        if subject:
+            filters &= Q(subject=subject)
 
         posts = (
-            user.post_set.filter(subject_filter).select_related("author").prefetch_related("tasted_records", "photo_set").order_by("-id")
+            Post.objects.filter(filters)
+            .select_related("author")
+            .prefetch_related("photo_set", Prefetch("tasted_records", queryset=TastedRecord.objects.prefetch_related("photo_set")))
+            .order_by("-id")
         )
         return posts
 
