@@ -3,7 +3,7 @@ from datetime import timedelta
 from typing import Optional
 
 from django.db import transaction
-from django.db.models import BooleanField, Count, Exists, Q, QuerySet, Value
+from django.db.models import BooleanField, Exists, Q, QuerySet, Value
 from django.utils import timezone
 
 from repo.beans.services import BeanService
@@ -42,11 +42,8 @@ class TastedRecordService(BaseRecordService):
         user = self.user_service.get_user_by_id(user_id)
         return (
             user.tastedrecord_set.select_related("bean", "taste_review")
-            .prefetch_related("like_cnt", "photo_set")
-            .only("id", "bean__name", "taste_review__star", "created_at", "like_cnt")
-            .annotate(
-                likes=Count("like_cnt", distinct=True),
-            )
+            .prefetch_related("photo_set")
+            .only("id", "bean__name", "taste_review__star", "created_at", "likes")
         )
 
     def get_record_list(self, user: CustomUser, **kwargs) -> QuerySet[TastedRecord]:
@@ -120,7 +117,7 @@ class TastedRecordService(BaseRecordService):
     def get_base_record_list_queryset() -> QuerySet[TastedRecord]:
         """공통적으로 사용하는 기본 시음기록 리스트 쿼리셋 생성"""
         return TastedRecord.objects.select_related("author", "bean", "taste_review").prefetch_related(
-            "note_set", "photo_set", "comment_set", "like_cnt"
+            "note_set", "photo_set", "comment_set"
         )
 
     def get_feed_queryset(self, user: CustomUser, filters: Optional[Q] = None) -> QuerySet[TastedRecord]:
