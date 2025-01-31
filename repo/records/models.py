@@ -44,6 +44,7 @@ class Post(models.Model):
     like_cnt = models.ManyToManyField(CustomUser, blank=True, related_name="like_posts")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
+    likes = models.IntegerField(default=0, verbose_name="좋아요 수")
 
     def is_user_liked(self, user):
         return user in self.like_cnt.all()
