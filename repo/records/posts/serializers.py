@@ -15,7 +15,7 @@ class PostListSerializer(serializers.ModelSerializer):
     tasted_records = TastedRecordInPostSerializer("tasted_records", many=True, read_only=True)
     created_at = serializers.SerializerMethodField()
     subject = serializers.CharField(source="get_subject_display")
-    likes = serializers.IntegerField(source="like_cnt.count")
+    likes = serializers.IntegerField()
     comments = serializers.IntegerField(source="comment_set.count")
     is_user_liked = serializers.BooleanField(default=False, read_only=True)
     is_user_noted = serializers.BooleanField(default=False, read_only=True)
@@ -34,7 +34,7 @@ class TopPostSerializer(PostListSerializer):
 
     def get_fields(self):
         fields = super().get_fields()
-        for field in ["is_user_noted", "like_cnt", "tasted_records"]:
+        for field in ["is_user_noted", "tasted_records"]:
             fields.pop(field, None)
         return fields
 
@@ -56,9 +56,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
     author = UserSimpleSerializer(read_only=True)
     photos = PhotoSerializer(many=True, source="photo_set")
     tasted_records = TastedRecordInPostSerializer("post.tasted_records", many=True)
-
     subject = serializers.CharField(source="get_subject_display")
-    like_cnt = serializers.IntegerField(source="like_cnt.count")
     is_user_liked = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
 
@@ -73,7 +71,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = "__all__"
+        exclude = ["like_cnt"]
 
 
 class UserPostSerializer(serializers.ModelSerializer):

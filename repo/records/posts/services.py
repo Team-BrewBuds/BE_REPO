@@ -136,7 +136,6 @@ class PostService(BaseRecordService):
                 "tasted_records__photo_set",
                 "note_set",
                 "photo_set",
-                "like_cnt",
                 "comment_set",
             )
             .order_by("-id")
@@ -241,7 +240,6 @@ class TopPostService:
             Post.objects.select_related("author")
             .filter(filters)
             .annotate(
-                likes=Count("like_cnt", distinct=True),
                 comments=Count("comment", distinct=True),
             )
         )
