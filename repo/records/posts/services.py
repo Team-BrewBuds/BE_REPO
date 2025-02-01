@@ -77,7 +77,7 @@ class PostService(BaseRecordService):
         following_posts = self.get_feed_by_follow_relation(user, True).filter(filters).order_by("-id")
         unfollowing_posts = self.get_feed_by_follow_relation(user, False).filter(filters).order_by("-id")
 
-        posts = following_posts.union(unfollowing_posts)
+        posts = following_posts.union(unfollowing_posts, all=True)
 
         if request:
             posts = get_not_viewed_contents(request, posts, "post_viewed")

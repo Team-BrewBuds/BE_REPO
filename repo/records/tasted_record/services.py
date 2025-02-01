@@ -53,7 +53,7 @@ class TastedRecordService(BaseRecordService):
         following_tasted_records = self.get_feed_by_follow_relation(user, True).order_by("-id")
         unfollowing_tasted_records = self.get_feed_by_follow_relation(user, False).order_by("-id")
 
-        tasted_records = following_tasted_records.union(unfollowing_tasted_records)
+        tasted_records = following_tasted_records.union(unfollowing_tasted_records, all=True)
 
         if request:
             tasted_records = get_not_viewed_contents(request, tasted_records, "tasted_record_viewed")
