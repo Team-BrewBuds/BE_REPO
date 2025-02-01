@@ -3,6 +3,9 @@ from typing import Dict, Optional
 
 from django.db.models import QuerySet
 
+from repo.interactions.like.services import LikeService
+from repo.interactions.note.services import NoteService
+from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.records.models import Post, TastedRecord
 
@@ -10,7 +13,12 @@ from repo.records.models import Post, TastedRecord
 class BaseRecordService(ABC):
     """레코드(Post/TastedRecord) 서비스의 추상 기본 클래스"""
 
-    def __init__(self, relationship_service, like_service, note_service):
+    def __init__(
+        self,
+        relationship_service: RelationshipService,
+        like_service: LikeService,
+        note_service: NoteService,
+    ):
         self.relationship_service = relationship_service
         self.like_service = like_service
         self.note_service = note_service
