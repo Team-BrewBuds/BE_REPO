@@ -138,6 +138,19 @@ class PostService(BaseRecordService):
                 "photo_set",
                 "comment_set",
             )
+            .defer(
+                "author__gender",
+                "author__birth",
+                "author__email",
+                "author__login_type",
+                "author__social_id",
+                "author__password",
+                "author__is_active",
+                "author__is_superuser",
+                "author__is_staff",
+                "author__last_login",
+                "author__created_at",
+            )
             .order_by("-id")
         )
 

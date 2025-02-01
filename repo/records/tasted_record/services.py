@@ -116,8 +116,30 @@ class TastedRecordService(BaseRecordService):
     @staticmethod
     def get_base_record_list_queryset() -> QuerySet[TastedRecord]:
         """공통적으로 사용하는 기본 시음기록 리스트 쿼리셋 생성"""
-        return TastedRecord.objects.select_related("author", "bean", "taste_review").prefetch_related(
-            "note_set", "photo_set", "comment_set"
+        return (
+            TastedRecord.objects.select_related(
+                "author",
+                "bean",
+                "taste_review",
+            )
+            .prefetch_related(
+                "note_set",
+                "photo_set",
+                "comment_set",
+            )
+            .defer(
+                "author__gender",
+                "author__birth",
+                "author__email",
+                "author__login_type",
+                "author__social_id",
+                "author__password",
+                "author__is_active",
+                "author__is_superuser",
+                "author__is_staff",
+                "author__last_login",
+                "author__created_at",
+            )
         )
 
     def get_feed_queryset(self, user: CustomUser, filters: Optional[Q] = None) -> QuerySet[TastedRecord]:
