@@ -11,11 +11,11 @@ def get_users_activity_report() -> list[dict]:
     사용자 활동 보고서를 생성하는 함수
     """
     user_activities = CustomUser.objects.annotate(
-        tr_count=Count("tastedrecord"),
-        post_count=Count("post"),
-        noted_bean_count=Count("note__bean"),
-        noted_tr_count=Count("note__tasted_record"),
-        noted_post_count=Count("note__post"),
+        tr_count=Count("tastedrecord", distinct=True),
+        post_count=Count("post", distinct=True),
+        noted_bean_count=Count("note__bean", distinct=True),
+        noted_tr_count=Count("note__tasted_record", distinct=True),
+        noted_post_count=Count("note__post", distinct=True),
         first_tr_at=Min("tastedrecord__created_at"),
         first_post_at=Min("post__created_at"),
         second_tr_at=get_second_record_subquery(TastedRecord),
