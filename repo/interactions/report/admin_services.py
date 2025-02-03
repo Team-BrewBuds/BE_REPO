@@ -10,7 +10,7 @@ def get_users_activity_report() -> list[dict]:
     """
     사용자 활동 보고서를 생성하는 함수
     """
-    users = CustomUser.objects.annotate(
+    user_activities = CustomUser.objects.annotate(
         first_tr_at=Min("tastedrecord__created_at"),
         first_post_at=Min("post__created_at"),
         second_tr_at=get_second_record_subquery(TastedRecord),
@@ -31,25 +31,21 @@ def get_users_activity_report() -> list[dict]:
         "first_noted_bean_at",
     )
 
-    reports = []
-
-    for user in users:
-        reports.append(
-            {
-                "ID": user["id"],
-                "닉네임": user["nickname"],
-                "가입일": make_date_format(user["created_at"]) if user["created_at"] else None,
-                "첫 시음기록 작성일": (make_date_format(user["first_tr_at"]) if user["first_tr_at"] else None),
-                "두번째 시음기록 작성일": (make_date_format(user["second_tr_at"]) if user["second_tr_at"] else None),
-                "첫 게시물 작성일": make_date_format(user["first_post_at"]) if user["first_post_at"] else None,
-                "두번째 게시물 작성일": (make_date_format(user["second_post_at"]) if user["second_post_at"] else None),
-                "첫 시음기록 저장일": (make_date_format(user["first_noted_tr_at"]) if user["first_noted_tr_at"] else None),
-                "첫 게시물 저장일": make_date_format(user["first_noted_post_at"]) if user["first_noted_post_at"] else None,
-                "첫 원두 정보 저장일": make_date_format(user["first_noted_bean_at"]) if user["first_noted_bean_at"] else None,
-            }
-        )
-
-    return reports
+    return [
+        {
+            "ID": user_activity["id"],
+            "닉네임": user_activity["nickname"],
+            "가입일": make_date_format(user_activity["created_at"]),
+            "첫 시음기록 작성일": make_date_format(user_activity["first_tr_at"]),
+            "두번째 시음기록 작성일": make_date_format(user_activity["second_tr_at"]),
+            "첫 게시물 작성일": make_date_format(user_activity["first_post_at"]),
+            "두번째 게시물 작성일": make_date_format(user_activity["second_post_at"]),
+            "첫 시음기록 저장일": make_date_format(user_activity["first_noted_tr_at"]),
+            "첫 게시물 저장일": make_date_format(user_activity["first_noted_post_at"]),
+            "첫 원두 정보 저장일": make_date_format(user_activity["first_noted_bean_at"]),
+        }
+        for user_activity in user_activities
+    ]
 
 
 def get_second_record_subquery(model: Post | TastedRecord) -> Subquery:

@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Optional, Tuple, Type
 
 from django.db.models import Model, QuerySet
@@ -173,5 +173,14 @@ def get_post_or_tasted_record_detail(object_type, object_id):
     return obj
 
 
-def make_date_format(date: timezone) -> str:
-    return date.strftime("%Y-%m-%d %H:%M:%S")
+def make_date_format(date: datetime | None) -> str | None:
+    """
+    주어진 날짜를 문자열로 변환
+    Args:
+        date (datetime | None): 날짜
+    Returns:
+        str | None: 날짜 문자열
+    """
+    if date:
+        return date.strftime("%Y-%m-%d %H:%M:%S")
+    return None
