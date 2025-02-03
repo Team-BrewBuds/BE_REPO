@@ -2,7 +2,7 @@ from datetime import datetime
 from io import BytesIO
 
 import pandas as pd
-from django.db.models import Min, OuterRef, Subquery
+from django.db.models import Min, OuterRef, Q, Subquery
 from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -59,23 +59,22 @@ class AdminReportListAPIView(APIView):
     def make_date_format(self, date):
         return date.strftime("%Y-%m-%d %H:%M:%S")
 
+    def get_second_record_subquery(self, model: Post | TastedRecord):
+        return Subquery(model.objects.filter(author=OuterRef("id")).order_by("created_at").values("created_at")[1:2])
+
+    def get_first_note_subquery(self, model: Note, noted_model: str):
+        filters = Q(author=OuterRef("id")) & Q(**{f"{noted_model}__isnull": False})
+        return Subquery(model.objects.filter(filters).order_by("created_at").values("created_at")[:1])
+
     def get(self, request):
         users = CustomUser.objects.annotate(
             first_taste_record_created_at=Min("tastedrecord__created_at"),
-            second_taste_record_created_at=Subquery(
-                TastedRecord.objects.filter(author=OuterRef("id")).order_by("created_at").values("created_at")[1:2]
-            ),
             first_post_created_at=Min("post__created_at"),
-            second_post_created_at=Subquery(Post.objects.filter(author=OuterRef("id")).order_by("created_at").values("created_at")[1:2]),
-            first_tasted_record_saved_at=Subquery(
-                Note.objects.filter(author=OuterRef("id"), tasted_record__isnull=False).order_by("created_at").values("created_at")[:1]
-            ),
-            first_post_saved_at=Subquery(
-                Note.objects.filter(author=OuterRef("id"), post__isnull=False).order_by("created_at").values("created_at")[:1]
-            ),
-            first_bean_created_at=Subquery(
-                Note.objects.filter(author=OuterRef("id"), bean__isnull=False).order_by("created_at").values("created_at")[:1]
-            ),
+            second_taste_record_created_at=self.get_second_record_subquery(TastedRecord),
+            second_post_created_at=self.get_second_record_subquery(Post),
+            first_tasted_record_saved_at=self.get_first_note_subquery(Note, "tasted_record"),
+            first_post_saved_at=self.get_first_note_subquery(Note, "post"),
+            first_bean_created_at=self.get_first_note_subquery(Note, "bean"),
         ).values(
             "id",
             "nickname",
