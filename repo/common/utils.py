@@ -171,3 +171,7 @@ def get_post_or_tasted_record_detail(object_type, object_id):
         raise ValueError("invalid object_type")
 
     return obj
+
+
+def make_date_format(date: timezone) -> str:
+    return date.strftime("%Y-%m-%d %H:%M:%S")
