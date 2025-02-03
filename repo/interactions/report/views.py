@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from repo.common.utils import make_date_format
 from repo.interactions.report.admin_services import get_users_activity_report
 
 from .schemas import ReportSchema
@@ -55,7 +56,7 @@ class AdminReportListAPIView(APIView):
         reports = get_users_activity_report()
         df = pd.DataFrame(reports)
 
-        now = datetime.now().strftime("%Y%m%d_%H%M%S")
+        now = make_date_format(datetime.now())
         filename = f"Admin_Report_{now}.xlsx"
 
         excel_file = BytesIO()
