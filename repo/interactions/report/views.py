@@ -1,7 +1,17 @@
+from datetime import datetime
+from io import BytesIO
+
+import pandas as pd
+from django.db.models import Min, OuterRef, Subquery
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from repo.interactions.note.models import Note
+from repo.profiles.models import CustomUser
+from repo.records.models import Post, TastedRecord
 
 from .schemas import ReportSchema
 from .serializers import ContentReportSerializer, UserReportSerializer
@@ -40,3 +50,80 @@ class UserReportAPIView(APIView):
 
         response_serializer = UserReportSerializer(report)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+# @ReportSchema.admin_report_schema_view
+class AdminReportListAPIView(APIView):
+    # permission_classes = [IsAdminUser]
+
+    def make_date_format(self, date):
+        return date.strftime("%Y-%m-%d %H:%M:%S")
+
+    def get(self, request):
+        users = CustomUser.objects.annotate(
+            first_taste_record_created_at=Min("tastedrecord__created_at"),
+            second_taste_record_created_at=Subquery(
+                TastedRecord.objects.filter(author=OuterRef("id")).order_by("created_at").values("created_at")[1:2]
+            ),
+            first_post_created_at=Min("post__created_at"),
+            second_post_created_at=Subquery(Post.objects.filter(author=OuterRef("id")).order_by("created_at").values("created_at")[1:2]),
+            first_tasted_record_saved_at=Subquery(
+                Note.objects.filter(author=OuterRef("id"), tasted_record__isnull=False).order_by("created_at").values("created_at")[:1]
+            ),
+            first_post_saved_at=Subquery(
+                Note.objects.filter(author=OuterRef("id"), post__isnull=False).order_by("created_at").values("created_at")[:1]
+            ),
+            first_bean_created_at=Subquery(
+                Note.objects.filter(author=OuterRef("id"), bean__isnull=False).order_by("created_at").values("created_at")[:1]
+            ),
+        ).values(
+            "id",
+            "nickname",
+            "created_at",
+            "first_taste_record_created_at",
+            "second_taste_record_created_at",
+            "first_post_created_at",
+            "second_post_created_at",
+            "first_tasted_record_saved_at",
+            "first_post_saved_at",
+            "first_bean_created_at",
+        )
+
+        report_list = []
+        for user in users:
+            report_list.append(
+                {
+                    "ID": user["id"],
+                    "닉네임": user["nickname"],
+                    "가입일": self.make_date_format(user["created_at"]) if user["created_at"] else None,
+                    "첫 시음기록 작성일": (
+                        self.make_date_format(user["first_taste_record_created_at"]) if user["first_taste_record_created_at"] else None
+                    ),
+                    "두번째 시음기록 작성일": (
+                        self.make_date_format(user["second_taste_record_created_at"]) if user["second_taste_record_created_at"] else None
+                    ),
+                    "첫 게시물 작성일": self.make_date_format(user["first_post_created_at"]) if user["first_post_created_at"] else None,
+                    "두번째 게시물 작성일": (
+                        self.make_date_format(user["second_post_created_at"]) if user["second_post_created_at"] else None
+                    ),
+                    "첫 시음기록 저장일": (
+                        self.make_date_format(user["first_tasted_record_saved_at"]) if user["first_tasted_record_saved_at"] else None
+                    ),
+                    "첫 게시물 저장일": self.make_date_format(user["first_post_saved_at"]) if user["first_post_saved_at"] else None,
+                    "첫 원두 정보 저장일": self.make_date_format(user["first_bean_created_at"]) if user["first_bean_created_at"] else None,
+                }
+            )
+
+        df = pd.DataFrame(report_list)
+
+        now = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"Admin_Report_{now}.xlsx"
+
+        excel_file = BytesIO()
+        df.to_excel(excel_file, index=False)
+        excel_file.seek(0)
+
+        response = HttpResponse(excel_file.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        return response
