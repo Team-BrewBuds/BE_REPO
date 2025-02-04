@@ -95,7 +95,6 @@ class PostService(BaseRecordService):
             tag=validated_data.get("tag", None),
         )
         self._set_post_relations(post, validated_data)
-        cache.delete(cache_key)
         return post
 
     @transaction.atomic
@@ -114,7 +113,6 @@ class PostService(BaseRecordService):
     def delete_record(self, post: Post):
         """게시글 삭제"""
         post.delete()
-        cache.delete(cache_key)
 
     def _set_post_relations(self, post: Post, data: dict):
         """게시글 관계 데이터 설정"""
