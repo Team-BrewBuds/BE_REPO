@@ -73,7 +73,6 @@ class TastedRecordService(BaseRecordService):
             bean=bean,
             taste_review=taste_review,
             content=validated_data["content"],
-            tasted_at=validated_data["tasted_at"],
         )
 
         photos = validated_data.get("photos", [])
@@ -86,7 +85,7 @@ class TastedRecordService(BaseRecordService):
         """시음기록 업데이트"""
 
         for attr, value in validated_data.items():
-            if attr not in ["bean", "taste_review", "photos"]:
+            if attr not in ["bean", "taste_review", "photos"]:  # 원두 데이터는 수정 불가
                 setattr(tasted_record, attr, value)
 
         self._set_tasted_record_relations(tasted_record, validated_data)
