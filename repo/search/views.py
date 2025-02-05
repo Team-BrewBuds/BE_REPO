@@ -135,28 +135,53 @@ class BeanSearchView(APIView):
     Args:
         request: 검색어(query)와 정렬 기준(sort_by)를 포함한 클라이언트 요청.
     Returns:
-        JSON 응답: 검색어와 일치하는 원두의 리스트, 정렬 기준 적용 가능.
+        JSON 응답: 검색어와 일치하는 원두의 리스트, 필터 및 정렬 기준 적용 가능.
     담당자: blakej2432
     """
 
     def get(self, request):
         query = request.GET.get("q", "").strip()
+        bean_type = request.query_params.get("bean_type", "").strip()
+        origin_country = request.query_params.get("origin_country", "").strip()
+        min_star = request.query_params.get("min_star", "").strip()
+        max_star = request.query_params.get("max_star", "").strip()
+        is_decaf = request.query_params.get("is_decaf", "").strip()
         sort_by = request.query_params.get("sort_by", "").strip()
 
         if not query:
-            return Response({"error": "검색어를 입력해주세요."}, status=400)
+            return Response({"error": "검색어를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
 
-        beans = Bean.objects.filter(name__icontains=query).annotate(
-            avg_star=Avg("tastedrecord__taste_review__star"), record_cnt=Count("tastedrecord")
+        beans = Bean.objects.filter(name__icontains=query)
+
+        if bean_type:
+            beans = beans.filter(bean_type=bean_type)
+        if origin_country:
+            beans = beans.filter(origin_country=origin_country)
+        if is_decaf in ["true", "false"]:
+            beans = beans.filter(is_decaf=is_decaf.lower() == "true")
+
+        beans = beans.annotate(avg_star=Avg("tastedrecord__taste_review__star"))
+        if min_star:
+            beans = beans.filter(avg_star__gte=float(min_star))
+        if max_star:
+            beans = beans.filter(avg_star__lte=float(max_star))
+
+        stats = (
+            TastedRecord.objects.filter(bean__in=beans)
+            .values("bean__id")
+            .annotate(
+                avg_star=Avg("taste_review__star"),
+                record_count=Count("id"),
+            )
         )
+        stats_dict = {stat["bean__id"]: stat for stat in stats}
 
         if sort_by == "avg_star":
             beans = beans.order_by("-avg_star")
-        elif sort_by == "record_cnt":
-            beans = beans.order_by("-record_cnt")
+        elif sort_by == "record_count":
+            beans = sorted(beans, key=lambda bean: stats_dict.get(bean.id, {}).get("record_count", 0), reverse=True)
 
-        serializer = BeanSearchSerializer(beans, many=True)
-
+        serializer = BeanSearchSerializer(beans, many=True, context={"stats_dict": stats_dict})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

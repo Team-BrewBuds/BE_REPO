@@ -27,15 +27,16 @@ class UserBeanSerializer(serializers.ModelSerializer):
 class BeanDetailSerializer(serializers.ModelSerializer):
     avg_star = serializers.SerializerMethodField()
     record_count = serializers.SerializerMethodField()
+    top_flavors = serializers.SerializerMethodField()
+
     flavor = serializers.CharField(source="bean_taste.flavor", read_only=True)
     body = serializers.IntegerField(source="bean_taste.body", read_only=True)
     acidity = serializers.IntegerField(source="bean_taste.acidity", read_only=True)
     bitterness = serializers.IntegerField(source="bean_taste.bitterness", read_only=True)
     sweetness = serializers.IntegerField(source="bean_taste.sweetness", read_only=True)
-    image_url = serializers.ImageField()
-    top_flavors = serializers.SerializerMethodField()
 
-    # TODO : OfficialBean 삭제 -> Bean 사용하도록 수정 필요함
+    image_url = serializers.URLField()
+
     class Meta:
         model = Bean
         fields = [
