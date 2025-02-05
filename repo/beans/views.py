@@ -65,25 +65,33 @@ class BeanDetailView(APIView):
     """
 
     def get(self, request, id):
-        # TODO : OfficialBean 삭제 -> Bean 사용하도록 수정 필요함
-        official_bean = get_object_or_404(Bean.objects.select_related("bean_taste"), id=id)
+        bean = get_object_or_404(Bean.objects.prefetch_related("bean_taste"), id=id, is_official=True)
 
-        stats = TastedRecord.objects.filter(bean__name=official_bean.name).aggregate(
-            avg_star=Avg("taste_review__star"), record_count=Count("id")
-        )
+        records = TastedRecord.objects.filter(bean=bean).select_related("taste_review")
 
-        flavors = TastedRecord.objects.filter(bean__name=official_bean.name).values_list("taste_review__flavor", flat=True)
+        stats = records.aggregate(avg_star=Avg("taste_review__star"), record_count=Count("id"))
 
-        split_flavors = chain.from_iterable(flavor.split(", ") for flavor in flavors if flavor)
-        flavor_counter = Counter(split_flavors)
+        avg_star = stats["avg_star"] or 0
+        avg_star = round(avg_star, 1)
 
-        total_records = stats["record_count"] or 1
-        top_flavors = [{"flavor": flavor, "percentage": (count * 100 // total_records)} for flavor, count in flavor_counter.most_common(4)]
+        if stats["record_count"] == 0:
+            top_flavors = []
+        else:
+            flavors = records.values_list("taste_review__flavor", flat=True)
+            split_flavors = chain.from_iterable(flavor.split(", ") for flavor in flavors if flavor)
+            flavor_counter = Counter(split_flavors)
+
+            total_flavor_count = sum(flavor_counter.values())
+
+            top_flavors = [
+                {"flavor": flavor, "percentage": int(round((count / total_flavor_count) * 100, 0))}
+                for flavor, count in flavor_counter.most_common(4)
+            ]
 
         serializer = BeanDetailSerializer(
-            official_bean,
+            bean,
             context={
-                "avg_star": stats["avg_star"] or 0,
+                "avg_star": avg_star,
                 "record_count": stats["record_count"] or 0,
                 "top_flavors": top_flavors,
             },
@@ -103,9 +111,8 @@ class BeanTastedRecordView(APIView):
     """
 
     def get(self, request, id):
-        # TODO : OfficialBean 삭제 -> Bean 사용하도록 수정 필요함
-        official_bean = get_object_or_404(Bean, id=id)
-        records = TastedRecord.objects.filter(bean__name=official_bean.name).select_related("author", "bean", "taste_review")
+        bean = get_object_or_404(Bean, id=id, is_official=True)
+        records = TastedRecord.objects.filter(bean=bean).select_related("author", "bean", "taste_review")
 
         paginator = PageNumberPagination()
         paginator.page_size = 4
