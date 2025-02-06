@@ -204,15 +204,7 @@ class PostService(BaseRecordService):
     # 비로그인 사용자를 위한 게시글 피드
     def get_record_list_for_anonymous(self) -> QuerySet[Post]:
         """비로그인 사용자 게시글 피드 조회"""
-        base_queryset = self.get_base_record_list_queryset()
-
-        record_queryset = base_queryset.annotate(
-            is_user_liked=Value(False, output_field=BooleanField()),  # False 고정
-            is_user_noted=Value(False, output_field=BooleanField()),  # False 고정
-            is_user_following=Value(False, output_field=BooleanField()),  # False 고정
-        )
-
-        return record_queryset
+        return self.get_base_record_list_queryset()
 
 
 class TopPostService:

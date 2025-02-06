@@ -194,11 +194,6 @@ class TastedRecordService(BaseRecordService):
     def get_record_list_for_anonymous(self) -> QuerySet[TastedRecord]:
         """비로그인 사용자 시음기록 피드 조회"""
         base_queryset = self.get_base_record_list_queryset()
+        public_record_queryset = base_queryset.filter(is_private=False)
 
-        record_queryset = base_queryset.filter(is_private=False).annotate(
-            is_user_liked=Value(False, output_field=BooleanField()),  # False 고정
-            is_user_noted=Value(False, output_field=BooleanField()),  # False 고정
-            is_user_following=Value(False, output_field=BooleanField()),  # False 고정
-        )
-
-        return record_queryset
+        return public_record_queryset
