@@ -1,5 +1,5 @@
 from django.db import models, transaction
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Case, Exists, OuterRef, Q, When
 
 from repo.common.exception.exceptions import (
     BadRequestException,
@@ -80,16 +80,20 @@ class RelationshipService:
     def get_blocked(self, user_id):
         return Relationship.objects.filter(to_user=user_id, relationship_type=BLOCK_TYPE)
 
-    def get_unique_blocked_user_list(self, user_id):
-        block_relationships = Relationship.objects.filter(Q(from_user=user_id) | Q(to_user=user_id), relationship_type=BLOCK_TYPE)
-        blocking_users = list(block_relationships.values_list("to_user", flat=True))
-        blocked_users = list(block_relationships.values_list("from_user", flat=True))
-        unique_block_users = list(set(blocking_users + blocked_users))
-
-        if user_id in unique_block_users:
-            unique_block_users.remove(user_id)
-
-        return unique_block_users
+    def get_unique_blocked_user_list(self, user_id: int):
+        """특정 유저와 차단 관계에 있는 유저 목록을 조회하는 메서드"""
+        return (
+            Relationship.objects.filter(Q(from_user=user_id) | Q(to_user=user_id), relationship_type=BLOCK_TYPE)
+            .values("from_user", "to_user")
+            .values_list(
+                Case(
+                    When(from_user=user_id, then="to_user"),
+                    When(to_user=user_id, then="from_user"),
+                ),
+                flat=True,
+            )
+            .distinct()
+        )
 
     def get_user_relationships_by_follow_type(self, follow_type, request_user, target_user=None):
         if target_user is None:

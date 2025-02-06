@@ -20,7 +20,7 @@ class TastedRecordListSerializer(serializers.ModelSerializer):
     # 기타 정보
     created_at = serializers.SerializerMethodField()
     likes = serializers.IntegerField()
-    comments = serializers.IntegerField()
+    comments = serializers.IntegerField(source="comment_set.count")
     is_user_liked = serializers.BooleanField(default=False, read_only=True)
     is_user_noted = serializers.BooleanField(default=False, read_only=True)
     is_user_following = serializers.BooleanField(default=False, read_only=True)
@@ -39,7 +39,7 @@ class TastedRecordDetailSerializer(serializers.ModelSerializer):
     bean = BeanSerializer("bean")
     taste_review = BeanTasteReviewSerializer("taste_review")
 
-    like_cnt = serializers.IntegerField(source="like_cnt.count")
+    likes = serializers.IntegerField()
     is_user_liked = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
 
@@ -54,11 +54,11 @@ class TastedRecordDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TastedRecord
-        fields = "__all__"
+        exclude = ["like_cnt"]
 
 
 class TastedRecordCreateUpdateSerializer(serializers.ModelSerializer):
-    bean = BeanSerializer("bean", required=False)
+    bean = BeanSerializer("bean", required=False)  # 수정시 원두 데이터 필수 입력 아님
     taste_review = BeanTasteReviewSerializer("taste_review")
     photos = serializers.PrimaryKeyRelatedField(
         many=True,

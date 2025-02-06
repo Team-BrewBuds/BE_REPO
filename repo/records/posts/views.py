@@ -102,14 +102,9 @@ class UserPostListAPIView(APIView):
         self.post_service = get_post_service()
 
     def get(self, request, id):
-        subject = request.query_params.get("subject", "all")
-        valid_subjects = list(dict(Post.SUBJECT_TYPE_CHOICES).keys()) + ["all"]
+        subject = request.query_params.get("subject", None)
 
-        if subject not in valid_subjects:
-            return Response({"error": "Invalid subject parameter"}, status=status.HTTP_400_BAD_REQUEST)
-
-        user = get_object_or_404(CustomUser, pk=id)
-        posts = self.post_service.get_user_records(user.id, subject=subject)
+        posts = self.post_service.get_user_records(id, subject=subject)
 
         return get_paginated_response_with_class(request, posts, UserPostSerializer)
 

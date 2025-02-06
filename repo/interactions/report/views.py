@@ -1,7 +1,15 @@
+from datetime import datetime
+from io import BytesIO
+
+import pandas as pd
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from repo.common.utils import make_date_format
+from repo.interactions.report.admin_services import get_users_activity_report
 
 from .schemas import ReportSchema
 from .serializers import ContentReportSerializer, UserReportSerializer
@@ -40,3 +48,22 @@ class UserReportAPIView(APIView):
 
         response_serializer = UserReportSerializer(report)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AdminReportListAPIView(APIView):
+
+    def get(self, request):
+        reports = get_users_activity_report()
+        df = pd.DataFrame(reports)
+
+        now = make_date_format(datetime.now())
+        filename = f"Admin_Report_{now}.xlsx"
+
+        excel_file = BytesIO()
+        df.to_excel(excel_file, index=False)
+        excel_file.seek(0)
+
+        response = HttpResponse(excel_file.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        return response
