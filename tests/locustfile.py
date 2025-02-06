@@ -14,8 +14,8 @@ class BrewBudsUser(HttpUser):
 
     @task(1)
     def get_following_user_list(self):
-        self.client.get("/records/feed/", params={"feed_type": "following", "page": 1})
+        self.client.get("/records/feed/", params={"feed_type": "following", "page": 1}, headers=self.headers)
 
     @task(1)
     def get_following_user_list_2(self):
-        self.client.get("/records/feed/", params={"feed_type": "following", "page": 2})
+        self.client.get("/records/feed/", params={"feed_type": "following", "page": 2}, headers=self.headers)
