@@ -1,4 +1,5 @@
 import logging
+import random
 from datetime import timedelta
 from typing import Optional
 
@@ -16,6 +17,7 @@ from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.records.base import BaseRecordService
 from repo.records.models import Post, TastedRecord
+from repo.records.posts.serializers import PostListSerializer
 from repo.records.posts.tasks import cache_top_posts
 
 redis_logger = logging.getLogger("redis.server")
@@ -202,9 +204,30 @@ class PostService(BaseRecordService):
         )
 
     # 비로그인 사용자를 위한 게시글 피드
-    def get_record_list_for_anonymous(self) -> QuerySet[Post]:
-        """비로그인 사용자 게시글 피드 조회"""
-        return self.get_base_record_list_queryset()
+    def get_record_list_for_anonymous(self, subject: Optional[str] = None) -> list:
+        """
+        비로그인 사용자 게시글 피드 조회
+
+        Args:
+            subject: 게시글 주제 (선택)
+
+        Returns:
+            list: 캐시된 게시글 목록
+        """
+        cache_key = "anonymous_posts"
+        posts = cache.get(cache_key)
+
+        if posts is None:
+            base_post_queryset = self.get_base_record_list_queryset()
+            posts = PostListSerializer(base_post_queryset, many=True).data
+            cache.set(cache_key, posts, timeout=60 * 5)
+
+        if subject:
+            subject_value = dict(Post.SUBJECT_TYPE_CHOICES)[subject]
+            posts = [post for post in posts if post["subject"] == subject_value]
+
+        random.shuffle(posts)
+        return posts
 
 
 class TopPostService:

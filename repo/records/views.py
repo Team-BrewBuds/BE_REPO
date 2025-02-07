@@ -38,14 +38,9 @@ class FeedAPIView(APIView):
     def get(self, request):
         user = request.user
         serializer_class = FeedSerializer
-        if not request.user.is_authenticated:  # AnonymousUser
-            cache_key = "anonymous_feed"
-            feed_data = cache.get(cache_key)
 
-            if feed_data is None:
-                feed_data = FeedSerializer(self.feed_service.get_anonymous_feed(), many=True).data
-                cache.set(cache_key, feed_data, timeout=60 * 60 * 3)
-
+        if not request.user.is_authenticated:  # 비회원
+            feed_data = self.feed_service.get_anonymous_feed()
             paginator = PageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(feed_data, request)
             return paginator.get_paginated_response(paginated_queryset)
