@@ -48,7 +48,7 @@ class Command(BaseCommand):
                 "sweetness": lambda x: faker.random_int(min=0, max=5),
                 "star": lambda x: round(faker.pyfloat(left_digits=1, right_digits=1, positive=True, min_value=0.5, max_value=5) * 2) / 2,
                 "place": lambda x: faker.random_choices(elements=place_choices, length=1)[0],
-                "created_at": lambda x: faker.date_time_this_year(),
+                "tasted_at": lambda x: faker.date_time_this_year(),
             },
         )
 
