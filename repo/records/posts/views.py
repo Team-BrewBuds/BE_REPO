@@ -24,11 +24,14 @@ class PostListCreateAPIView(APIView):
 
     def get(self, request):
         user = request.user
-        if not user.is_authenticated:
-            posts = self.post_service.get_record_list_for_anonymous()
-            return get_paginated_response_with_class(request, posts, PostListSerializer)
-
         subject = request.query_params.get("subject", None)
+
+        if not user.is_authenticated:
+            posts = self.post_service.get_record_list_for_anonymous(subject)
+            paginator = PageNumberPagination()
+            paginated_posts = paginator.paginate_queryset(posts, request)
+            return paginator.get_paginated_response(paginated_posts)
+
         posts = self.post_service.get_record_list(user, subject=subject, request=request)
         return get_paginated_response_with_class(request, posts, PostListSerializer)
 
