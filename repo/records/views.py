@@ -38,7 +38,7 @@ class FeedAPIView(APIView):
         user = request.user
         serializer_class = FeedSerializer
         if not request.user.is_authenticated:  # 비회원
-            feed_data = self.feed_service.get_anonymous_cache_feed()
+            feed_data = self.feed_service.get_anonymous_feed()
             paginator = PageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(feed_data, request)
             return paginator.get_paginated_response(paginated_queryset)
