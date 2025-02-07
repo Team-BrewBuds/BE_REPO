@@ -1,8 +1,11 @@
 import random
 from itertools import chain
 
+from django.core.cache import cache
+
 from repo.common.view_counter import get_not_viewed_contents
 from repo.records.posts.services import PostService, get_post_service
+from repo.records.serializers import FeedSerializer
 from repo.records.tasted_record.services import (
     TastedRecordService,
     get_tasted_record_service,
@@ -126,3 +129,21 @@ class FeedService:
         random.shuffle(combined_data)
 
         return combined_data
+
+    def get_anonymous_cache_feed(self):
+        """
+        비로그인 사용자를 위한 캐시 피드를 반환합니다.
+
+        - 공개 시음기록과 게시글 포함
+        - 랜덤 순서로 정렬
+        """
+        cache_key = "anonymous_feed"
+        feed_data = cache.get(cache_key)
+
+        if feed_data is None:
+            feed_data = FeedSerializer(self.get_anonymous_feed(), many=True).data
+            cache.set(cache_key, feed_data, timeout=60 * 5)
+        else:
+            random.shuffle(feed_data)
+
+        return feed_data
