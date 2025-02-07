@@ -6,7 +6,7 @@ from repo.records.posts.serializers import PostListSerializer
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 
-class FeedSerializer(serializers.ModelSerializer):
+class FeedSerializer(serializers.Serializer):
     def to_representation(self, instance):
         if isinstance(instance, Post):
             return PostListSerializer(instance).data

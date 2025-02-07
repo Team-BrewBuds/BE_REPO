@@ -1,8 +1,6 @@
 from django.db.models import QuerySet
 
-from repo.common.constants import HttpMethod
 from repo.common.exception.exceptions import NotFoundException, ValidationException
-from repo.common.permissions import IsOwnerOrReadOnly
 from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.records.models import Comment, Post, TastedRecord
@@ -47,7 +45,7 @@ class CommentService:
     def get_comment_by_id(cls, comment_id: int) -> Comment:
         """댓글 ID로 단일 댓글 조회"""
         try:
-            return Comment.objects.get(id=comment_id)
+            return Comment.objects.filter(id=comment_id).select_related("author").first()
         except Comment.DoesNotExist as e:
             raise NotFoundException(detail="Comment not found", code="not_found") from e
 
@@ -60,8 +58,6 @@ class CommentService:
     def update_comment(self, comment_id: int, user: CustomUser, validated_data: dict) -> Comment:
         """댓글 수정"""
         comment = self.get_comment_by_id(comment_id)
-        IsOwnerOrReadOnly.check_object_permission(HttpMethod.PATCH, user, comment)
-
         comment.content = validated_data.get("content", comment.content)
         comment.save()
         return comment
@@ -69,7 +65,9 @@ class CommentService:
     def delete_comment(self, comment_id: int, user: CustomUser) -> None:
         """댓글 삭제"""
         comment = self.get_comment_by_id(comment_id)
-        IsOwnerOrReadOnly.check_object_permission(HttpMethod.DELETE, user, comment)
+
+        if comment is None:
+            raise NotFoundException(detail="Comment not found", code="not_found")
 
         if comment.parent is None:
             comment.is_deleted = True

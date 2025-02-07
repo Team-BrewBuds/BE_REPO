@@ -1,6 +1,8 @@
 import random
 from itertools import chain
 
+from django.core.cache import cache
+
 from repo.common.view_counter import get_not_viewed_contents
 from repo.records.posts.services import PostService, get_post_service
 from repo.records.tasted_record.services import (
@@ -119,10 +121,15 @@ class FeedService:
         Returns:
             list: 시음기록과 게시글이 랜덤으로 정렬된 피드 리스트
         """
-        tasted_records = self.tasted_record_service.get_record_list_for_anonymous()
-        posts = self.post_service.get_record_list_for_anonymous()
+        cache_key = "anonymous_feed"
+        feeds = cache.get(cache_key)
 
-        combined_data = list(chain(tasted_records, posts))
-        random.shuffle(combined_data)
+        if feeds is None:
+            tasted_records = self.tasted_record_service.get_record_list_for_anonymous()
+            posts = self.post_service.get_record_list_for_anonymous()
 
-        return combined_data
+            feeds = list(chain(tasted_records, posts))
+            cache.set(cache_key, feeds, timeout=60 * 5)
+
+        random.shuffle(feeds)
+        return feeds

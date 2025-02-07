@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.http import Http404
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -37,9 +38,11 @@ class FeedAPIView(APIView):
         user = request.user
         serializer_class = FeedSerializer
 
-        if not request.user.is_authenticated:  # AnonymousUser
-            queryset = self.feed_service.get_anonymous_feed()
-            return get_paginated_response_with_class(request, queryset, serializer_class)
+        if not request.user.is_authenticated:  # 비회원
+            feed_data = self.feed_service.get_anonymous_feed()
+            paginator = PageNumberPagination()
+            paginated_queryset = paginator.paginate_queryset(feed_data, request)
+            return paginator.get_paginated_response(paginated_queryset)
 
         feed_type = request.query_params.get("feed_type")
         if feed_type not in ["following", "common", "refresh"]:

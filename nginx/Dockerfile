@@ -1,4 +1,4 @@
-FROM nginx:1.26.2-alpine-slim
+FROM nginx:1.27.3-alpine
 
 # 기존 설정 파일 지우고
 RUN rm /etc/nginx/conf.d/default.conf

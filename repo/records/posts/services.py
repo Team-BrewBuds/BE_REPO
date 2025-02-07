@@ -1,6 +1,6 @@
 import logging
+import random
 from datetime import timedelta
-from itertools import chain
 from typing import Optional
 
 from django.core.cache import cache
@@ -17,6 +17,7 @@ from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.records.base import BaseRecordService
 from repo.records.models import Post, TastedRecord
+from repo.records.posts.serializers import PostListSerializer
 from repo.records.posts.tasks import cache_top_posts
 
 redis_logger = logging.getLogger("redis.server")
@@ -56,10 +57,15 @@ class PostService(BaseRecordService):
         user = CustomUser.objects.get(id=user_id)
         subject = kwargs.get("subject", None)
 
-        subject_filter = Q(subject=subject) if subject else Q()
+        filters = Q(author=user)
+        if subject:
+            filters &= Q(subject=subject)
 
         posts = (
-            user.post_set.filter(subject_filter).select_related("author").prefetch_related("tasted_records", "photo_set").order_by("-id")
+            Post.objects.filter(filters)
+            .select_related("author")
+            .prefetch_related("photo_set", Prefetch("tasted_records", queryset=TastedRecord.objects.prefetch_related("photo_set")))
+            .order_by("-id")
         )
         return posts
 
@@ -73,7 +79,7 @@ class PostService(BaseRecordService):
         following_posts = self.get_feed_by_follow_relation(user, True).filter(filters).order_by("-id")
         unfollowing_posts = self.get_feed_by_follow_relation(user, False).filter(filters).order_by("-id")
 
-        posts = list(chain(following_posts, unfollowing_posts))
+        posts = following_posts.union(unfollowing_posts, all=True)
 
         if request:
             posts = get_not_viewed_contents(request, posts, "post_viewed")
@@ -91,7 +97,6 @@ class PostService(BaseRecordService):
             tag=validated_data.get("tag", None),
         )
         self._set_post_relations(post, validated_data)
-        cache.delete(cache_key)
         return post
 
     @transaction.atomic
@@ -110,7 +115,6 @@ class PostService(BaseRecordService):
     def delete_record(self, post: Post):
         """게시글 삭제"""
         post.delete()
-        cache.delete(cache_key)
 
     def _set_post_relations(self, post: Post, data: dict):
         """게시글 관계 데이터 설정"""
@@ -123,23 +127,31 @@ class PostService(BaseRecordService):
     @staticmethod
     def get_base_record_list_queryset() -> QuerySet[Post]:
         """공통적으로 사용하는 기본 쿼리셋 생성"""
-        try:
-            cached_post_ids = cache.get(cache_key)
-            if not cached_post_ids:
-                cached_post_ids = list(Post.objects.order_by("-id").values_list("id", flat=True)[:1000])
-                cache.set(cache_key, cached_post_ids, timeout=60 * 15, nx=True)
-        except ConnectionError as e:
-            redis_logger.error(f"Redis 연결 실패 post_list_ids: {str(e)}", exc_info=True)
-            cached_post_ids = list(Post.objects.order_by("-id").values_list("id", flat=True)[:1000])
-
         return (
-            Post.objects.filter(id__in=cached_post_ids)
-            .select_related("author")
-            .prefetch_related("tasted_records", "comment_set", "note_set", "photo_set")
-            .annotate(
-                likes=Count("like_cnt", distinct=True),
-                comments=Count("comment", distinct=True),
+            Post.objects.select_related("author")
+            .prefetch_related(
+                "tasted_records",
+                "tasted_records__bean",
+                "tasted_records__taste_review",
+                "tasted_records__photo_set",
+                "note_set",
+                "photo_set",
+                "comment_set",
             )
+            .defer(
+                "author__gender",
+                "author__birth",
+                "author__email",
+                "author__login_type",
+                "author__social_id",
+                "author__password",
+                "author__is_active",
+                "author__is_superuser",
+                "author__is_staff",
+                "author__last_login",
+                "author__created_at",
+            )
+            .order_by("-id")
         )
 
     def get_feed_queryset(self, user: CustomUser, add_filter: Optional[Q] = None, subject: Optional[str] = None) -> QuerySet[Post]:
@@ -173,9 +185,7 @@ class PostService(BaseRecordService):
 
         filters = Q(author__in=following_users) if follow else ~Q(author__in=following_users)
 
-        return (
-            self.get_feed_queryset(user, filters, None).annotate(is_user_following=Value(follow, output_field=BooleanField())).order_by("?")
-        )
+        return self.get_feed_queryset(user, filters, None).annotate(is_user_following=Value(follow, output_field=BooleanField()))
 
     # home following feed
     def get_following_feed_and_gte_one_hour(self, user: CustomUser) -> QuerySet[Post]:
@@ -194,17 +204,30 @@ class PostService(BaseRecordService):
         )
 
     # 비로그인 사용자를 위한 게시글 피드
-    def get_record_list_for_anonymous(self) -> QuerySet[Post]:
-        """비로그인 사용자 게시글 피드 조회"""
-        base_queryset = self.get_base_record_list_queryset()
+    def get_record_list_for_anonymous(self, subject: Optional[str] = None) -> list:
+        """
+        비로그인 사용자 게시글 피드 조회
 
-        record_queryset = base_queryset.annotate(
-            is_user_liked=Value(False, output_field=BooleanField()),  # False 고정
-            is_user_noted=Value(False, output_field=BooleanField()),  # False 고정
-            is_user_following=Value(False, output_field=BooleanField()),  # False 고정
-        )
+        Args:
+            subject: 게시글 주제 (선택)
 
-        return record_queryset.order_by("?")
+        Returns:
+            list: 캐시된 게시글 목록
+        """
+        cache_key = "anonymous_posts"
+        posts = cache.get(cache_key)
+
+        if posts is None:
+            base_post_queryset = self.get_base_record_list_queryset()
+            posts = PostListSerializer(base_post_queryset, many=True).data
+            cache.set(cache_key, posts, timeout=60 * 5)
+
+        if subject:
+            subject_value = dict(Post.SUBJECT_TYPE_CHOICES)[subject]
+            posts = [post for post in posts if post["subject"] == subject_value]
+
+        random.shuffle(posts)
+        return posts
 
 
 class TopPostService:
@@ -243,7 +266,6 @@ class TopPostService:
             Post.objects.select_related("author")
             .filter(filters)
             .annotate(
-                likes=Count("like_cnt", distinct=True),
                 comments=Count("comment", distinct=True),
             )
         )

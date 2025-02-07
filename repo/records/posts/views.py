@@ -24,11 +24,14 @@ class PostListCreateAPIView(APIView):
 
     def get(self, request):
         user = request.user
-        if not user.is_authenticated:
-            posts = self.post_service.get_record_list_for_anonymous()
-            return get_paginated_response_with_class(request, posts, PostListSerializer)
-
         subject = request.query_params.get("subject", None)
+
+        if not user.is_authenticated:
+            posts = self.post_service.get_record_list_for_anonymous(subject)
+            paginator = PageNumberPagination()
+            paginated_posts = paginator.paginate_queryset(posts, request)
+            return paginator.get_paginated_response(paginated_posts)
+
         posts = self.post_service.get_record_list(user, subject=subject, request=request)
         return get_paginated_response_with_class(request, posts, PostListSerializer)
 
@@ -102,14 +105,9 @@ class UserPostListAPIView(APIView):
         self.post_service = get_post_service()
 
     def get(self, request, id):
-        subject = request.query_params.get("subject", "all")
-        valid_subjects = list(dict(Post.SUBJECT_TYPE_CHOICES).keys()) + ["all"]
+        subject = request.query_params.get("subject", None)
 
-        if subject not in valid_subjects:
-            return Response({"error": "Invalid subject parameter"}, status=status.HTTP_400_BAD_REQUEST)
-
-        user = get_object_or_404(CustomUser, pk=id)
-        posts = self.post_service.get_user_records(user.id, subject=subject)
+        posts = self.post_service.get_user_records(id, subject=subject)
 
         return get_paginated_response_with_class(request, posts, UserPostSerializer)
 

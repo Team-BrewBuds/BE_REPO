@@ -11,6 +11,8 @@ services:
       LOCAL_MYSQL_HOST: host.docker.internal
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
     volumes:
       - .:/usr/src/app/
       - static:/home/app/web/static

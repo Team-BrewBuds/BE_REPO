@@ -17,6 +17,12 @@ class Command(BaseCommand):
             help="게시글 더미 데이터를 생성할 개수",
         )
 
+    @staticmethod
+    def get_random_tag_sentence(faker: Faker):
+        tag_count = faker.random_int(min=1, max=3)
+        tag_sentence = faker.words(nb=tag_count, unique=True)
+        return ", ".join(tag_sentence)
+
     def handle(self, *args, **kwargs):
         number = kwargs["number"]
         seeder = Seed.seeder()
@@ -30,7 +36,7 @@ class Command(BaseCommand):
                 "content": lambda x: faker.paragraph(),
                 "view_cnt": lambda x: faker.random_int(min=0, max=1000),
                 "created_at": lambda x: faker.date_time_this_year(),
-                "tag": lambda x: faker.word(),
+                "tag": lambda x: self.get_random_tag_sentence(faker),
             },
         )
 

@@ -19,23 +19,24 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     ]
 
     nickname = models.CharField(max_length=50, unique=True, null=True, blank=True, verbose_name="닉네임")
-    gender = models.CharField(max_length=10, null=True, blank=True)
+    gender = models.CharField(max_length=10, null=True, blank=True, verbose_name="성별")
     birth = models.IntegerField(null=True, blank=True, verbose_name="출생 연도")
-    email = models.EmailField(unique=True, null=True, blank=True)
+    email = models.EmailField(unique=True, null=True, blank=True, verbose_name="이메일")
     login_type = models.CharField(
         max_length=50,
         null=True,
         blank=True,
         choices=login_type_choices,
+        verbose_name="로그인 유형",
     )
     profile_image = models.ImageField(upload_to="profiles/", null=True, blank=True)
 
     social_id = models.BigIntegerField(null=True, unique=True, blank=False)
 
-    is_staff = models.BooleanField(default=False)
-    is_superuser = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    is_staff = models.BooleanField(default=False, verbose_name="관리자 여부")
+    is_superuser = models.BooleanField(default=False, verbose_name="슈퍼 관리자 여부")
+    is_active = models.BooleanField(default=True, verbose_name="활성 여부")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="가입 일시")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -70,8 +71,8 @@ class UserDetail(models.Model):
     def default_taste():
         return dict.fromkeys(UserDetail.TASTE_CHOICES, 3)
 
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="user_detail")
-    introduction = models.TextField(null=True, blank=True, verbose_name="소개")
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="user_detail", verbose_name="사용자")
+    introduction = models.TextField(null=True, blank=True, verbose_name="소개글")
     profile_link = models.URLField(max_length=200, null=True, blank=True, verbose_name="프로필 링크")
     coffee_life = models.JSONField(default=default_coffee_life, verbose_name="커피 생활")
     preferred_bean_taste = models.JSONField(default=default_coffee_life, verbose_name="선호하는 원두 맛")
