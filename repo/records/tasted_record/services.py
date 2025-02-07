@@ -1,7 +1,9 @@
 import logging
+import random
 from datetime import timedelta
 from typing import Optional
 
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import BooleanField, Exists, Q, QuerySet, Value
 from django.utils import timezone
@@ -15,6 +17,7 @@ from repo.profiles.models import CustomUser
 from repo.profiles.services import UserService
 from repo.records.base import BaseRecordService
 from repo.records.models import BeanTasteReview, TastedRecord
+from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 redis_logger = logging.getLogger("redis.server")
 
@@ -193,7 +196,14 @@ class TastedRecordService(BaseRecordService):
     # 비로그인 사용자 시음기록 피드 조회
     def get_record_list_for_anonymous(self) -> QuerySet[TastedRecord]:
         """비로그인 사용자 시음기록 피드 조회"""
-        base_queryset = self.get_base_record_list_queryset()
-        public_record_queryset = base_queryset.filter(is_private=False)
+        cache_key = "anonymous_tasted_record_list"
+        records = cache.get(cache_key)
 
-        return public_record_queryset
+        if records is None:
+            base_records_queryset = self.get_base_record_list_queryset()
+            public_records_queryset = base_records_queryset.filter(is_private=False)
+            records = TastedRecordListSerializer(public_records_queryset, many=True).data
+            cache.set(cache_key, records, timeout=60 * 5)
+
+        random.shuffle(records)
+        return records
