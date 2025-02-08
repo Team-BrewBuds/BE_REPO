@@ -70,11 +70,13 @@ class CommentDetailAPIView(APIView):
         valid_serializer = CommentInputSerializer(data=request.data, context={"request": request}, partial=True)
         valid_serializer.is_valid(raise_exception=True)
 
-        comment = self.comment_service.update_comment(self.get_object(id), request.user, valid_serializer.validated_data)
+        comment = self.get_object(id)
+        comment = self.comment_service.update_comment(comment, valid_serializer.validated_data)
 
         response_serializer = CommentOutputSerializer(comment, context={"request": request})
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, id):
-        self.comment_service.delete_comment(self.get_object(id), request.user)
+        comment = self.get_object(id)
+        self.comment_service.delete_comment(comment)
         return Response(status=status.HTTP_204_NO_CONTENT)
