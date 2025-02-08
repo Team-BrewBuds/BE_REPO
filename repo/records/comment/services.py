@@ -49,25 +49,19 @@ class CommentService:
         except Comment.DoesNotExist as e:
             raise NotFoundException(detail="Comment not found", code="not_found") from e
 
-    def get_comment_detail(self, comment_id: int) -> Comment:
+    def get_comment_detail(self, comment: Comment) -> Comment:
         """댓글 상세 조회"""
-        comment = self.get_comment_by_id(comment_id)
         comment.replies_list = comment.replies.all()
         return comment
 
-    def update_comment(self, comment_id: int, user: CustomUser, validated_data: dict) -> Comment:
+    def update_comment(self, comment: Comment, user: CustomUser, validated_data: dict) -> Comment:
         """댓글 수정"""
-        comment = self.get_comment_by_id(comment_id)
         comment.content = validated_data.get("content", comment.content)
         comment.save()
         return comment
 
-    def delete_comment(self, comment_id: int, user: CustomUser) -> None:
+    def delete_comment(self, comment: Comment, user: CustomUser) -> None:
         """댓글 삭제"""
-        comment = self.get_comment_by_id(comment_id)
-
-        if comment is None:
-            raise NotFoundException(detail="Comment not found", code="not_found")
 
         if comment.parent is None:
             comment.is_deleted = True
