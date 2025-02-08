@@ -14,8 +14,7 @@ class CommentService:
         object_type: 댓글 대상 객체 타입
         object_id: 댓글 대상 객체 ID
         target_model: 댓글 대상 모델 클래스
-        target_repo: 댓글 대상 객체 (Post, TastedRecord)
-        comment_repo: 댓글 객체
+        target_object: 댓글 대상 객체 (Post, TastedRecord)
         relationship_service: 관계 서비스 인스턴스
     """
 
@@ -54,15 +53,14 @@ class CommentService:
         comment.replies_list = comment.replies.all()
         return comment
 
-    def update_comment(self, comment: Comment, user: CustomUser, validated_data: dict) -> Comment:
+    def update_comment(self, comment: Comment, validated_data: dict) -> Comment:
         """댓글 수정"""
         comment.content = validated_data.get("content", comment.content)
         comment.save()
         return comment
 
-    def delete_comment(self, comment: Comment, user: CustomUser) -> None:
+    def delete_comment(self, comment: Comment) -> None:
         """댓글 삭제"""
-
         if comment.parent is None:
             comment.is_deleted = True
             comment.content = "삭제된 댓글입니다."
