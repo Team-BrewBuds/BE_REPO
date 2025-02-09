@@ -18,4 +18,10 @@ urlpatterns = [
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("<int:id>/notes/", views.UserNoteAPIView.as_view(), name="user_notes"),
+    path("pref_report/summary/<int:user_id>/", views.PrefSummaryView.as_view(), name="pref_summary"),
+    path("pref_report/calendar/<int:user_id>/", views.PrefCalendarAPIView.as_view(), name="pref_calendar"),
+    path("pref_report/tasted_records/<int:user_id>/", views.PrefTastedRecordsAPIView.as_view(), name="pref_records"),
+    path("pref_report/star/<int:user_id>/", views.PrefStarAPIView.as_view(), name="pref_star"),
+    path("pref_report/flavor/<int:user_id>/", views.PrefFlavorAPIView.as_view(), name="pref_flavor"),
+    path("pref_report/country/<int:user_id>/", views.PrefCountryAPIView.as_view(), name="pref_country"),
 ]
