@@ -275,6 +275,32 @@ class CheckNicknameView(APIView):
             return Response(status=204)
 
 
+class DuplicateNicknameCheckView(APIView):
+    """
+    닉네임 중복 여부 확인 API
+    Args:
+        request: 사용자가 입력한 닉네임(?nickname=new_user123)을 받아 중복 여부 확인
+    Returns:
+        JSON 응답:
+            - 닉네임이 사용 가능하면 {"is_available": true}
+            - 닉네임이 중복되면 {"is_available": false, "message": "이미 사용 중인 닉네임입니다."}
+    담당자: blakej2432
+    """
+
+    def get(self, request):
+        nickname = request.GET.get("nickname", "").strip()
+
+        if not nickname:
+            return Response({"error": "닉네임을 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+
+        is_available = not CustomUser.objects.filter(nickname=nickname).exists()
+
+        if is_available:
+            return Response({"is_available": True}, status=status.HTTP_200_OK)
+        else:
+            return Response({"is_available": False, "message": "이미 사용 중인 닉네임입니다."}, status=status.HTTP_200_OK)
+
+
 class SignupView(APIView):
     """
     사용자 회원가입을 처리하는 API.
