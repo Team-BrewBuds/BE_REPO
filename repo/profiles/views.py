@@ -242,8 +242,8 @@ class AppleLoginView(APIView):
             # 응답 데이터 반환
             return Response(
                 {
-                    "access_token": access_token,
-                    "refresh_token": str(refresh),
+                    "access": access_token,
+                    "refresh": str(refresh),
                     "user": {
                         "pk": user.pk,
                         "email": user_email,
