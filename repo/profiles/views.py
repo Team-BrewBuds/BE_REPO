@@ -1,3 +1,7 @@
+from collections import Counter
+from datetime import datetime
+from itertools import chain
+
 import jwt
 import requests
 from allauth.socialaccount.providers.kakao import views as kakao_view
@@ -6,25 +10,37 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Avg, Count, F, Q
+from django.db.models.functions import TruncDate
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.timezone import now
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from repo.beans.services import BeanService
 from repo.common.utils import get_first_photo_url, get_paginated_response_with_class
+from repo.interactions.note.models import Note
 from repo.profiles.models import CustomUser, UserDetail
 from repo.profiles.schemas import *
 from repo.profiles.serializers import (
+    PrefCalendarSerializer,
+    PrefCountrySerializer,
+    PrefFlavorSerializer,
+    PrefStarSerializer,
+    PrefSummarySerializer,
+    PrefTastedRecordSerializer,
     UserDetailSignupSerializer,
     UserProfileSerializer,
     UserSignupSerializer,
     UserUpdateSerializer,
 )
 from repo.profiles.services import UserService
+from repo.records.models import Post, TastedRecord
 from repo.records.serializers import UserNoteSerializer
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
@@ -226,8 +242,8 @@ class AppleLoginView(APIView):
             # 응답 데이터 반환
             return Response(
                 {
-                    "access_token": access_token,
-                    "refresh_token": str(refresh),
+                    "access": access_token,
+                    "refresh": str(refresh),
                     "user": {
                         "pk": user.pk,
                         "email": user_email,
@@ -257,6 +273,32 @@ class CheckNicknameView(APIView):
             return Response({"nickname_saved": True, "nickname": user.nickname}, status=200)
         else:
             return Response(status=204)
+
+
+class DuplicateNicknameCheckView(APIView):
+    """
+    닉네임 중복 여부 확인 API
+    Args:
+        request: 사용자가 입력한 닉네임(?nickname=new_user123)을 받아 중복 여부 확인
+    Returns:
+        JSON 응답:
+            - 닉네임이 사용 가능하면 {"is_available": true}
+            - 닉네임이 중복되면 {"is_available": false, "message": "이미 사용 중인 닉네임입니다."}
+    담당자: blakej2432
+    """
+
+    def get(self, request):
+        nickname = request.GET.get("nickname", "").strip()
+
+        if not nickname:
+            return Response({"error": "닉네임을 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+
+        is_available = not CustomUser.objects.filter(nickname=nickname).exists()
+
+        if is_available:
+            return Response({"is_available": True}, status=status.HTTP_200_OK)
+        else:
+            return Response({"is_available": False, "message": "이미 사용 중인 닉네임입니다."}, status=status.HTTP_200_OK)
 
 
 class SignupView(APIView):
@@ -395,3 +437,211 @@ class UserNoteAPIView(APIView):
             notes_with_photos.append(note)
 
         return get_paginated_response_with_class(request, notes_with_photos, UserNoteSerializer)
+
+
+class PrefSummaryView(APIView):
+    """
+    활동요약 API
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        user_stats = (
+            CustomUser.objects.filter(id=user_id)
+            .annotate(tasted_record_cnt=Count("tastedrecord"), post_cnt=Count("post"), saved_notes_cnt=Count("note", distinct=True))
+            .first()
+        )
+
+        bean_service = BeanService()
+        saved_beans_cnt = bean_service.get_user_saved(user_id).count()
+
+        serializer = PrefSummarySerializer(user_stats)
+        response_data = serializer.data
+        response_data["saved_beans_cnt"] = saved_beans_cnt
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+class PrefCalendarAPIView(APIView):
+    """
+    활동 캘린더 API
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        now = datetime.now()
+        year = int(request.query_params.get("year", now.year))
+        month = int(request.query_params.get("month", now.month))
+        activity_type = request.query_params.get("type", "tasted_record")
+
+        user = get_object_or_404(CustomUser, id=user_id)
+
+        if activity_type == "tasted_record":
+            queryset = (
+                TastedRecord.objects.filter(author=user, created_at__year=year, created_at__month=month)
+                .annotate(created_date=TruncDate("created_at"))
+                .values("created_date")
+                .distinct()
+                .order_by("created_date")
+            )
+        elif activity_type == "post":
+            queryset = (
+                Post.objects.filter(author=user, created_at__year=year, created_at__month=month)
+                .annotate(created_date=TruncDate("created_at"))
+                .values("created_date")
+                .distinct()
+                .order_by("created_date")
+            )
+        elif activity_type == "saved_bean":
+            queryset = (
+                Note.objects.filter(author=user, bean__isnull=False, created_at__year=year, created_at__month=month)
+                .annotate(created_date=TruncDate("created_at"))
+                .values("created_date")
+                .distinct()
+                .order_by("created_date")
+            )
+        elif activity_type == "saved_note":
+            queryset = (
+                Note.objects.filter(
+                    Q(post__isnull=False) | Q(tasted_record__isnull=False), author=user, created_at__year=year, created_at__month=month
+                )
+                .annotate(created_date=TruncDate("created_at"))
+                .values("created_date")
+                .distinct()
+                .order_by("created_date")
+            )
+        else:
+            return Response({"error": "Invalid activity type."}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = PrefCalendarSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class PrefTastedRecordsAPIView(APIView, PageNumberPagination):
+    """
+    유저가 작성한 시음기록 개수 및 목록
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    page_size = 3
+    page_size_query_param = "page_size"
+    max_page_size = 10
+
+    def get(self, request, user_id):
+        user = get_object_or_404(CustomUser, id=user_id)
+
+        records = (
+            TastedRecord.objects.filter(author=user)
+            .annotate(total_count=Count("id"), star=F("taste_review__star"), flavor=F("taste_review__flavor"))
+            .order_by("-created_at")
+        )
+
+        paginated_records = self.paginate_queryset(records, request, view=self)
+
+        tasted_record_count = paginated_records[0].total_count if paginated_records else 0
+
+        serializer = PrefTastedRecordSerializer(paginated_records, many=True)
+
+        response_data = {"tasted_record_count": tasted_record_count, "tasted_records": serializer.data}
+
+        return self.get_paginated_response(response_data)
+
+
+class PrefStarAPIView(APIView):
+    """
+    유저의 별점 분포 API
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        user = get_object_or_404(CustomUser, id=user_id)
+
+        star_distribution_query = (
+            TastedRecord.objects.filter(author=user)
+            .values(star=F("taste_review__star"))
+            .annotate(count=Count("id"), avg_star=Avg("taste_review__star"), total_ratings=Count("id"))
+            .order_by("star")
+        )
+
+        avg_star = round(star_distribution_query[0]["avg_star"], 1) if star_distribution_query else 0
+
+        total_ratings = star_distribution_query[0]["total_ratings"] if star_distribution_query else 0
+
+        most_common_star = max(star_distribution_query, key=lambda x: x["count"], default={"star": None})["star"]
+
+        stars = {round(i * 0.5, 1): 0 for i in range(1, 11)}
+        for entry in star_distribution_query:
+            stars[entry["star"]] = entry["count"]
+
+        serializer = PrefStarSerializer(
+            data={"star_distribution": stars, "most_common_star": most_common_star, "avg_star": avg_star, "total_ratings": total_ratings}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        return Response(serializer.data)
+
+
+class PrefFlavorAPIView(APIView):
+    """
+    유저의 선호하는 맛 API
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        user = get_object_or_404(CustomUser, id=user_id)
+
+        records = TastedRecord.objects.filter(author=user).select_related("taste_review")
+
+        if not records.exists():
+            return Response({"top_flavors": []})
+
+        flavors = [flavor for flavor in records.values_list("taste_review__flavor", flat=True) if flavor and flavor.strip()]
+        split_flavors = chain.from_iterable(flavor.split(", ") for flavor in flavors)  # 쉼표로 분리
+        flavor_counter = Counter(split_flavors)
+
+        total_flavor_count = sum(flavor_counter.values())
+
+        top_flavors = [
+            {"flavor": flavor, "percentage": round((count / total_flavor_count) * 100, 2)}
+            for flavor, count in flavor_counter.most_common(5)
+        ]
+
+        serializer = PrefFlavorSerializer(data={"top_flavors": top_flavors})
+        serializer.is_valid(raise_exception=True)
+
+        return Response(serializer.data)
+
+
+class PrefCountryAPIView(APIView):
+    """
+    유저의 선호하는 원산지 API
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        user = get_object_or_404(CustomUser, id=user_id)
+        records = TastedRecord.objects.filter(author=user).select_related("bean")
+
+        if not records.exists():
+            return Response({"top_origins": []})
+
+        origins = [origin for origin in records.values_list("bean__origin_country", flat=True) if origin]
+        origin_counter = Counter(origins)
+
+        total_origin_count = sum(origin_counter.values())
+
+        top_origins = [
+            {"origin": origin, "percentage": round((count / total_origin_count) * 100, 2)}
+            for origin, count in origin_counter.most_common(5)
+        ]
+
+        serializer = PrefCountrySerializer(data={"top_origins": top_origins})
+        serializer.is_valid(raise_exception=True)
+
+        return Response(serializer.data)
