@@ -26,7 +26,6 @@ class ModelLoader:
         recsys_path = os.path.join(base_dir, "ml/recsys_data.csv")
         if cls.recsys_data is None:
             cls.recsys_data = pd.read_csv(recsys_path)
-            print(cls.recsys_data.head())
 
     @classmethod
     def get_model(cls):
