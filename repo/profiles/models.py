@@ -18,8 +18,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ("apple", "애플"),
     ]
 
+    gender_choices = [
+        ("남", "남성"),
+        ("여", "여성"),
+    ]
+
     nickname = models.CharField(max_length=50, unique=True, null=True, blank=True, verbose_name="닉네임")
-    gender = models.CharField(max_length=10, null=True, blank=True, verbose_name="성별")
+    gender = models.CharField(max_length=10, null=True, blank=True, choices=gender_choices, verbose_name="성별")
     birth = models.IntegerField(null=True, blank=True, verbose_name="출생 연도")
     email = models.EmailField(unique=True, null=True, blank=True, verbose_name="이메일")
     login_type = models.CharField(

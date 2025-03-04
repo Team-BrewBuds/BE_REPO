@@ -659,7 +659,6 @@ class UserAccountInfoView(APIView):
     """
 
     def get(self, request, user_id):
-        # 사용자 조회
         user = get_object_or_404(CustomUser, id=user_id)
 
         # 가입일 변환 (변환 없이 그대로 사용)
@@ -670,20 +669,8 @@ class UserAccountInfoView(APIView):
         days_since_joined = (today - user.created_at.date()).days
         joined_duration = f"{days_since_joined}일째"
 
-        # 로그인 유형 변환
-        login_type_map = {
-            "kakao": "카카오",
-            "naver": "네이버",
-            "apple": "애플",
-        }
-        login_type = login_type_map.get(user.login_type, "알 수 없음")
-
-        gender_map = {
-            "남": "남성",
-            "여": "여성",
-        }
-        gender = gender_map.get(user.gender, "미입력")
-
+        login_type = dict(CustomUser.login_type_choices).get(user.login_type, "알 수 없음")
+        gender = dict(CustomUser.gender_choices).get(user.gender, "미입력")
         birth_year = user.birth if user.birth else "미입력"
 
         data = {
@@ -699,7 +686,7 @@ class UserAccountInfoView(APIView):
 
 class UserDeleteView(APIView):
     """
-    사용자 계정 탈퇴 API (Delete 요청)
+    사용자 계정 탈퇴 API
     """
 
     def delete(self, request, user_id):
