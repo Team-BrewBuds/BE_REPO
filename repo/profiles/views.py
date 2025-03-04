@@ -408,6 +408,11 @@ class MyProfileAPIView(APIView):
         serializer = UserUpdateSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def delete(self, request):
+        user = request.user
+        user.delete()
+        return Response({"message": "계정이 성공적으로 삭제되었습니다."}, status=status.HTTP_204_NO_CONTENT)
+
 
 @OtherProfileSchema.other_proflie_schema_view
 class OtherProfileAPIView(APIView):
@@ -682,14 +687,3 @@ class UserAccountInfoView(APIView):
         }
 
         return Response(data, status=status.HTTP_200_OK)
-
-
-class UserDeleteView(APIView):
-    """
-    사용자 계정 탈퇴 API
-    """
-
-    def delete(self, request, user_id):
-        user = get_object_or_404(CustomUser, id=user_id)
-        user.delete()
-        return Response({"message": "계정이 성공적으로 삭제되었습니다."}, status=status.HTTP_204_NO_CONTENT)

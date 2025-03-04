@@ -26,5 +26,4 @@ urlpatterns = [
     path("pref_report/flavor/<int:user_id>/", views.PrefFlavorAPIView.as_view(), name="pref_flavor"),
     path("pref_report/country/<int:user_id>/", views.PrefCountryAPIView.as_view(), name="pref_country"),
     path("user/info/<int:user_id>/", views.UserAccountInfoView.as_view(), name="user_info"),
-    path("user/delete/<int:user_id>/", views.UserDeleteView.as_view(), name="user_delete"),
 ]
