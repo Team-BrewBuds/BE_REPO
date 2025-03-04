@@ -1,4 +1,4 @@
-from django.db.models import QuerySet
+from django.db.models import Prefetch, QuerySet
 
 from repo.common.exception.exceptions import NotFoundException, ValidationException
 from repo.interactions.relationship.services import RelationshipService
@@ -72,12 +72,35 @@ class CommentService:
         """댓글 목록 조회"""
         block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
 
-        parent_comments = self.target_object.comment_set.filter(parent=None).exclude(author__in=block_users).order_by("id")
+        base_queryset = (
+            self.target_object.comment_set.filter(parent=None)
+            .exclude(author__in=block_users)
+            .select_related("author")
+            .prefetch_related(
+                Prefetch(
+                    "replies",
+                    queryset=Comment.objects.select_related("author")
+                    .exclude(author__in=block_users)
+                    .order_by("id")
+                    .prefetch_related(Prefetch("like_cnt", queryset=CustomUser.objects.filter(id=user.id))),
+                ),
+                Prefetch("like_cnt", queryset=CustomUser.objects.filter(id=user.id)),
+            )
+        )
 
-        for comment in parent_comments:
-            comment.replies_list = comment.replies.exclude(author__in=block_users).order_by("id")
+        user_latest_comment = base_queryset.filter(author=user).order_by("-id").first()
 
-        return parent_comments
+        comments = list(base_queryset.exclude(id=user_latest_comment.id if user_latest_comment else None).order_by("id"))
+
+        # 사용자의 최신 댓글 맨 앞에 추가
+        if user_latest_comment:
+            comments = [user_latest_comment] + comments
+
+        for comment in comments:
+            comment.replies_list = list(comment.replies.all())
+            comment.is_user_liked = any(liked_user.id == user.id for liked_user in comment.like_cnt.all())
+
+        return comments
 
     def create_comment(self, user: CustomUser, validated_data: dict) -> Comment:
         """댓글 생성"""
