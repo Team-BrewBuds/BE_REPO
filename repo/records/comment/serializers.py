@@ -21,17 +21,10 @@ class CommentOutputSerializer(serializers.ModelSerializer):
     likes = serializers.IntegerField(read_only=True)
     created_at = serializers.SerializerMethodField(read_only=True)
     replies = serializers.SerializerMethodField()
-    is_user_liked = serializers.SerializerMethodField()
+    is_user_liked = serializers.BooleanField(read_only=True)
 
     def get_created_at(self, obj):
         return get_time_difference(obj.created_at)
-
-    def get_is_user_liked(self, obj):
-        request = self.context.get("request")
-        if request:
-            user = request.user
-            return obj.like_cnt.filter(id=user.id).exists()
-        return False
 
     def get_replies(self, obj):
         if hasattr(obj, "replies_list"):

@@ -1,8 +1,9 @@
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from repo.common.permissions import IsOwnerOrReadOnly
 from repo.common.utils import get_paginated_response_with_class
 
 from .schemas import CommentDetailSchema, CommentSchema
@@ -49,13 +50,18 @@ class CommentDetailAPIView(APIView):
     담당자: hwstar1204
     """
 
-    permission_classes = [IsAuthenticated]  # IsOwnerOrReadOnly 서비스 내에서 처리
+    permission_classes = [IsOwnerOrReadOnly]
 
     def __init__(self, **kwargs):
         self.comment_service = CommentService()
 
+    def get_object(self, pk):
+        comment = self.comment_service.get_comment_by_id(pk)
+        self.check_object_permissions(self.request, comment)
+        return comment
+
     def get(self, request, id):
-        comment = self.comment_service.get_comment_detail(id)
+        comment = self.comment_service.get_comment_detail(self.get_object(id))
 
         response_serializer = CommentOutputSerializer(comment, context={"request": request})
         return Response(response_serializer.data, status=status.HTTP_200_OK)
@@ -64,11 +70,13 @@ class CommentDetailAPIView(APIView):
         valid_serializer = CommentInputSerializer(data=request.data, context={"request": request}, partial=True)
         valid_serializer.is_valid(raise_exception=True)
 
-        comment = self.comment_service.update_comment(id, request.user, valid_serializer.validated_data)
+        comment = self.get_object(id)
+        comment = self.comment_service.update_comment(comment, valid_serializer.validated_data)
 
         response_serializer = CommentOutputSerializer(comment, context={"request": request})
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, id):
-        self.comment_service.delete_comment(id, request.user)
+        comment = self.get_object(id)
+        self.comment_service.delete_comment(comment)
         return Response(status=status.HTTP_204_NO_CONTENT)
