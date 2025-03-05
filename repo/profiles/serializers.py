@@ -1,8 +1,10 @@
 from rest_framework import serializers
 
+from repo.beans.models import Bean
+from repo.common.utils import get_time_difference
 from repo.profiles.models import CustomUser, UserDetail
 from repo.profiles.validators import UserValidator
-from repo.records.models import Photo, TastedRecord
+from repo.records.models import Photo, Post, TastedRecord
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -140,14 +142,43 @@ class PrefTastedRecordSerializer(serializers.ModelSerializer):
     star = serializers.FloatField(source="taste_review.star")
     flavor = serializers.CharField(source="taste_review.flavor")
     first_photo = serializers.SerializerMethodField()
+    created_date = serializers.DateField()
 
     class Meta:
         model = TastedRecord
-        fields = ["id", "title", "star", "flavor", "first_photo"]
+        fields = ["id", "title", "star", "flavor", "first_photo", "created_date"]
 
     def get_first_photo(self, obj):
         first_photo = Photo.objects.filter(tasted_record=obj).order_by("created_at").first()
         return first_photo.photo_url.url if first_photo and first_photo.photo_url else None
+
+
+class PrefPostSerializer(serializers.ModelSerializer):
+    author = serializers.CharField(source="author.nickname")
+    first_photo = serializers.SerializerMethodField()
+    created_date = serializers.DateField()
+    created_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Post
+        fields = ["id", "title", "subject", "author", "first_photo", "created_date", "created_at"]
+
+    def get_first_photo(self, obj):
+        first_photo = Photo.objects.filter(post=obj).order_by("created_at").first()
+        return first_photo.photo_url.url if first_photo and first_photo.photo_url else None
+
+    def get_created_at(self, obj):
+        return get_time_difference(obj.created_at)
+
+
+class PrefSavedBeanSerializer(serializers.ModelSerializer):
+    avg_star = serializers.FloatField()
+    image_url = serializers.URLField()
+    created_date = serializers.DateField()
+
+    class Meta:
+        model = Bean
+        fields = ["id", "name", "avg_star", "image_url", "created_date"]
 
 
 class PrefStarSerializer(serializers.Serializer):
