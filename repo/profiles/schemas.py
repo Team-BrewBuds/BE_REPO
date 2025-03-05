@@ -49,7 +49,15 @@ class ProfileSchema:
         tags=[Profile_Tag],
     )
 
-    my_profile_schema_view = extend_schema_view(get=my_profile_get_schema, patch=my_profile_patch_schema)
+    my_profile_delete_schema = extend_schema(
+        summary="자기 계정 탈퇴",
+        description="""
+            현재 로그인한 사용자의 계정을 탈퇴합니다.
+        """,
+        tags=[Profile_Tag],
+    )
+
+    my_profile_schema_view = extend_schema_view(get=my_profile_get_schema, patch=my_profile_patch_schema, delete=my_profile_delete_schema)
 
 
 class OtherProfileSchema:
