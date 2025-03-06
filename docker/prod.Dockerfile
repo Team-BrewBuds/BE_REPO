@@ -14,7 +14,8 @@ ENV PYTHONUNBUFFERED 1
 # install dependencies for building (including mariadb-dev for mysqlclient)
 RUN apk update && apk add --no-cache \
     python3 python3-dev mariadb-dev build-base curl \
-    g++ gcc libstdc++ musl-dev lapack-dev blas-dev
+    g++ gcc libstdc++ musl-dev lapack-dev blas-dev \
+    py3-numpy py3-scipy py3-pip gfortran
 
 # install Poetry
 ENV POETRY_VERSION=1.8.3
