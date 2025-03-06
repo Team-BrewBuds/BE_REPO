@@ -15,7 +15,8 @@ ENV PYTHONUNBUFFERED 1
 RUN apk update && apk add --no-cache \
     python3 python3-dev mariadb-dev build-base curl \
     g++ gcc libstdc++ musl-dev lapack-dev blas-dev \
-    py3-numpy py3-scipy py3-pip gfortran
+    py3-numpy py3-scipy py3-pip gfortran \
+    py3-setuptools py3-wheel
 
 # install Poetry
 ENV POETRY_VERSION=1.8.3
@@ -28,7 +29,7 @@ COPY ./pyproject.toml ./poetry.lock* ./
 # install dependencies and build wheels
 RUN poetry config virtualenvs.create false \
     && poetry install --only main --no-interaction --no-ansi \
-    && poetry run pip install scikit-learn==1.5.0 \
+    && poetry run pip install --prefer-binary scikit-learn \
     && poetry run pip install k-means-constrained \
     && poetry export -f requirements.txt --output requirements.txt --without-hashes \
     && pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
