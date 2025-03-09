@@ -28,6 +28,7 @@ class BeanDetailSerializer(serializers.ModelSerializer):
     avg_star = serializers.SerializerMethodField()
     record_count = serializers.SerializerMethodField()
     top_flavors = serializers.SerializerMethodField()
+    is_user_noted = serializers.SerializerMethodField()
 
     flavor = serializers.CharField(source="bean_taste.flavor", read_only=True)
     body = serializers.IntegerField(source="bean_taste.body", read_only=True)
@@ -57,6 +58,7 @@ class BeanDetailSerializer(serializers.ModelSerializer):
             "sweetness",
             "image_url",
             "top_flavors",
+            "is_user_noted",
         ]
 
     def get_avg_star(self, obj):
@@ -67,3 +69,6 @@ class BeanDetailSerializer(serializers.ModelSerializer):
 
     def get_top_flavors(self, obj):
         return self.context.get("top_flavors", [])
+
+    def get_is_user_noted(self, obj):
+        return self.context.get("is_user_noted", False)
