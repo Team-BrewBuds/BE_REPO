@@ -70,9 +70,9 @@ class PostDetailAPIView(APIView):
 
         # 쿠키 기반 조회수 업데이트
         response = update_view_count(request, post_detail, Response(), "post_viewed")
-        response.data = PostDetailSerializer(post_detail).data
+        serializer = PostDetailSerializer(post_detail, context={"request": request})
+        response.data = serializer.data
         response.status_code = status.HTTP_200_OK
-
         return response
 
     def put(self, request, pk):
