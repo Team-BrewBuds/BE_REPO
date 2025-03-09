@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
 
-from django.db.models import QuerySet
+from django.db.models import Exists, QuerySet
 
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
@@ -22,6 +22,24 @@ class BaseRecordService(ABC):
         self.relationship_service = relationship_service
         self.like_service = like_service
         self.note_service = note_service
+
+    def annotate_user_interactions(self, queryset: QuerySet[Post | TastedRecord], user: CustomUser) -> QuerySet[Post | TastedRecord]:
+        """Record 관련 유저 상호작용 정보 추가"""
+
+        if queryset.model == Post:
+            queryset = queryset.annotate(
+                is_user_liked=Exists(self.like_service.get_like_subquery_for_post(user)),
+                is_user_noted=Exists(self.note_service.get_note_subquery_for_post(user)),
+            )
+        elif queryset.model == TastedRecord:
+            queryset = queryset.annotate(
+                is_user_liked=Exists(self.like_service.get_like_subquery_for_tasted_record(user)),
+                is_user_noted=Exists(self.note_service.get_note_subquery_for_tasted_record(user)),
+            )
+        else:
+            raise ValueError("Invalid model type")
+
+        return queryset
 
     @abstractmethod
     def get_record_detail(self, pk: int) -> Post | TastedRecord:

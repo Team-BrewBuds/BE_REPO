@@ -76,8 +76,12 @@ class PostService(BaseRecordService):
 
         filters = Q(subject=subject) if subject else Q()
 
-        following_posts = self.get_feed_by_follow_relation(user, True).filter(filters).order_by("-id")
-        unfollowing_posts = self.get_feed_by_follow_relation(user, False).filter(filters).order_by("-id")
+        following_posts = self.annotate_user_interactions(self.get_feed_by_follow_relation(user, True).filter(filters), user).order_by(
+            "-id"
+        )
+        unfollowing_posts = self.annotate_user_interactions(self.get_feed_by_follow_relation(user, False).filter(filters), user).order_by(
+            "-id"
+        )
 
         posts = following_posts.union(unfollowing_posts, all=True)
 
