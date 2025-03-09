@@ -3,6 +3,7 @@ from rest_framework import serializers
 from repo.beans.serializers import BeanSerializer, BeanTasteReviewSerializer
 from repo.common.serializers import PhotoSerializer
 from repo.common.utils import get_first_photo_url, get_time_difference
+from repo.interactions.serializers import InteractionMethodSerializer
 from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import Photo, TastedRecord
 
@@ -38,16 +39,13 @@ class TastedRecordDetailSerializer(serializers.ModelSerializer):
     photos = PhotoSerializer(many=True, source="photo_set")
     bean = BeanSerializer("bean")
     taste_review = BeanTasteReviewSerializer("taste_review")
-
     likes = serializers.IntegerField()
-    is_user_liked = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
+    interaction = serializers.SerializerMethodField()
 
-    def get_is_user_liked(self, obj):
-        user = self.context["request"].user
-        if user.is_authenticated:
-            return obj.like_cnt.filter(id=user.id).exists()
-        return False
+    def get_interaction(self, obj):
+        context = {"request": self.context.get("request")}
+        return InteractionMethodSerializer(obj, context=context).data
 
     def get_created_at(self, obj):
         return get_time_difference(obj.created_at)
