@@ -102,9 +102,9 @@ class TastedRecordDetailApiView(APIView):
 
         # 쿠키 기반 조회수 업데이트
         response = update_view_count(request, tasted_record_detail, Response(), "tasted_record_viewed")
-        response.data = self.response_serializer_class(tasted_record_detail, context={"request": request}).data
+        serializer = self.response_serializer_class(tasted_record_detail, context={"request": request})
+        response.data = serializer.data
         response.status_code = status.HTTP_200_OK
-
         return response
 
     def put(self, request, pk):

@@ -18,6 +18,7 @@ from repo.beans.serializers import (
 )
 from repo.beans.services import BeanService
 from repo.common.filters import BeanFilter
+from repo.interactions.note.models import Note
 from repo.records.models import TastedRecord
 from repo.search.serializers import TastedRecordSearchSerializer
 
@@ -74,6 +75,8 @@ class BeanDetailView(APIView):
         avg_star = stats["avg_star"] or 0
         avg_star = round(avg_star, 1)
 
+        is_user_noted = Note.objects.filter(bean=bean, author=request.user).exists()
+
         if stats["record_count"] == 0:
             top_flavors = []
         else:
@@ -94,6 +97,7 @@ class BeanDetailView(APIView):
                 "avg_star": avg_star,
                 "record_count": stats["record_count"] or 0,
                 "top_flavors": top_flavors,
+                "is_user_noted": is_user_noted,
             },
         )
 

@@ -53,8 +53,8 @@ class TastedRecordService(BaseRecordService):
         """홈 시음기록 리스트 조회"""
         request = kwargs.get("request", None)
 
-        following_tasted_records = self.get_feed_by_follow_relation(user, True).order_by("-id")
-        unfollowing_tasted_records = self.get_feed_by_follow_relation(user, False).order_by("-id")
+        following_tasted_records = self.annotate_user_interactions(self.get_feed_by_follow_relation(user, True), user).order_by("-id")
+        unfollowing_tasted_records = self.annotate_user_interactions(self.get_feed_by_follow_relation(user, False), user).order_by("-id")
 
         tasted_records = following_tasted_records.union(unfollowing_tasted_records, all=True)
 
