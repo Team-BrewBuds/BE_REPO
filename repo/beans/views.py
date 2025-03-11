@@ -70,7 +70,7 @@ class BeanDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, id):
-        bean = get_object_or_404(Bean.objects.prefetch_related("bean_taste"), id=id, is_official=True)
+        bean = get_object_or_404(Bean.objects.select_related("bean_taste"), id=id, is_official=True)
 
         records = TastedRecord.objects.filter(bean=bean).select_related("taste_review")
         aggregate_data = records.aggregate(avg_star=Avg("taste_review__star"), record_count=Count("id"))

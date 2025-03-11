@@ -35,7 +35,7 @@ class BeanDetailSerializer(serializers.ModelSerializer):
     record_count = serializers.IntegerField(default=0)
     top_flavors = serializers.ListField(default=[])
     is_user_noted = serializers.BooleanField(default=False)
-    bean_taste = BeanTasteSerializer(read_only=True, many=True)
+    bean_taste = BeanTasteSerializer(read_only=True)
 
     image_url = serializers.URLField()
 
