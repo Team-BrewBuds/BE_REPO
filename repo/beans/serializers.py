@@ -25,10 +25,10 @@ class UserBeanSerializer(serializers.ModelSerializer):
 
 
 class BeanDetailSerializer(serializers.ModelSerializer):
-    avg_star = serializers.SerializerMethodField()
-    record_count = serializers.SerializerMethodField()
-    top_flavors = serializers.SerializerMethodField()
-    is_user_noted = serializers.SerializerMethodField()
+    avg_star = serializers.DecimalField(max_digits=2, decimal_places=1, default=0)
+    record_count = serializers.IntegerField(default=0)
+    top_flavors = serializers.ListField(default=[])
+    is_user_noted = serializers.BooleanField(default=False)
 
     flavor = serializers.CharField(source="bean_taste.flavor", read_only=True)
     body = serializers.IntegerField(source="bean_taste.body", read_only=True)
@@ -60,15 +60,3 @@ class BeanDetailSerializer(serializers.ModelSerializer):
             "top_flavors",
             "is_user_noted",
         ]
-
-    def get_avg_star(self, obj):
-        return self.context.get("avg_star", 0)
-
-    def get_record_count(self, obj):
-        return self.context.get("record_count", 0)
-
-    def get_top_flavors(self, obj):
-        return self.context.get("top_flavors", [])
-
-    def get_is_user_noted(self, obj):
-        return self.context.get("is_user_noted", False)
