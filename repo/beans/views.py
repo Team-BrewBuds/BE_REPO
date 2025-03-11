@@ -66,6 +66,9 @@ class BeanDetailView(APIView):
     """
 
     def get(self, request, id):
+        if not request.user.is_authenticated:
+            raise UnauthorizedException
+
         bean = get_object_or_404(Bean.objects.prefetch_related("bean_taste"), id=id, is_official=True)
 
         records = TastedRecord.objects.filter(bean=bean).select_related("taste_review")
