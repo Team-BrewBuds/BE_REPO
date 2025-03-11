@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Bean, BeanTasteReview
+from .models import Bean, BeanTaste, BeanTasteReview
 
 
 class BeanSerializer(serializers.ModelSerializer):
@@ -12,6 +12,12 @@ class BeanSerializer(serializers.ModelSerializer):
 class BeanTasteReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = BeanTasteReview
+        fields = "__all__"
+
+
+class BeanTasteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BeanTaste
         fields = "__all__"
 
 
@@ -29,34 +35,10 @@ class BeanDetailSerializer(serializers.ModelSerializer):
     record_count = serializers.IntegerField(default=0)
     top_flavors = serializers.ListField(default=[])
     is_user_noted = serializers.BooleanField(default=False)
-
-    flavor = serializers.CharField(source="bean_taste.flavor", read_only=True)
-    body = serializers.IntegerField(source="bean_taste.body", read_only=True)
-    acidity = serializers.IntegerField(source="bean_taste.acidity", read_only=True)
-    bitterness = serializers.IntegerField(source="bean_taste.bitterness", read_only=True)
-    sweetness = serializers.IntegerField(source="bean_taste.sweetness", read_only=True)
+    bean_taste = BeanTasteSerializer(read_only=True, many=True)
 
     image_url = serializers.URLField()
 
     class Meta:
         model = Bean
-        fields = [
-            "id",
-            "name",
-            "bean_type",
-            "is_decaf",
-            "origin_country",
-            "region",
-            "process",
-            "roast_point",
-            "avg_star",
-            "record_count",
-            "flavor",
-            "body",
-            "acidity",
-            "bitterness",
-            "sweetness",
-            "image_url",
-            "top_flavors",
-            "is_user_noted",
-        ]
+        fields = "__all__"
