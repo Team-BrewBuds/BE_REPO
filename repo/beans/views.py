@@ -17,6 +17,7 @@ from repo.beans.serializers import (
     UserBeanSerializer,
 )
 from repo.beans.services import BeanService
+from repo.common.exception.exceptions import UnauthorizedException
 from repo.common.filters import BeanFilter
 from repo.interactions.note.models import Note
 from repo.records.models import TastedRecord
@@ -55,6 +56,7 @@ class UserBeanListAPIView(generics.ListAPIView):
         return queryset.order_by(ordering)
 
 
+@BeanDetailSchema.bean_detail_schema_view
 class BeanDetailView(APIView):
     """
     원두 세부 정보 API
@@ -107,9 +109,10 @@ class BeanDetailView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@BeanTastedRecordSchema.bean_tasted_record_schema_view
 class BeanTastedRecordView(APIView):
     """
-    시음 기록 리스트 API
+    특정 원두 관련 시음 기록 리스트 API
     Args:
         request: 원두 ID(id)를 포함한 클라이언트 요청. 페이지 번호(page)를 쿼리 파라미터로 전달하여 페이징 처리.
     Returns:
