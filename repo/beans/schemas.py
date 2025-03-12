@@ -6,8 +6,13 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
-from repo.beans.serializers import BeanSerializer, UserBeanSerializer
+from repo.beans.serializers import (
+    BeanDetailSerializer,
+    BeanSerializer,
+    UserBeanSerializer,
+)
 from repo.common.serializers import PageNumberSerializer
+from repo.search.serializers import TastedRecordSearchSerializer
 
 BeansTag = "beans"
 
@@ -79,3 +84,27 @@ class UserBeanListSchema:
     )
 
     user_bean_list_schema_view = extend_schema_view(get=user_bean_list_get_schema)
+
+
+class BeanDetailSchema:
+    bean_detail_get_schema = extend_schema(
+        responses={
+            200: BeanDetailSerializer,
+            401: OpenApiResponse(description="Unauthorized"),
+            404: OpenApiResponse(description="Not Found"),
+        },
+        summary="원두 세부 정보 조회",
+        description="원두 세부 정보를 조회합니다. 담당자: blakej2432",
+    )
+
+    bean_detail_schema_view = extend_schema_view(get=bean_detail_get_schema)
+
+
+class BeanTastedRecordSchema:
+    bean_tasted_record_get_schema = extend_schema(
+        responses={200: TastedRecordSearchSerializer},
+        summary="특정 원두 관련 시음 기록 리스트 조회",
+        description="특정 원두 관련 시음 기록을 조회합니다. 담당자: blakej2432",
+    )
+
+    bean_tasted_record_schema_view = extend_schema_view(get=bean_tasted_record_get_schema)

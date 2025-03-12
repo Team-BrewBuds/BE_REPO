@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -55,6 +56,7 @@ class UserBeanListAPIView(generics.ListAPIView):
         return queryset.order_by(ordering)
 
 
+@BeanDetailSchema.bean_detail_schema_view
 class BeanDetailView(APIView):
     """
     원두 세부 정보 API
@@ -65,48 +67,45 @@ class BeanDetailView(APIView):
     담당자: blakej2432
     """
 
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, id):
-        bean = get_object_or_404(Bean.objects.prefetch_related("bean_taste"), id=id, is_official=True)
+        bean = get_object_or_404(Bean.objects.select_related("bean_taste"), id=id, is_official=True)
 
         records = TastedRecord.objects.filter(bean=bean).select_related("taste_review")
+        aggregate_data = records.aggregate(avg_star=Avg("taste_review__star"), record_count=Count("id"))
 
-        stats = records.aggregate(avg_star=Avg("taste_review__star"), record_count=Count("id"))
-
-        avg_star = stats["avg_star"] or 0
-        avg_star = round(avg_star, 1)
-
+        record_count = aggregate_data["record_count"] or 0
+        avg_star = round(aggregate_data["avg_star"] or 0, 1)
         is_user_noted = Note.objects.filter(bean=bean, author=request.user).exists()
 
-        if stats["record_count"] == 0:
-            top_flavors = []
-        else:
-            flavors = records.values_list("taste_review__flavor", flat=True)
-            split_flavors = chain.from_iterable(flavor.split(", ") for flavor in flavors if flavor)
-            flavor_counter = Counter(split_flavors)
+        top_flavors = self.get_top_flavors(records) if record_count > 0 else []
 
-            total_flavor_count = sum(flavor_counter.values())
+        bean.avg_star = avg_star
+        bean.record_count = record_count
+        bean.top_flavors = top_flavors
+        bean.is_user_noted = is_user_noted
 
-            top_flavors = [
-                {"flavor": flavor, "percentage": int(round((count / total_flavor_count) * 100, 0))}
-                for flavor, count in flavor_counter.most_common(4)
-            ]
+        return Response(BeanDetailSerializer(bean).data, status=status.HTTP_200_OK)
 
-        serializer = BeanDetailSerializer(
-            bean,
-            context={
-                "avg_star": avg_star,
-                "record_count": stats["record_count"] or 0,
-                "top_flavors": top_flavors,
-                "is_user_noted": is_user_noted,
-            },
-        )
+    def get_top_flavors(self, records: TastedRecord) -> list[dict]:
+        flavors = records.values_list("taste_review__flavor", flat=True)
+        split_flavors = chain.from_iterable(flavor.split(", ") for flavor in flavors if flavor)
+        flavor_counter = Counter(split_flavors)
+        total_flavor_count = sum(flavor_counter.values())
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        top_flavors = [
+            {"flavor": flavor, "percentage": int(round((count / total_flavor_count) * 100, 0))}
+            for flavor, count in flavor_counter.most_common(4)
+        ]
+
+        return top_flavors
 
 
+@BeanTastedRecordSchema.bean_tasted_record_schema_view
 class BeanTastedRecordView(APIView):
     """
-    시음 기록 리스트 API
+    특정 원두 관련 시음 기록 리스트 API
     Args:
         request: 원두 ID(id)를 포함한 클라이언트 요청. 페이지 번호(page)를 쿼리 파라미터로 전달하여 페이징 처리.
     Returns:
