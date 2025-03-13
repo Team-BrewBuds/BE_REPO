@@ -71,6 +71,8 @@ class CommentService:
     def get_comment_list(self, user: CustomUser) -> QuerySet[Comment]:
         """댓글 목록 조회"""
         block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
+        target_object_comments = self.target_object.comment_set
+        user_liked_comments = set(target_object_comments.filter(like_cnt=user.id).values_list("id", flat=True))
 
         base_queryset = (
             self.target_object.comment_set.filter(parent=None)
@@ -98,7 +100,10 @@ class CommentService:
 
         for comment in comments:
             comment.replies_list = list(comment.replies.all())
-            comment.is_user_liked = any(liked_user.id == user.id for liked_user in comment.like_cnt.all())
+            comment.is_user_liked = comment.id in user_liked_comments
+
+            for reply in comment.replies_list:
+                reply.is_user_liked = reply.id in user_liked_comments
 
         return comments
 
