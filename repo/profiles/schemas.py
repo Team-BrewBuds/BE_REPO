@@ -1,4 +1,5 @@
 from drf_spectacular.utils import (
+    OpenApiExample,
     OpenApiResponse,
     extend_schema,
     extend_schema_view,
@@ -37,13 +38,42 @@ class ProfileSchema:
             400: OpenApiResponse(description="Bad Request"),
             401: OpenApiResponse(description="user not authenticated"),
         },
+        examples=[
+            OpenApiExample(
+                "Profile Update Example",
+                value={
+                    "nickname": "커피러버",
+                    "user_detail": {
+                        "introduction": "커피를 사랑하는 사람입니다",
+                        "profile_link": "https://example.com/profile",
+                        "coffee_life": {
+                            "cafe_alba": True,
+                            "cafe_tour": False,
+                            "cafe_work": False,
+                            "coffee_study": False,
+                            "cafe_operation": False,
+                            "coffee_extraction": True,
+                        },
+                        "preferred_bean_taste": {"body": 4, "acidity": 3, "sweetness": 5, "bitterness": 2},
+                        "is_certificated": True,
+                    },
+                },
+                request_only=True,
+            )
+        ],
         summary="자기 프로필 수정",
         description="""
             현재 로그인한 사용자의 프로필을 수정합니다.
             닉네임, 프로필 이미지, 소개, 프로필 링크, 커피 생활 방식, 선호하는 커피 맛, 자격증 여부를 수정합니다.
-            notice : 닉네임 유효성 검사 추가
+
+            Notice
+            1.닉네임 유효성 검사
             - 중복, 공백 불가
             - 2 ~ 12자의 한글 또는 숫자
+
+            2.coffee_life와 preferred_bean_taste는 JSON 객체 형태로 전달해야 합니다
+            - coffee_life: 각 항목(cafe_tour, coffee_extraction 등)에 대해 true/false 값을 가진 객체
+            - preferred_bean_taste: 각 맛(body, acidity 등)에 대해 1~5 사이의 숫자 값을 가진 객체
             담당자 : hwstar1204
         """,
         tags=[Profile_Tag],

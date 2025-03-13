@@ -46,7 +46,7 @@ class BeanTasteBase(models.Model):
 
 
 class BeanTaste(BeanTasteBase):
-    bean = models.ForeignKey(
+    bean = models.OneToOneField(
         "Bean", on_delete=models.CASCADE, null=True, blank=True, related_name="bean_taste", verbose_name="공식 원두 기본 맛"
     )
 

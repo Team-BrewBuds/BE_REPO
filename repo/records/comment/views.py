@@ -27,7 +27,10 @@ class CommentApiView(APIView):
 
     def get(self, request, object_type, object_id):
         comment_service = CommentService(object_type, object_id)
-        comments = comment_service.get_comment_list(request.user)
+        if not request.user.is_authenticated:
+            comments = comment_service.get_comment_list_for_annonymouse()
+        else:
+            comments = comment_service.get_comment_list(request.user)
 
         return get_paginated_response_with_class(request, comments, CommentOutputSerializer)
 

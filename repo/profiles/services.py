@@ -73,8 +73,10 @@ class UserService:
         user_detail = UserDetail.objects.get(user=user)
 
         if coffee_life := validated_data.pop("coffee_life", None):
-            coffee_life_data = {choice: choice in coffee_life for choice in UserDetail.COFFEE_LIFE_CHOICES}
-            validated_data["coffee_life"] = coffee_life_data
+            validated_data["coffee_life"] = {choice: value for choice, value in coffee_life.items() if value is not None}
+
+        if preferred_bean_taste := validated_data.pop("preferred_bean_taste", None):
+            validated_data["preferred_bean_taste"] = {choice: value for choice, value in preferred_bean_taste.items() if value is not None}
 
         for field, value in validated_data.items():
             setattr(user_detail, field, value)
