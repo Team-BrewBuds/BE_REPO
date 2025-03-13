@@ -101,50 +101,50 @@ class CommentService:
         )
 
         # 댓글 + 대댓글
-        all_comments = target_object_comments.select_related("author", "parent").order_by("id").all()
+        comments = target_object_comments.select_related("author", "parent").order_by("id").all()
 
-        parent_comments = []
-        replies_map = defaultdict(list)
+        root_comments = []
+        child_comments_map: dict[int, list[Comment]] = defaultdict(list)
         user_recent_comment_obj = None
 
         # 댓글 분류 및 좋아요 상태 설정
-        for comment in all_comments:
+        for comment in comments:
             comment.is_user_liked = comment.id in user_liked_comments_ids
 
             if comment.parent_id:  # 대댓글
-                replies_map[comment.parent_id].append(comment)
+                child_comments_map[comment.parent_id].append(comment)
             else:  # 부모 댓글
                 if comment.id == user_recent_comment_id:
                     user_recent_comment_obj = comment
                     continue
-                parent_comments.append(comment)
+                root_comments.append(comment)
 
-        for parent in parent_comments:
-            parent.replies_list = replies_map[parent.id]
+        for parent in root_comments:
+            parent.replies_list = child_comments_map[parent.id]
 
         # 유저의 최신 부모 댓글 우선순위 적용
         if user_recent_comment_obj:
-            user_recent_comment_obj.replies_list = replies_map[user_recent_comment_obj.id]
-            return [user_recent_comment_obj] + parent_comments
+            user_recent_comment_obj.replies_list = child_comments_map[user_recent_comment_obj.id]
+            return [user_recent_comment_obj] + root_comments
 
-        return parent_comments
+        return root_comments
 
     def get_comment_list_for_annonymouse(self) -> list[Comment]:
         """익명 유저 댓글 목록 조회"""
-        all_comments = self.target_object.comment_set.select_related("author", "parent").order_by("id").all()
+        comments = self.target_object.comment_set.select_related("author", "parent").order_by("id").all()
 
-        parent_comments = []
-        replies_map = defaultdict(list)
+        root_comments = []
+        child_comments_map: dict[int, list[Comment]] = defaultdict(list)
 
-        for comment in all_comments:
+        for comment in comments:
             comment.is_user_liked = False
 
             if comment.parent_id:
-                replies_map[comment.parent_id].append(comment)
+                child_comments_map[comment.parent_id].append(comment)
             else:
-                parent_comments.append(comment)
+                root_comments.append(comment)
 
-        for parent in parent_comments:
-            parent.replies_list = replies_map[parent.id]
+        for parent in root_comments:
+            parent.replies_list = child_comments_map[parent.id]
 
-        return parent_comments
+        return root_comments
