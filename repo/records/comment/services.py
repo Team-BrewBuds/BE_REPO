@@ -1,4 +1,4 @@
-from django.db.models import Prefetch, QuerySet
+from collections import defaultdict
 
 from repo.common.exception.exceptions import NotFoundException, ValidationException
 from repo.interactions.relationship.services import RelationshipService
@@ -68,40 +68,6 @@ class CommentService:
         else:
             comment.delete()
 
-    def get_comment_list(self, user: CustomUser) -> QuerySet[Comment]:
-        """댓글 목록 조회"""
-        block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
-
-        base_queryset = (
-            self.target_object.comment_set.filter(parent=None)
-            .exclude(author__in=block_users)
-            .select_related("author")
-            .prefetch_related(
-                Prefetch(
-                    "replies",
-                    queryset=Comment.objects.select_related("author")
-                    .exclude(author__in=block_users)
-                    .order_by("id")
-                    .prefetch_related(Prefetch("like_cnt", queryset=CustomUser.objects.filter(id=user.id))),
-                ),
-                Prefetch("like_cnt", queryset=CustomUser.objects.filter(id=user.id)),
-            )
-        )
-
-        user_latest_comment = base_queryset.filter(author=user).order_by("-id").first()
-
-        comments = list(base_queryset.exclude(id=user_latest_comment.id if user_latest_comment else None).order_by("id"))
-
-        # 사용자의 최신 댓글 맨 앞에 추가
-        if user_latest_comment:
-            comments = [user_latest_comment] + comments
-
-        for comment in comments:
-            comment.replies_list = list(comment.replies.all())
-            comment.is_user_liked = any(liked_user.id == user.id for liked_user in comment.like_cnt.all())
-
-        return comments
-
     def create_comment(self, user: CustomUser, validated_data: dict) -> Comment:
         """댓글 생성"""
         if self.target_object is None:
@@ -119,3 +85,66 @@ class CommentService:
             comment_data["tasted_record"] = self.target_object
 
         return Comment.objects.create(**comment_data)
+
+    def get_comment_list(self, user: CustomUser) -> list[Comment]:
+        """댓글 목록 조회 (유저 최신 댓글 우선 정렬)"""
+        blocked_users = set(self.relationship_service.get_unique_blocked_user_list(user.id))
+
+        target_object_comments = self.target_object.comment_set.exclude(author__in=blocked_users)
+
+        # 유저가 좋아요한 댓글들 ID
+        user_liked_comments_ids = set(target_object_comments.filter(like_cnt=user.id).values_list("id", flat=True))
+
+        # 유저가 작성한 최신 부모 댓글 ID
+        user_recent_comment_id = (
+            self.target_object.comment_set.filter(author=user, parent=None).order_by("-id").values_list("id", flat=True).first()
+        )
+
+        # 댓글 + 대댓글
+        comments = target_object_comments.select_related("author", "parent").order_by("id").all()
+
+        root_comments = []
+        child_comments_map: dict[int, list[Comment]] = defaultdict(list)
+        user_recent_comment_obj = None
+
+        # 댓글 분류 및 좋아요 상태 설정
+        for comment in comments:
+            comment.is_user_liked = comment.id in user_liked_comments_ids
+
+            if comment.parent_id:  # 대댓글
+                child_comments_map[comment.parent_id].append(comment)
+            else:  # 부모 댓글
+                if comment.id == user_recent_comment_id:
+                    user_recent_comment_obj = comment
+                    continue
+                root_comments.append(comment)
+
+        for parent in root_comments:
+            parent.replies_list = child_comments_map[parent.id]
+
+        # 유저의 최신 부모 댓글 우선순위 적용
+        if user_recent_comment_obj:
+            user_recent_comment_obj.replies_list = child_comments_map[user_recent_comment_obj.id]
+            return [user_recent_comment_obj] + root_comments
+
+        return root_comments
+
+    def get_comment_list_for_annonymouse(self) -> list[Comment]:
+        """익명 유저 댓글 목록 조회"""
+        comments = self.target_object.comment_set.select_related("author", "parent").order_by("id").all()
+
+        root_comments = []
+        child_comments_map: dict[int, list[Comment]] = defaultdict(list)
+
+        for comment in comments:
+            comment.is_user_liked = False
+
+            if comment.parent_id:
+                child_comments_map[comment.parent_id].append(comment)
+            else:
+                root_comments.append(comment)
+
+        for parent in root_comments:
+            parent.replies_list = child_comments_map[parent.id]
+
+        return root_comments
