@@ -1,4 +1,4 @@
-from django.db.models import Prefetch, QuerySet
+from collections import defaultdict
 
 from repo.common.exception.exceptions import NotFoundException, ValidationException
 from repo.interactions.relationship.services import RelationshipService
@@ -68,39 +68,48 @@ class CommentService:
         else:
             comment.delete()
 
-    def get_comment_list(self, user: CustomUser) -> QuerySet[Comment]:
-        """댓글 목록 조회"""
-        target_object_comments = self.target_object.comment_set
+    def get_comment_list(self, user: CustomUser) -> list[Comment]:
+        """댓글 목록 조회 (유저 최신 댓글 우선 정렬)"""
+        blocked_users = set(self.relationship_service.get_unique_blocked_user_list(user.id))
 
-        block_users = list(self.relationship_service.get_unique_blocked_user_list(user.id))
-        user_liked_comments = set(target_object_comments.filter(like_cnt=user.id).values_list("id", flat=True))
-        replies_queryset = Comment.objects.exclude(author__in=block_users).select_related("author").order_by("id")
+        target_object_comments = self.target_object.comment_set.exclude(author__in=blocked_users)
 
-        base_queryset = (
-            target_object_comments.filter(parent=None)
-            .exclude(author__in=block_users)
-            .select_related("author")
-            .prefetch_related(
-                Prefetch("replies", queryset=replies_queryset),
-            )
-            .order_by("id")
+        # 유저가 좋아요한 댓글들 ID
+        user_liked_comments_ids = set(target_object_comments.filter(like_cnt=user.id).values_list("id", flat=True))
+
+        # 유저가 작성한 최신 부모 댓글 ID
+        user_recent_comment_id = (
+            self.target_object.comment_set.filter(author=user, parent=None).order_by("-id").values_list("id", flat=True).first()
         )
 
-        user_comments = list(base_queryset.filter(author=user).order_by("-id")[:1])
-        user_latest_comment_id = user_comments[0].id if user_comments else None
+        # 댓글 + 대댓글
+        all_comments = target_object_comments.select_related("author", "parent").order_by("id").all()
 
-        other_comments = list(base_queryset.exclude(id=user_latest_comment_id).order_by("id"))
+        parent_comments = []
+        replies_map = defaultdict(list)
+        user_recent_comment_obj = None
 
-        comments = user_comments + other_comments
+        # 댓글 분류 및 좋아요 상태 설정
+        for comment in all_comments:
+            comment.is_user_liked = comment.id in user_liked_comments_ids
 
-        for comment in comments:
-            comment.replies_list = list(comment.replies.all())
-            comment.is_user_liked = comment.id in user_liked_comments
+            if comment.parent_id:  # 대댓글
+                replies_map[comment.parent_id].append(comment)
+            else:  # 부모 댓글
+                if comment.id == user_recent_comment_id:
+                    user_recent_comment_obj = comment
+                    continue
+                parent_comments.append(comment)
 
-            for reply in comment.replies_list:
-                reply.is_user_liked = reply.id in user_liked_comments
+        for parent in parent_comments:
+            parent.replies_list = replies_map[parent.id]
 
-        return comments
+        # 유저의 최신 부모 댓글 우선순위 적용
+        if user_recent_comment_obj:
+            user_recent_comment_obj.replies_list = replies_map[user_recent_comment_obj.id]
+            return [user_recent_comment_obj] + parent_comments
+
+        return parent_comments
 
     def create_comment(self, user: CustomUser, validated_data: dict) -> Comment:
         """댓글 생성"""
