@@ -68,6 +68,24 @@ class CommentService:
         else:
             comment.delete()
 
+    def create_comment(self, user: CustomUser, validated_data: dict) -> Comment:
+        """댓글 생성"""
+        if self.target_object is None:
+            raise NotFoundException(detail="Target object not found", code="not_found")
+
+        comment_data = {
+            "author": user,
+            "content": validated_data.get("content"),
+            "parent": validated_data.get("parent", None),
+        }
+
+        if isinstance(self.target_object, Post):
+            comment_data["post"] = self.target_object
+        elif isinstance(self.target_object, TastedRecord):
+            comment_data["tasted_record"] = self.target_object
+
+        return Comment.objects.create(**comment_data)
+
     def get_comment_list(self, user: CustomUser) -> list[Comment]:
         """댓글 목록 조회 (유저 최신 댓글 우선 정렬)"""
         blocked_users = set(self.relationship_service.get_unique_blocked_user_list(user.id))
@@ -110,21 +128,3 @@ class CommentService:
             return [user_recent_comment_obj] + parent_comments
 
         return parent_comments
-
-    def create_comment(self, user: CustomUser, validated_data: dict) -> Comment:
-        """댓글 생성"""
-        if self.target_object is None:
-            raise NotFoundException(detail="Target object not found", code="not_found")
-
-        comment_data = {
-            "author": user,
-            "content": validated_data.get("content"),
-            "parent": validated_data.get("parent", None),
-        }
-
-        if isinstance(self.target_object, Post):
-            comment_data["post"] = self.target_object
-        elif isinstance(self.target_object, TastedRecord):
-            comment_data["tasted_record"] = self.target_object
-
-        return Comment.objects.create(**comment_data)
