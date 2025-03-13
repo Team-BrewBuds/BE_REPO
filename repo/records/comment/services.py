@@ -74,21 +74,16 @@ class CommentService:
 
         block_users = list(self.relationship_service.get_unique_blocked_user_list(user.id))
         user_liked_comments = set(target_object_comments.filter(like_cnt=user.id).values_list("id", flat=True))
+        replies_queryset = Comment.objects.exclude(author__in=block_users).select_related("author").order_by("id")
 
         base_queryset = (
-            self.target_object.comment_set.filter(parent=None)
+            target_object_comments.filter(parent=None)
             .exclude(author__in=block_users)
             .select_related("author")
             .prefetch_related(
-                Prefetch(
-                    "replies",
-                    queryset=Comment.objects.select_related("author")
-                    .exclude(author__in=block_users)
-                    .order_by("id")
-                    .prefetch_related(Prefetch("like_cnt", queryset=CustomUser.objects.filter(id=user.id))),
-                ),
-                Prefetch("like_cnt", queryset=CustomUser.objects.filter(id=user.id)),
+                Prefetch("replies", queryset=replies_queryset),
             )
+            .order_by("id")
         )
 
         user_latest_comment = base_queryset.filter(author=user).order_by("-id").first()
