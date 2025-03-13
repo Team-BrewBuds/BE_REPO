@@ -128,3 +128,23 @@ class CommentService:
             return [user_recent_comment_obj] + parent_comments
 
         return parent_comments
+
+    def get_comment_list_for_annonymouse(self) -> list[Comment]:
+        """익명 유저 댓글 목록 조회"""
+        all_comments = self.target_object.comment_set.select_related("author", "parent").order_by("id").all()
+
+        parent_comments = []
+        replies_map = defaultdict(list)
+
+        for comment in all_comments:
+            comment.is_user_liked = False
+
+            if comment.parent_id:
+                replies_map[comment.parent_id].append(comment)
+            else:
+                parent_comments.append(comment)
+
+        for parent in parent_comments:
+            parent.replies_list = replies_map[parent.id]
+
+        return parent_comments
