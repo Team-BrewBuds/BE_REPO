@@ -86,13 +86,12 @@ class CommentService:
             .order_by("id")
         )
 
-        user_latest_comment = base_queryset.filter(author=user).order_by("-id").first()
+        user_comments = list(base_queryset.filter(author=user).order_by("-id")[:1])
+        user_latest_comment_id = user_comments[0].id if user_comments else None
 
-        comments = list(base_queryset.exclude(id=user_latest_comment.id if user_latest_comment else None).order_by("id"))
+        other_comments = list(base_queryset.exclude(id=user_latest_comment_id).order_by("id"))
 
-        # 사용자의 최신 댓글 맨 앞에 추가
-        if user_latest_comment:
-            comments = [user_latest_comment] + comments
+        comments = user_comments + other_comments
 
         for comment in comments:
             comment.replies_list = list(comment.replies.all())
