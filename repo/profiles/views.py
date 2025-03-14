@@ -1,6 +1,5 @@
 from collections import Counter, defaultdict
 from datetime import datetime
-from itertools import chain
 
 import jwt
 import requests
@@ -627,6 +626,9 @@ class PrefFlavorAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    def __init__(self, **kwargs):
+        self.bean_service = BeanService()
+
     def get(self, request, user_id):
         user = get_object_or_404(CustomUser, id=user_id)
 
@@ -635,16 +637,8 @@ class PrefFlavorAPIView(APIView):
         if not records.exists():
             return Response({"top_flavors": []})
 
-        flavors = [flavor for flavor in records.values_list("taste_review__flavor", flat=True) if flavor and flavor.strip()]
-        split_flavors = chain.from_iterable(flavor.split(", ") for flavor in flavors)  # 쉼표로 분리
-        flavor_counter = Counter(split_flavors)
-
-        total_flavor_count = sum(flavor_counter.values())
-
-        top_flavors = [
-            {"flavor": flavor, "percentage": round((count / total_flavor_count) * 100, 2)}
-            for flavor, count in flavor_counter.most_common(5)
-        ]
+        flavors = records.values_list("taste_review__flavor", flat=True)
+        top_flavors = self.bean_service.get_flavor_percentages(flavors)
 
         serializer = PrefFlavorSerializer(data={"top_flavors": top_flavors})
         serializer.is_valid(raise_exception=True)

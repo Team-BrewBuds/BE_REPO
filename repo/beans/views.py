@@ -1,5 +1,3 @@
-from collections import Counter
-
 from django.db.models import Avg, Count
 from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
@@ -68,6 +66,9 @@ class BeanDetailView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    def __init__(self):
+        self.bean_service = BeanService()
+
     def get(self, request, id):
         bean = get_object_or_404(Bean.objects.select_related("bean_taste"), id=id, is_official=True)
         related_records = bean.tastedrecord_set.select_related("taste_review")
@@ -77,7 +78,7 @@ class BeanDetailView(APIView):
 
         avg_star = round(aggregate_data["avg_star"] or 0, 1)
         record_count = aggregate_data["record_count"] or 0
-        top_flavors = self.get_flavor_percentages(flavors) if record_count > 0 else []
+        top_flavors = self.bean_service.get_flavor_percentages(flavors) if record_count > 0 else []
         is_user_noted = Note.objects.filter(bean=bean, author=request.user).exists()
 
         bean.avg_star = avg_star
@@ -86,27 +87,6 @@ class BeanDetailView(APIView):
         bean.is_user_noted = is_user_noted
 
         return Response(BeanDetailSerializer(bean).data, status=status.HTTP_200_OK)
-
-    def get_flavor_percentages(self, flavors: list[str]) -> list[dict[str, str | int]]:
-        split_flavors = []
-        for flavor_str in flavors:
-            if flavor_str:
-                split_flavors.extend(flavor_str.split(","))  # 쉼표 기준 맛 분리
-
-        flavor_counter = Counter(split_flavors)
-        total_flavor_count = sum(flavor_counter.values())
-
-        flavor_counter = Counter(split_flavors)
-        total_flavor_count = flavor_counter.total()
-        flavor_items = flavor_counter.items()
-
-        top_flavors = []
-        for flavor, count in flavor_items:
-            top_flavors.append({"flavor": flavor, "percentage": int(round((count / total_flavor_count) * 100, 0))})
-
-        top_flavors.sort(key=lambda x: x["percentage"], reverse=True)
-
-        return top_flavors
 
 
 @BeanTastedRecordSchema.bean_tasted_record_schema_view
