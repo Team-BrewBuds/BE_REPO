@@ -71,14 +71,15 @@ class BeanDetailView(APIView):
     def get(self, request, id):
         bean = get_object_or_404(Bean.objects.select_related("bean_taste"), id=id, is_official=True)
 
-        records = TastedRecord.objects.filter(bean=bean).select_related("taste_review")
-        aggregate_data = records.aggregate(avg_star=Avg("taste_review__star"), record_count=Count("id"))
+        related_records = bean.tastedrecord_set.select_related("taste_review")
+
+        aggregate_data = related_records.aggregate(avg_star=Avg("taste_review__star"), record_count=Count("id"))
 
         record_count = aggregate_data["record_count"] or 0
         avg_star = round(aggregate_data["avg_star"] or 0, 1)
         is_user_noted = Note.objects.filter(bean=bean, author=request.user).exists()
 
-        top_flavors = self.get_top_flavors(records) if record_count > 0 else []
+        top_flavors = self.get_top_flavors(related_records) if record_count > 0 else []
 
         bean.avg_star = avg_star
         bean.record_count = record_count
