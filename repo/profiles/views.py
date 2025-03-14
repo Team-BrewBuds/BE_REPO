@@ -352,36 +352,6 @@ class SignupView(APIView):
         return Response({"message": "회원가입을 성공했습니다."}, status=status.HTTP_200_OK)
 
 
-# TODO: Profile - User 정보 수정 관련 구현
-# class UpdateUserInfoView(generics.UpdateAPIView):
-#     queryset = CustomUser.objects.all()
-#     serializer_class = UserRegisterSerializer
-#     permission_classes = [permissions.IsAuthenticated]  # 로그인한 사용자만 가능
-
-#     def get_object(self):
-#         # 현재 로그인한 유저의 정보를 업데이트
-#         return self.request.user
-
-#     def update(self, request, *args, **kwargs):
-#         partial = kwargs.pop('partial', False)
-#         instance = self.get_object()
-#         serializer = self.get_serializer(instance, data=request.data, partial=partial)
-#         serializer.is_valid(raise_exception=True)
-#         self.perform_update(serializer)
-
-#         return Response(serializer.data)
-
-
-# class GetUserInfoView(generics.RetrieveAPIView):
-#     queryset = CustomUser.objects.all()
-#     serializer_class = UserRegisterSerializer
-#     permission_classes = [permissions.IsAuthenticated]  # 로그인한 사용자만 가능
-
-#     def get_object(self):
-#         # 현재 로그인한 유저 정보를 반환
-#         return self.request.user
-
-
 @ProfileSchema.my_profile_schema_view
 class MyProfileAPIView(APIView):
     permission_classes = [IsAuthenticated]

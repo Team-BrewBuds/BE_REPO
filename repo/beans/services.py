@@ -84,8 +84,8 @@ class BeanService:
         split_flavors = []
         for flavor_str in flavors:
             if flavor_str:
-                a = [i.strip() for i in flavor_str.split(",")]
-                split_flavors.extend(a)  # 쉼표 기준 맛 분리
+                fs = [i.strip() for i in flavor_str.split(",")]
+                split_flavors.extend(fs)  # 쉼표 기준 맛 분리
 
         flavor_counter = Counter(split_flavors)
         total_flavor_count = flavor_counter.total()
