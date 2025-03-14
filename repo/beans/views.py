@@ -70,16 +70,15 @@ class BeanDetailView(APIView):
 
     def get(self, request, id):
         bean = get_object_or_404(Bean.objects.select_related("bean_taste"), id=id, is_official=True)
-
         related_records = bean.tastedrecord_set.select_related("taste_review")
 
         aggregate_data = related_records.aggregate(avg_star=Avg("taste_review__star"), record_count=Count("id"))
+        flavors = related_records.values_list("taste_review__flavor", flat=True)
 
-        record_count = aggregate_data["record_count"] or 0
         avg_star = round(aggregate_data["avg_star"] or 0, 1)
+        record_count = aggregate_data["record_count"] or 0
+        top_flavors = self.get_flavor_percentages(flavors) if record_count > 0 else []
         is_user_noted = Note.objects.filter(bean=bean, author=request.user).exists()
-
-        top_flavors = self.get_top_flavors(related_records) if record_count > 0 else []
 
         bean.avg_star = avg_star
         bean.record_count = record_count
@@ -88,9 +87,7 @@ class BeanDetailView(APIView):
 
         return Response(BeanDetailSerializer(bean).data, status=status.HTTP_200_OK)
 
-    def get_top_flavors(self, records: TastedRecord) -> list[dict]:
-        flavors = records.values_list("taste_review__flavor", flat=True)
-
+    def get_flavor_percentages(self, flavors: list[str]) -> list[dict[str, str | int]]:
         split_flavors = []
         for flavor_str in flavors:
             if flavor_str:
