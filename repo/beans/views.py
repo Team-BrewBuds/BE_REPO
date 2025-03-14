@@ -98,10 +98,15 @@ class BeanDetailView(APIView):
         flavor_counter = Counter(split_flavors)
         total_flavor_count = sum(flavor_counter.values())
 
-        top_flavors = [
-            {"flavor": flavor, "percentage": int(round((count / total_flavor_count) * 100, 0))}
-            for flavor, count in flavor_counter.most_common(4)
-        ]
+        flavor_counter = Counter(split_flavors)
+        total_flavor_count = flavor_counter.total()
+        flavor_items = flavor_counter.items()
+
+        top_flavors = []
+        for flavor, count in flavor_items:
+            top_flavors.append({"flavor": flavor, "percentage": int(round((count / total_flavor_count) * 100, 0))})
+
+        top_flavors.sort(key=lambda x: x["percentage"], reverse=True)
 
         return top_flavors
 
