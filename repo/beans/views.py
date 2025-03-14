@@ -1,5 +1,4 @@
 from collections import Counter
-from itertools import chain
 
 from django.db.models import Avg, Count
 from django.shortcuts import get_object_or_404
@@ -90,7 +89,12 @@ class BeanDetailView(APIView):
 
     def get_top_flavors(self, records: TastedRecord) -> list[dict]:
         flavors = records.values_list("taste_review__flavor", flat=True)
-        split_flavors = chain.from_iterable(flavor.split(", ") for flavor in flavors if flavor)
+
+        split_flavors = []
+        for flavor_str in flavors:
+            if flavor_str:
+                split_flavors.extend(flavor_str.split(","))  # 쉼표 기준 맛 분리
+
         flavor_counter = Counter(split_flavors)
         total_flavor_count = sum(flavor_counter.values())
 
