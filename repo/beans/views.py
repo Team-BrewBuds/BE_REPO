@@ -1,6 +1,3 @@
-from collections import Counter
-from itertools import chain
-
 from django.db.models import Avg, Count
 from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
@@ -69,17 +66,20 @@ class BeanDetailView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    def __init__(self):
+        self.bean_service = BeanService()
+
     def get(self, request, id):
         bean = get_object_or_404(Bean.objects.select_related("bean_taste"), id=id, is_official=True)
+        related_records = bean.tastedrecord_set.select_related("taste_review")
 
-        records = TastedRecord.objects.filter(bean=bean).select_related("taste_review")
-        aggregate_data = records.aggregate(avg_star=Avg("taste_review__star"), record_count=Count("id"))
+        aggregate_data = related_records.aggregate(avg_star=Avg("taste_review__star"), record_count=Count("id"))
+        flavors = related_records.values_list("taste_review__flavor", flat=True)
 
-        record_count = aggregate_data["record_count"] or 0
         avg_star = round(aggregate_data["avg_star"] or 0, 1)
+        record_count = aggregate_data["record_count"] or 0
+        top_flavors = self.bean_service.get_flavor_percentages(flavors) if record_count > 0 else []
         is_user_noted = Note.objects.filter(bean=bean, author=request.user).exists()
-
-        top_flavors = self.get_top_flavors(records) if record_count > 0 else []
 
         bean.avg_star = avg_star
         bean.record_count = record_count
@@ -87,19 +87,6 @@ class BeanDetailView(APIView):
         bean.is_user_noted = is_user_noted
 
         return Response(BeanDetailSerializer(bean).data, status=status.HTTP_200_OK)
-
-    def get_top_flavors(self, records: TastedRecord) -> list[dict]:
-        flavors = records.values_list("taste_review__flavor", flat=True)
-        split_flavors = chain.from_iterable(flavor.split(", ") for flavor in flavors if flavor)
-        flavor_counter = Counter(split_flavors)
-        total_flavor_count = sum(flavor_counter.values())
-
-        top_flavors = [
-            {"flavor": flavor, "percentage": int(round((count / total_flavor_count) * 100, 0))}
-            for flavor, count in flavor_counter.most_common(4)
-        ]
-
-        return top_flavors
 
 
 @BeanTastedRecordSchema.bean_tasted_record_schema_view

@@ -1,6 +1,5 @@
 from collections import Counter, defaultdict
 from datetime import datetime
-from itertools import chain
 
 import jwt
 import requests
@@ -353,36 +352,6 @@ class SignupView(APIView):
         return Response({"message": "회원가입을 성공했습니다."}, status=status.HTTP_200_OK)
 
 
-# TODO: Profile - User 정보 수정 관련 구현
-# class UpdateUserInfoView(generics.UpdateAPIView):
-#     queryset = CustomUser.objects.all()
-#     serializer_class = UserRegisterSerializer
-#     permission_classes = [permissions.IsAuthenticated]  # 로그인한 사용자만 가능
-
-#     def get_object(self):
-#         # 현재 로그인한 유저의 정보를 업데이트
-#         return self.request.user
-
-#     def update(self, request, *args, **kwargs):
-#         partial = kwargs.pop('partial', False)
-#         instance = self.get_object()
-#         serializer = self.get_serializer(instance, data=request.data, partial=partial)
-#         serializer.is_valid(raise_exception=True)
-#         self.perform_update(serializer)
-
-#         return Response(serializer.data)
-
-
-# class GetUserInfoView(generics.RetrieveAPIView):
-#     queryset = CustomUser.objects.all()
-#     serializer_class = UserRegisterSerializer
-#     permission_classes = [permissions.IsAuthenticated]  # 로그인한 사용자만 가능
-
-#     def get_object(self):
-#         # 현재 로그인한 유저 정보를 반환
-#         return self.request.user
-
-
 @ProfileSchema.my_profile_schema_view
 class MyProfileAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -627,6 +596,9 @@ class PrefFlavorAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    def __init__(self, **kwargs):
+        self.bean_service = BeanService()
+
     def get(self, request, user_id):
         user = get_object_or_404(CustomUser, id=user_id)
 
@@ -635,16 +607,8 @@ class PrefFlavorAPIView(APIView):
         if not records.exists():
             return Response({"top_flavors": []})
 
-        flavors = [flavor for flavor in records.values_list("taste_review__flavor", flat=True) if flavor and flavor.strip()]
-        split_flavors = chain.from_iterable(flavor.split(", ") for flavor in flavors)  # 쉼표로 분리
-        flavor_counter = Counter(split_flavors)
-
-        total_flavor_count = sum(flavor_counter.values())
-
-        top_flavors = [
-            {"flavor": flavor, "percentage": round((count / total_flavor_count) * 100, 2)}
-            for flavor, count in flavor_counter.most_common(5)
-        ]
+        flavors = records.values_list("taste_review__flavor", flat=True)
+        top_flavors = self.bean_service.get_flavor_percentages(flavors, limit=5)
 
         serializer = PrefFlavorSerializer(data={"top_flavors": top_flavors})
         serializer.is_valid(raise_exception=True)
@@ -666,15 +630,26 @@ class PrefCountryAPIView(APIView):
         if not records.exists():
             return Response({"top_origins": []})
 
-        origins = [origin for origin in records.values_list("bean__origin_country", flat=True) if origin]
-        origin_counter = Counter(origins)
+        split_origins = []
+        origins = records.values_list("bean__origin_country", flat=True)
+        for origin in origins:
+            if origin:
+                os = [i.strip() for i in origin.split(",")]
+                split_origins.extend(os)
 
-        total_origin_count = sum(origin_counter.values())
+        origin_counter = Counter(split_origins)
+        country_items = origin_counter.most_common(5)
+        total_origin_count = sum(count for _, count in country_items)
 
-        top_origins = [
-            {"origin": origin, "percentage": round((count / total_origin_count) * 100, 2)}
-            for origin, count in origin_counter.most_common(5)
-        ]
+        top_origins = []
+        for origin, count in country_items:
+            percent = round((count / total_origin_count) * 100, 2)
+            top_origins.append({"origin": origin, "percentage": percent})
+
+        total_percent = sum(origin["percentage"] for origin in top_origins)
+        if total_percent != 100:
+            diff = 100 - total_percent
+            top_origins[0]["percentage"] += round(diff, 2)
 
         serializer = PrefCountrySerializer(data={"top_origins": top_origins})
         serializer.is_valid(raise_exception=True)
