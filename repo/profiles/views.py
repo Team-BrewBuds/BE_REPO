@@ -646,6 +646,9 @@ class PrefCountryAPIView(APIView):
             percent = round((count / total_origin_count) * 100, 2)
             top_origins.append({"origin": origin, "percentage": percent})
 
+        total_percent = sum(origin["percentage"] for origin in top_origins)
+        if total_percent != 100:
+            diff = 100 - total_percent
             top_origins[0]["percentage"] += round(diff, 2)
 
         serializer = PrefCountrySerializer(data={"top_origins": top_origins})

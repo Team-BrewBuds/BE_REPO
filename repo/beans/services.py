@@ -96,18 +96,13 @@ class BeanService:
             total_flavor_count = flavor_counter.total()
 
         top_flavors = []
-        total_percent = 0
-
         for flavor, count in flavor_items:
             percent = round((count / total_flavor_count) * 100)
             top_flavors.append({"flavor": flavor, "percentage": percent})
-            total_percent += percent
 
-        if top_flavors and total_percent != 100:
+        total_percent = sum(flavor["percentage"] for flavor in top_flavors)
+        if total_percent != 100:
             diff = 100 - total_percent
-            top_flavors[-1]["percentage"] += diff
-
-        if top_flavors[-1]["percentage"] <= 0:
-            top_flavors.pop()
+            top_flavors[0]["percentage"] += diff
 
         return top_flavors
