@@ -80,7 +80,7 @@ class BeanService:
             return self.create(bean_data)
 
     @staticmethod
-    def get_flavor_percentages(flavors: list[str]) -> list[dict[str, str | int]]:
+    def get_flavor_percentages(flavors: list[str], limit: int = None) -> list[dict[str, str | int]]:
         split_flavors = []
         for flavor_str in flavors:
             if flavor_str:
@@ -88,8 +88,12 @@ class BeanService:
                 split_flavors.extend(fs)  # 쉼표 기준 맛 분리
 
         flavor_counter = Counter(split_flavors)
-        total_flavor_count = flavor_counter.total()
-        flavor_items = sorted(flavor_counter.items(), key=lambda x: x[1], reverse=True)
+        flavor_items = flavor_counter.most_common(limit)
+
+        if limit:
+            total_flavor_count = sum(count for _, count in flavor_items)
+        else:
+            total_flavor_count = flavor_counter.total()
 
         top_flavors = []
         total_percent = 0

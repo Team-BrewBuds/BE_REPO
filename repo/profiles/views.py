@@ -608,7 +608,7 @@ class PrefFlavorAPIView(APIView):
             return Response({"top_flavors": []})
 
         flavors = records.values_list("taste_review__flavor", flat=True)
-        top_flavors = self.bean_service.get_flavor_percentages(flavors)
+        top_flavors = self.bean_service.get_flavor_percentages(flavors, limit=5)
 
         serializer = PrefFlavorSerializer(data={"top_flavors": top_flavors})
         serializer.is_valid(raise_exception=True)
