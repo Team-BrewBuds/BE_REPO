@@ -630,15 +630,23 @@ class PrefCountryAPIView(APIView):
         if not records.exists():
             return Response({"top_origins": []})
 
-        origins = [origin for origin in records.values_list("bean__origin_country", flat=True) if origin]
-        origin_counter = Counter(origins)
+        split_origins = []
+        origins = records.values_list("bean__origin_country", flat=True)
+        for origin in origins:
+            if origin:
+                os = [i.strip() for i in origin.split(",")]
+                split_origins.extend(os)
 
-        total_origin_count = sum(origin_counter.values())
+        origin_counter = Counter(split_origins)
+        country_items = origin_counter.most_common(5)
+        total_origin_count = sum(count for _, count in country_items)
 
-        top_origins = [
-            {"origin": origin, "percentage": round((count / total_origin_count) * 100, 2)}
-            for origin, count in origin_counter.most_common(5)
-        ]
+        top_origins = []
+        for origin, count in country_items:
+            percent = round((count / total_origin_count) * 100, 2)
+            top_origins.append({"origin": origin, "percentage": percent})
+
+            top_origins[0]["percentage"] += round(diff, 2)
 
         serializer = PrefCountrySerializer(data={"top_origins": top_origins})
         serializer.is_valid(raise_exception=True)
