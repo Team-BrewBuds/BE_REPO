@@ -1,3 +1,4 @@
+from collections import Counter
 from typing import Dict
 
 from django.db.models import Avg, Count, FloatField, QuerySet
@@ -77,3 +78,31 @@ class BeanService:
             return Bean.objects.get(**bean_data)
         else:
             return self.create(bean_data)
+
+    @staticmethod
+    def get_flavor_percentages(flavors: list[str], limit: int = None) -> list[dict[str, str | int]]:
+        split_flavors = []
+        for flavor_str in flavors:
+            if flavor_str:
+                fs = [i.strip() for i in flavor_str.split(",")]
+                split_flavors.extend(fs)  # 쉼표 기준 맛 분리
+
+        flavor_counter = Counter(split_flavors)
+        flavor_items = flavor_counter.most_common(limit)
+
+        if limit:
+            total_flavor_count = sum(count for _, count in flavor_items)
+        else:
+            total_flavor_count = flavor_counter.total()
+
+        top_flavors = []
+        for flavor, count in flavor_items:
+            percent = round((count / total_flavor_count) * 100)
+            top_flavors.append({"flavor": flavor, "percentage": percent})
+
+        total_percent = sum(flavor["percentage"] for flavor in top_flavors)
+        if total_percent != 100:
+            diff = 100 - total_percent
+            top_flavors[0]["percentage"] += diff
+
+        return top_flavors
