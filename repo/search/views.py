@@ -6,9 +6,11 @@ from rest_framework.views import APIView
 from repo.beans.models import Bean
 from repo.profiles.models import CustomUser
 from repo.records.models import Post, TastedRecord
+from repo.search.schemas import SearchSchema, SuggestSchema
 from repo.search.serializers import *
 
 
+@SuggestSchema.buddy_suggest_schema_view
 class BuddySuggestView(APIView):
     """
     사용자 이름 검색어 추천 API
@@ -31,6 +33,7 @@ class BuddySuggestView(APIView):
         return Response({"suggestions": list(suggestions)}, status=status.HTTP_200_OK)
 
 
+@SuggestSchema.bean_suggest_schema_view
 class BeanSuggestView(APIView):
     """
     원두 이름 검색어 추천 API
@@ -53,6 +56,7 @@ class BeanSuggestView(APIView):
         return Response({"suggestions": list(suggestions)}, status=status.HTTP_200_OK)
 
 
+@SuggestSchema.tastedrecord_suggest_schema_view
 class TastedRecordSuggestView(APIView):
     """
     시음 기록 검색어 추천 API
@@ -75,6 +79,7 @@ class TastedRecordSuggestView(APIView):
         return Response({"suggestions": list(suggestions)}, status=status.HTTP_200_OK)
 
 
+@SuggestSchema.post_suggest_schema_view
 class PostSuggestView(APIView):
     """
     게시글 검색어 추천 API
@@ -97,6 +102,7 @@ class PostSuggestView(APIView):
         return Response({"suggestions": list(suggestions)}, status=status.HTTP_200_OK)
 
 
+@SearchSchema.buddy_search_schema_view
 class BuddySearchView(APIView):
     """
     사용자 검색 API
@@ -128,6 +134,7 @@ class BuddySearchView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@SearchSchema.bean_search_schema_view
 class BeanSearchView(APIView):
     """
     공식 원두 검색 API
@@ -178,6 +185,7 @@ class BeanSearchView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@SearchSchema.tastedrecord_search_schema_view
 class TastedRecordSearchView(APIView):
     """
     시음 기록 검색 API
@@ -227,6 +235,7 @@ class TastedRecordSearchView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@SearchSchema.post_search_schema_view
 class PostSearchView(APIView):
     """
     게시글 검색 API
