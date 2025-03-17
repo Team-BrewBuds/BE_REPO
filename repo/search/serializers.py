@@ -24,6 +24,7 @@ class BeanSearchSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "bean_type",
+            "is_official",
             "is_decaf",
             "origin_country",
             "image_url",

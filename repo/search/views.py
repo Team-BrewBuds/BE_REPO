@@ -130,7 +130,7 @@ class BuddySearchView(APIView):
 
 class BeanSearchView(APIView):
     """
-    원두 검색 API
+    공식 원두 검색 API
     Args:
         request: 검색어(query)와 정렬 기준(sort_by)를 포함한 클라이언트 요청.
     Returns:
@@ -143,7 +143,7 @@ class BeanSearchView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        base_filters = Q(name__icontains=data["q"])
+        base_filters = Q(name__icontains=data["q"]) & Q(is_official=True)
 
         if data.get("bean_type"):
             base_filters &= Q(bean_type=data["bean_type"])
