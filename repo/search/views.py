@@ -113,16 +113,16 @@ class BuddySearchView(APIView):
         data = serializer.validated_data
 
         query = data["q"]
-        sort_by = data.get("sort_by")
 
         users = CustomUser.objects.filter(nickname__icontains=query).annotate(
             record_cnt=Count("tastedrecord"), follower_cnt=Count("relationships_to", filter=Q(relationships_to__relationship_type="follow"))
         )
 
-        if sort_by == "record_cnt":
-            users = users.order_by("-record_cnt")
-        elif sort_by == "follower_cnt":
-            users = users.order_by("-follower_cnt")
+        if sort_by := data.get("sort_by"):
+            if sort_by == "record_cnt":
+                users = users.order_by("-record_cnt")
+            elif sort_by == "follower_cnt":
+                users = users.order_by("-follower_cnt")
 
         serializer = BuddySearchSerializer(users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -145,16 +145,16 @@ class BeanSearchView(APIView):
 
         base_filters = Q(name__icontains=data["q"]) & Q(is_official=True)
 
-        if data.get("bean_type"):
-            base_filters &= Q(bean_type=data["bean_type"])
-        if data.get("origin_country"):
-            base_filters &= Q(origin_country=data["origin_country"])
-        if data.get("is_decaf"):
-            base_filters &= Q(is_decaf=data["is_decaf"])
-        if data.get("min_star"):
-            base_filters &= Q(avg_star__gte=float(data["min_star"]))
-        if data.get("max_star"):
-            base_filters &= Q(avg_star__lte=float(data["max_star"]))
+        if bean_type := data.get("bean_type"):
+            base_filters &= Q(bean_type=bean_type)
+        if origin_country := data.get("origin_country"):
+            base_filters &= Q(origin_country=origin_country)
+        if is_decaf := data.get("is_decaf"):
+            base_filters &= Q(is_decaf=is_decaf)
+        if min_star := data.get("min_star"):
+            base_filters &= Q(avg_star__gte=float(min_star))
+        if max_star := data.get("max_star"):
+            base_filters &= Q(avg_star__lte=float(max_star))
 
         beans = Bean.objects.filter(base_filters).annotate(avg_star=Avg("tastedrecord__taste_review__star"))
 
@@ -203,19 +203,18 @@ class TastedRecordSearchView(APIView):
 
         records = TastedRecord.objects.filter(base_filters).select_related("bean", "author", "taste_review").distinct()
 
-        if data.get("bean_type"):
-            base_filters &= Q(bean__bean_type=data["bean_type"])
-        if data.get("origin_country"):
-            base_filters &= Q(bean__origin_country__icontains=data["origin_country"])
-        if data.get("min_star"):
-            base_filters &= Q(taste_review__star__gte=float(data["min_star"]))
-        if data.get("max_star"):
-            base_filters &= Q(taste_review__star__lte=float(data["max_star"]))
-        if data.get("is_decaf"):
-            base_filters &= Q(bean__is_decaf=data["is_decaf"])
+        if bean_type := data.get("bean_type"):
+            base_filters &= Q(bean__bean_type=bean_type)
+        if origin_country := data.get("origin_country"):
+            base_filters &= Q(bean__origin_country__icontains=origin_country)
+        if min_star := data.get("min_star"):
+            base_filters &= Q(taste_review__star__gte=float(min_star))
+        if max_star := data.get("max_star"):
+            base_filters &= Q(taste_review__star__lte=float(max_star))
+        if is_decaf := data.get("is_decaf"):
+            base_filters &= Q(bean__is_decaf=is_decaf)
 
-        sort_by = data.get("sort_by")
-        if sort_by:
+        if sort_by := data.get("sort_by"):
             if sort_by == "latest":
                 records = records.order_by("-created_at")
             elif sort_by == "like_rank":
@@ -248,14 +247,14 @@ class PostSearchView(APIView):
 
         posts = Post.objects.filter(base_filters).select_related("author").distinct()
 
-        if data.get("subject"):
-            base_filters &= Q(subject=data["subject"])
+        if subject := data.get("subject"):
+            base_filters &= Q(subject=subject)
 
-        sort_by = data.get("sort_by")
-        if sort_by == "latest":
-            posts = posts.order_by("-created_at")
-        elif sort_by == "like_rank":
-            posts = posts.annotate(like_count=Count("like_cnt")).order_by("-like_count")
+        if sort_by := data.get("sort_by"):
+            if sort_by == "latest":
+                posts = posts.order_by("-created_at")
+            elif sort_by == "like_rank":
+                posts = posts.annotate(like_count=Count("like_cnt")).order_by("-like_count")
 
         serializer = PostSearchSerializer(posts, many=True)
 
