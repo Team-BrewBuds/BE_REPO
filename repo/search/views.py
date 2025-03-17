@@ -29,8 +29,8 @@ class BuddySuggestView(APIView):
         query = data["q"]
 
         suggestions = CustomUser.objects.filter(nickname__icontains=query).values_list("nickname", flat=True).distinct()
-
-        return Response({"suggestions": list(suggestions)}, status=status.HTTP_200_OK)
+        serializer = SuggestSerializer({"suggestions": list(suggestions)})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @SuggestSchema.bean_suggest_schema_view
@@ -53,7 +53,8 @@ class BeanSuggestView(APIView):
 
         suggestions = Bean.objects.filter(name__icontains=query).values_list("name", flat=True).distinct()
 
-        return Response({"suggestions": list(suggestions)}, status=status.HTTP_200_OK)
+        serializer = SuggestSerializer({"suggestions": list(suggestions)})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @SuggestSchema.tastedrecord_suggest_schema_view
@@ -76,7 +77,8 @@ class TastedRecordSuggestView(APIView):
 
         suggestions = TastedRecord.objects.filter(bean__name__icontains=query).values_list("bean__name", flat=True).distinct()
 
-        return Response({"suggestions": list(suggestions)}, status=status.HTTP_200_OK)
+        serializer = SuggestSerializer({"suggestions": list(suggestions)})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @SuggestSchema.post_suggest_schema_view
@@ -99,7 +101,8 @@ class PostSuggestView(APIView):
 
         suggestions = Post.objects.filter(title__icontains=query).values_list("title", flat=True)
 
-        return Response({"suggestions": list(suggestions)}, status=status.HTTP_200_OK)
+        serializer = SuggestSerializer({"suggestions": list(suggestions)})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @SearchSchema.buddy_search_schema_view

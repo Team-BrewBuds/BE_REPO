@@ -127,6 +127,12 @@ class PostSuggestInputSerializer(BaseSuggestInputSerializer):
     pass
 
 
+class SuggestSerializer(serializers.Serializer):
+    """검색어 추천 시리얼라이저"""
+
+    suggestions = serializers.ListField(child=serializers.CharField(), required=True)
+
+
 class BaseSearchInputSerializer(serializers.Serializer):
     """검색 기본 시리얼라이저"""
 
