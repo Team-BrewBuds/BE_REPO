@@ -88,3 +88,84 @@ class PostSearchSerializer(serializers.ModelSerializer):
 
     def get_comment_count(self, obj):
         return obj.comment_cnt()
+
+
+class BaseQuerySerializer(serializers.Serializer):
+    """기본 추천 검색어 시리얼라이저"""
+
+    q = serializers.CharField(required=True, allow_blank=False)
+
+
+class BaseSuggestInputSerializer(BaseQuerySerializer):
+    """검색어 추천 기본 시리얼라이저"""
+
+    pass
+
+
+class BuddySuggestInputSerializer(BaseSuggestInputSerializer):
+    """사용자 검색어 추천 시리얼라이저"""
+
+    pass
+
+
+class BeanSuggestInputSerializer(BaseSuggestInputSerializer):
+    """원두 검색어 추천 시리얼라이저"""
+
+    pass
+
+
+class TastedRecordSuggestInputSerializer(BaseSuggestInputSerializer):
+    """시음기록 검색어 추천 시리얼라이저"""
+
+    pass
+
+
+class PostSuggestInputSerializer(BaseSuggestInputSerializer):
+    """게시글 검색어 추천 시리얼라이저"""
+
+    pass
+
+
+class BaseSearchInputSerializer(serializers.Serializer):
+    """검색 기본 시리얼라이저"""
+
+    q = serializers.CharField(required=True, allow_blank=False)
+
+
+class BuddySearchInputSerializer(BaseSearchInputSerializer):
+    """사용자 검색 시리얼라이저"""
+
+    SORT_CHOICES = [("record_cnt", "기록 수"), ("follower_cnt", "팔로워 수")]
+    sort_by = serializers.ChoiceField(choices=SORT_CHOICES, required=False)
+
+
+class BeanFilterMixin:
+    """원두 필터링 믹스인"""
+
+    bean_type = serializers.ChoiceField(choices=Bean.bean_type_choices, required=False)
+    origin_country = serializers.CharField(required=False)
+    min_star = serializers.FloatField(required=False, min_value=0, max_value=5)
+    max_star = serializers.FloatField(required=False, min_value=0, max_value=5)
+    is_decaf = serializers.BooleanField(required=False)
+
+
+class BeanSearchInputSerializer(BaseSearchInputSerializer, BeanFilterMixin):
+    """원두 검색 시리얼라이저"""
+
+    SORT_CHOICES = [("record_count", "기록 수"), ("avg_star", "평균 별점")]
+    sort_by = serializers.ChoiceField(choices=SORT_CHOICES, required=False)
+
+
+class TastedRecordSearchInputSerializer(BaseSearchInputSerializer, BeanFilterMixin):
+    """시음기록 검색 시리얼라이저"""
+
+    SORT_CHOICES = [("star_rank", "별점순"), ("latest", "최신순"), ("like_rank", "좋아요순")]
+    sort_by = serializers.ChoiceField(choices=SORT_CHOICES, required=False)
+
+
+class PostSearchInputSerializer(BaseSearchInputSerializer):
+    """게시글 검색 시리얼라이저"""
+
+    SORT_CHOICES = [("latest", "최신순"), ("like_rank", "좋아요순")]
+    subject = serializers.ChoiceField(choices=Post.SUBJECT_TYPE_CHOICES, required=False)
+    sort_by = serializers.ChoiceField(choices=SORT_CHOICES, required=False)

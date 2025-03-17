@@ -6,12 +6,7 @@ from rest_framework.views import APIView
 from repo.beans.models import Bean
 from repo.profiles.models import CustomUser
 from repo.records.models import Post, TastedRecord
-from repo.search.serializers import (
-    BeanSearchSerializer,
-    BuddySearchSerializer,
-    PostSearchSerializer,
-    TastedRecordSearchSerializer,
-)
+from repo.search.serializers import *
 
 
 class BuddySuggestView(APIView):
@@ -25,10 +20,11 @@ class BuddySuggestView(APIView):
     """
 
     def get(self, request):
-        query = request.query_params.get("q", "").strip()
+        serializer = BuddySuggestInputSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        if not query:
-            return Response({"error": "검색어를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+        query = data["q"]
 
         suggestions = CustomUser.objects.filter(nickname__icontains=query).values_list("nickname", flat=True).distinct()
 
@@ -46,10 +42,11 @@ class BeanSuggestView(APIView):
     """
 
     def get(self, request):
-        query = request.query_params.get("q", "").strip()
+        serializer = BeanSuggestInputSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        if not query:
-            return Response({"error": "검색어를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+        query = data["q"]
 
         suggestions = Bean.objects.filter(name__icontains=query).values_list("name", flat=True).distinct()
 
@@ -67,10 +64,11 @@ class TastedRecordSuggestView(APIView):
     """
 
     def get(self, request):
-        query = request.query_params.get("q", "").strip()
+        serializer = TastedRecordSuggestInputSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        if not query:
-            return Response({"error": "검색어를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+        query = data["q"]
 
         suggestions = TastedRecord.objects.filter(bean__name__icontains=query).values_list("bean__name", flat=True).distinct()
 
@@ -88,10 +86,11 @@ class PostSuggestView(APIView):
     """
 
     def get(self, request):
-        query = request.query_params.get("q", "").strip()
+        serializer = PostSuggestInputSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        if not query:
-            return Response({"error": "검색어를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+        query = data["q"]
 
         suggestions = Post.objects.filter(title__icontains=query).values_list("title", flat=True)
 
@@ -109,11 +108,12 @@ class BuddySearchView(APIView):
     """
 
     def get(self, request):
-        query = request.query_params.get("q", "").strip()
-        sort_by = request.query_params.get("sort_by", "").strip()
+        serializer = BuddySearchInputSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        if not query:
-            return Response({"error": "검색어를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+        query = data["q"]
+        sort_by = data.get("sort_by")
 
         users = CustomUser.objects.filter(nickname__icontains=query).annotate(
             record_cnt=Count("tastedrecord"), follower_cnt=Count("relationships_to", filter=Q(relationships_to__relationship_type="follow"))
@@ -125,7 +125,6 @@ class BuddySearchView(APIView):
             users = users.order_by("-follower_cnt")
 
         serializer = BuddySearchSerializer(users, many=True)
-
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -140,31 +139,24 @@ class BeanSearchView(APIView):
     """
 
     def get(self, request):
-        query = request.GET.get("q", "").strip()
-        bean_type = request.query_params.get("bean_type", "").strip()
-        origin_country = request.query_params.get("origin_country", "").strip()
-        min_star = request.query_params.get("min_star", "").strip()
-        max_star = request.query_params.get("max_star", "").strip()
-        is_decaf = request.query_params.get("is_decaf", "").strip()
-        sort_by = request.query_params.get("sort_by", "").strip()
+        serializer = BeanSearchInputSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        if not query:
-            return Response({"error": "검색어를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+        base_filters = Q(name__icontains=data["q"])
 
-        beans = Bean.objects.filter(name__icontains=query)
+        if data.get("bean_type"):
+            base_filters &= Q(bean_type=data["bean_type"])
+        if data.get("origin_country"):
+            base_filters &= Q(origin_country=data["origin_country"])
+        if data.get("is_decaf"):
+            base_filters &= Q(is_decaf=data["is_decaf"])
+        if data.get("min_star"):
+            base_filters &= Q(avg_star__gte=float(data["min_star"]))
+        if data.get("max_star"):
+            base_filters &= Q(avg_star__lte=float(data["max_star"]))
 
-        if bean_type:
-            beans = beans.filter(bean_type=bean_type)
-        if origin_country:
-            beans = beans.filter(origin_country=origin_country)
-        if is_decaf in ["true", "false"]:
-            beans = beans.filter(is_decaf=is_decaf.lower() == "true")
-
-        beans = beans.annotate(avg_star=Avg("tastedrecord__taste_review__star"))
-        if min_star:
-            beans = beans.filter(avg_star__gte=float(min_star))
-        if max_star:
-            beans = beans.filter(avg_star__lte=float(max_star))
+        beans = Bean.objects.filter(base_filters).annotate(avg_star=Avg("tastedrecord__taste_review__star"))
 
         stats = (
             TastedRecord.objects.filter(bean__in=beans)
@@ -176,10 +168,11 @@ class BeanSearchView(APIView):
         )
         stats_dict = {stat["bean__id"]: stat for stat in stats}
 
-        if sort_by == "avg_star":
-            beans = beans.order_by("-avg_star")
-        elif sort_by == "record_count":
-            beans = sorted(beans, key=lambda bean: stats_dict.get(bean.id, {}).get("record_count", 0), reverse=True)
+        if data.get("sort_by"):
+            if data["sort_by"] == "avg_star":
+                beans = beans.order_by("-avg_star")
+            elif data["sort_by"] == "record_count":
+                beans = sorted(beans, key=lambda bean: stats_dict.get(bean.id, {}).get("record_count", 0), reverse=True)
 
         serializer = BeanSearchSerializer(beans, many=True, context={"stats_dict": stats_dict})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -196,47 +189,39 @@ class TastedRecordSearchView(APIView):
     """
 
     def get(self, request):
-        query = request.query_params.get("q", "").strip()
+        serializer = TastedRecordSearchInputSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        bean_type = request.query_params.get("bean_type", "").strip()
-        origin_country = request.query_params.get("origin_country", "").strip()
-        min_star = request.query_params.get("min_star", "").strip()
-        max_star = request.query_params.get("max_star", "").strip()
-        is_decaf = request.query_params.get("is_decaf", "").strip()
-
-        sort_by = request.query_params.get("sort_by", "").strip()
-
-        if not query:
-            return Response({"error": "검색어를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
-
-        records = (
-            TastedRecord.objects.filter(
-                Q(content__icontains=query)
-                | Q(bean__name__icontains=query)
-                | Q(tag__icontains=query)
-                | Q(taste_review__flavor__icontains=query)
-            )
-            .select_related("bean", "author", "taste_review")
-            .distinct()
+        query = data["q"]
+        base_filters = (
+            Q(content__icontains=query)
+            | Q(bean__name__icontains=query)
+            | Q(tag__icontains=query)
+            | Q(taste_review__flavor__icontains=query)
         )
 
-        if bean_type:
-            records = records.filter(bean__bean_type=bean_type)
-        if origin_country:
-            records = records.filter(bean__origin_country__icontains=origin_country)
-        if min_star:
-            records = records.filter(taste_review__star__gte=float(min_star))
-        if max_star:
-            records = records.filter(taste_review__star__lte=float(max_star))
-        if is_decaf:
-            records = records.filter(bean__is_decaf=is_decaf)
+        records = TastedRecord.objects.filter(base_filters).select_related("bean", "author", "taste_review").distinct()
 
-        if sort_by == "latest":
-            records = records.order_by("-created_at")
-        elif sort_by == "like_rank":
-            records = records.annotate(like_count=Count("like_cnt")).order_by("-like_count")
-        elif sort_by == "star_rank":
-            records = records.order_by("-taste_review__star")
+        if data.get("bean_type"):
+            base_filters &= Q(bean__bean_type=data["bean_type"])
+        if data.get("origin_country"):
+            base_filters &= Q(bean__origin_country__icontains=data["origin_country"])
+        if data.get("min_star"):
+            base_filters &= Q(taste_review__star__gte=float(data["min_star"]))
+        if data.get("max_star"):
+            base_filters &= Q(taste_review__star__lte=float(data["max_star"]))
+        if data.get("is_decaf"):
+            base_filters &= Q(bean__is_decaf=data["is_decaf"])
+
+        sort_by = data.get("sort_by")
+        if sort_by:
+            if sort_by == "latest":
+                records = records.order_by("-created_at")
+            elif sort_by == "like_rank":
+                records = records.annotate(like_count=Count("like_cnt")).order_by("-like_count")
+            elif sort_by == "star_rank":
+                records = records.order_by("-taste_review__star")
 
         serializer = TastedRecordSearchSerializer(records, many=True)
 
@@ -254,20 +239,19 @@ class PostSearchView(APIView):
     """
 
     def get(self, request):
-        query = request.GET.get("q", "").strip()
+        serializer = PostSearchInputSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        subject = request.GET.get("subject", "").strip()
+        query = data["q"]
+        base_filters = Q(title__icontains=query) | Q(content__icontains=query)
 
-        sort_by = request.GET.get("sort_by", "").strip()
+        posts = Post.objects.filter(base_filters).select_related("author").distinct()
 
-        if not query:
-            return Response({"error": "검색어를 입력해주세요."}, status=400)
+        if data.get("subject"):
+            base_filters &= Q(subject=data["subject"])
 
-        posts = Post.objects.filter(Q(title__icontains=query) | Q(content__icontains=query)).select_related("author").distinct()
-
-        if subject and subject != "전체":
-            posts = posts.filter(subject=subject)
-
+        sort_by = data.get("sort_by")
         if sort_by == "latest":
             posts = posts.order_by("-created_at")
         elif sort_by == "like_rank":
