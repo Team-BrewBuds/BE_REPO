@@ -140,8 +140,8 @@ class BuddySearchInputSerializer(BaseSearchInputSerializer):
     sort_by = serializers.ChoiceField(choices=SORT_CHOICES, required=False)
 
 
-class BeanFilterMixin:
-    """원두 필터링 믹스인"""
+class BeanQueryFilterSerializer(serializers.Serializer):
+    """원두 필터링 시리얼라이저"""
 
     bean_type = serializers.ChoiceField(choices=Bean.bean_type_choices, required=False)
     origin_country = serializers.CharField(required=False)
@@ -150,14 +150,14 @@ class BeanFilterMixin:
     is_decaf = serializers.BooleanField(required=False)
 
 
-class BeanSearchInputSerializer(BaseSearchInputSerializer, BeanFilterMixin):
+class BeanSearchInputSerializer(BaseSearchInputSerializer, BeanQueryFilterSerializer):
     """원두 검색 시리얼라이저"""
 
     SORT_CHOICES = [("record_count", "기록 수"), ("avg_star", "평균 별점")]
     sort_by = serializers.ChoiceField(choices=SORT_CHOICES, required=False)
 
 
-class TastedRecordSearchInputSerializer(BaseSearchInputSerializer, BeanFilterMixin):
+class TastedRecordSearchInputSerializer(BaseSearchInputSerializer, BeanQueryFilterSerializer):
     """시음기록 검색 시리얼라이저"""
 
     SORT_CHOICES = [("star_rank", "별점순"), ("latest", "최신순"), ("like_rank", "좋아요순")]
