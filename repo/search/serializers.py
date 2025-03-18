@@ -84,11 +84,12 @@ class TastedRecordSearchSerializer(serializers.ModelSerializer):
     bean_type = serializers.CharField(source="bean.bean_type", read_only=True)
     bean_taste = serializers.CharField(source="taste_review.flavor", read_only=True)
     star = serializers.FloatField(source="taste_review.star", read_only=True)
+    likes = serializers.IntegerField(read_only=True)
     photo_url = serializers.URLField(read_only=True)
 
     class Meta:
         model = TastedRecord
-        fields = ["id", "author", "content", "bean_name", "bean_type", "bean_taste", "star", "photo_url"]
+        fields = ["id", "author", "content", "bean_name", "bean_type", "bean_taste", "star", "likes", "photo_url"]
 
 
 class PostSearchSerializer(serializers.ModelSerializer):
