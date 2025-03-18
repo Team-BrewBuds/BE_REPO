@@ -1,14 +1,12 @@
-from django.urls import path
+from django.urls import include, path
 
-from . import views
+from repo.search.views import *
 
 urlpatterns = [
-    path("buddy_suggest/", views.BuddySuggestView.as_view(), name="buddy_suggest"),
-    path("bean_suggest/", views.BeanSuggestView.as_view(), name="bean_suggest"),
-    path("tastedrecord_suggest/", views.TastedRecordSuggestView.as_view(), name="tastedrecord_suggest"),
-    path("post_suggest/", views.PostSuggestView.as_view(), name="post_suggest"),
-    path("bean_list/", views.BeanSearchView.as_view(), name="bean_list"),
-    path("buddy_list/", views.BuddySearchView.as_view(), name="buddy_list"),
-    path("tastedrecord_list/", views.TastedRecordSearchView.as_view(), name="tastedrecord_list"),
-    path("post_list/", views.PostSearchView.as_view(), name="post_list"),
+    path("buddy/", BuddySearchView.as_view(), name="buddy"),
+    path("bean/", BeanSearchView.as_view(), name="bean"),
+    path("tasted_record/", TastedRecordSearchView.as_view(), name="tasted_record"),
+    path("post/", PostSearchView.as_view(), name="post"),
+    # 검색어 추천
+    path("suggest/", include("repo.search.suggest.urls")),
 ]
