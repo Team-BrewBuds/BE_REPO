@@ -1,16 +1,12 @@
 from django.urls import include, path
 
-from repo.search.views import (
-    BeanSearchView,
-    BuddySearchView,
-    PostSearchView,
-    TastedRecordSearchView,
-)
+from repo.search.views import *
 
 urlpatterns = [
+    path("buddy/", BuddySearchView.as_view(), name="buddy"),
+    path("bean/", BeanSearchView.as_view(), name="bean"),
+    path("tasted_record/", TastedRecordSearchView.as_view(), name="tasted_record"),
+    path("post/", PostSearchView.as_view(), name="post"),
+    # 검색어 추천
     path("suggest/", include("repo.search.suggest.urls")),
-    path("buddy_list/", BuddySearchView.as_view(), name="buddy_list"),
-    path("bean_list/", BeanSearchView.as_view(), name="bean_list"),
-    path("tastedrecord_list/", TastedRecordSearchView.as_view(), name="tastedrecord_list"),
-    path("post_list/", PostSearchView.as_view(), name="post_list"),
 ]
