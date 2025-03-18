@@ -1,4 +1,12 @@
-from django.db.models import Avg, Count, ExpressionWrapper, FloatField, Q
+from django.db.models import (
+    Avg,
+    Count,
+    ExpressionWrapper,
+    FloatField,
+    OuterRef,
+    Q,
+    Subquery,
+)
 from django.db.models.functions import Round
 from rest_framework import status
 from rest_framework.response import Response
@@ -254,7 +262,16 @@ class PostSearchView(APIView):
         query = data["q"]
         base_filters = Q(title__icontains=query) | Q(content__icontains=query)
 
-        posts = Post.objects.filter(base_filters).select_related("author").distinct()
+        posts = (
+            Post.objects.filter(base_filters)
+            .select_related("author")
+            .prefetch_related("photo_set")
+            .annotate(
+                comment_count=Count("comment"),
+                photo_url=Subquery(Photo.objects.filter(post=OuterRef("pk")).values("photo_url")[:1]),
+            )
+            .distinct()
+        )
 
         if subject := data.get("subject"):
             base_filters &= Q(subject=subject)

@@ -51,10 +51,9 @@ class TastedRecordSearchSerializer(serializers.ModelSerializer):
 
 
 class PostSearchSerializer(serializers.ModelSerializer):
-    photos = serializers.SerializerMethodField()
-    like_cnt = serializers.SerializerMethodField()
-    comment_count = serializers.SerializerMethodField()
+    photo_url = serializers.URLField(read_only=True)
     author = serializers.CharField(source="author.nickname", read_only=True)
+    comment_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Post
@@ -62,24 +61,14 @@ class PostSearchSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "content",
-            "photos",
-            "like_cnt",
+            "photo_url",
+            "likes",
             "comment_count",
             "subject",
             "created_at",
             "view_cnt",
             "author",
         ]
-
-    def get_photos(self, obj):
-        photo = Photo.objects.filter(post=obj).first()
-        return photo.photo_url.url if photo and photo.photo_url else None
-
-    def get_like_cnt(self, obj):
-        return obj.like_cnt.count()
-
-    def get_comment_count(self, obj):
-        return obj.comment_cnt()
 
 
 class BaseQuerySerializer(serializers.Serializer):
