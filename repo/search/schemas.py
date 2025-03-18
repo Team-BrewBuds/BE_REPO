@@ -197,7 +197,7 @@ class SearchSchema:
     )
 
     post_search_schema = extend_schema(
-        parameters=[PostSearchInputSerializer],  # PageNumberSerializer
+        parameters=[PostSearchInputSerializer, PageNumberSerializer],
         responses={
             200: PostSearchSerializer(many=True),
             400: OpenApiResponse(description="잘못된 요청"),

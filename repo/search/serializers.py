@@ -15,8 +15,8 @@ class BuddySearchSerializer(serializers.ModelSerializer):
 
 
 class BeanSearchSerializer(serializers.ModelSerializer):
-    avg_star = serializers.SerializerMethodField()
-    record_count = serializers.SerializerMethodField()
+    avg_star = serializers.FloatField(read_only=True)
+    record_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Bean
@@ -31,15 +31,6 @@ class BeanSearchSerializer(serializers.ModelSerializer):
             "avg_star",
             "record_count",
         ]
-
-    def get_avg_star(self, obj):
-        stats_dict = self.context.get("stats_dict", {})
-        avg_star = stats_dict.get(obj.id, {}).get("avg_star", 0)
-        return round(avg_star, 1) if avg_star else 0
-
-    def get_record_count(self, obj):
-        stats_dict = self.context.get("stats_dict", {})
-        return stats_dict.get(obj.id, {}).get("record_count", 0)
 
 
 class TastedRecordSearchSerializer(serializers.ModelSerializer):

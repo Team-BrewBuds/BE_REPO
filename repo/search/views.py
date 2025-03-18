@@ -1,4 +1,5 @@
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count, ExpressionWrapper, FloatField, Q
+from django.db.models.functions import Round
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -167,27 +168,21 @@ class BeanSearchView(APIView):
         if max_star := data.get("max_star"):
             base_filters &= Q(avg_star__lte=float(max_star))
 
-        beans = Bean.objects.filter(base_filters).annotate(avg_star=Avg("tastedrecord__taste_review__star"))
-
-        stats = (
-            TastedRecord.objects.filter(bean__in=beans)
-            .values("bean__id")
-            .annotate(
-                avg_star=Avg("taste_review__star"),
-                record_count=Count("id"),
-            )
+        beans = Bean.objects.filter(base_filters).annotate(
+            avg_star=ExpressionWrapper(
+                Round(Avg("tastedrecord__taste_review__star"), 1),
+                output_field=FloatField(),
+            ),
+            record_count=Count("tastedrecord"),
         )
-        stats_dict = {stat["bean__id"]: stat for stat in stats}
 
         if data.get("sort_by"):
             if data["sort_by"] == "avg_star":
                 beans = beans.order_by("-avg_star")
             elif data["sort_by"] == "record_count":
-                beans = sorted(beans, key=lambda bean: stats_dict.get(bean.id, {}).get("record_count", 0), reverse=True)
+                beans = beans.order_by("-record_count")
 
-        serializer = BeanSearchSerializer(beans, many=True, context={"stats_dict": stats_dict})
-        return Response(serializer.data, status=status.HTTP_200_OK)
-        # return get_paginated_response_with_class(request, beans, BeanSearchSerializer)
+        return get_paginated_response_with_class(request, beans, BeanSearchSerializer)
 
 
 @SearchSchema.tastedrecord_search_schema_view
