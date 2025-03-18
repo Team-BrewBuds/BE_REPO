@@ -1,14 +1,16 @@
-from django.urls import path
+from django.urls import include, path
 
-from . import views
+from repo.search.views import (
+    BeanSearchView,
+    BuddySearchView,
+    PostSearchView,
+    TastedRecordSearchView,
+)
 
 urlpatterns = [
-    path("buddy_suggest/", views.BuddySuggestView.as_view(), name="buddy_suggest"),
-    path("bean_suggest/", views.BeanSuggestView.as_view(), name="bean_suggest"),
-    path("tastedrecord_suggest/", views.TastedRecordSuggestView.as_view(), name="tastedrecord_suggest"),
-    path("post_suggest/", views.PostSuggestView.as_view(), name="post_suggest"),
-    path("bean_list/", views.BeanSearchView.as_view(), name="bean_list"),
-    path("buddy_list/", views.BuddySearchView.as_view(), name="buddy_list"),
-    path("tastedrecord_list/", views.TastedRecordSearchView.as_view(), name="tastedrecord_list"),
-    path("post_list/", views.PostSearchView.as_view(), name="post_list"),
+    path("suggest/", include("repo.search.suggest.urls")),
+    path("buddy_list/", BuddySearchView.as_view(), name="buddy_list"),
+    path("bean_list/", BeanSearchView.as_view(), name="bean_list"),
+    path("tastedrecord_list/", TastedRecordSearchView.as_view(), name="tastedrecord_list"),
+    path("post_list/", PostSearchView.as_view(), name="post_list"),
 ]

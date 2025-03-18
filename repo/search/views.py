@@ -8,112 +8,14 @@ from django.db.models import (
     Subquery,
 )
 from django.db.models.functions import Round
-from rest_framework import status
-from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from repo.beans.models import Bean
 from repo.common.utils import get_paginated_response_with_class
 from repo.profiles.models import CustomUser
-from repo.records.models import Post, TastedRecord
-from repo.search.schemas import SearchSchema, SuggestSchema
+from repo.records.models import Photo, Post, TastedRecord
+from repo.search.schemas import SearchSchema
 from repo.search.serializers import *
-
-
-@SuggestSchema.buddy_suggest_schema_view
-class BuddySuggestView(APIView):
-    """
-    사용자 이름 검색어 12개 추천 API
-    Args:
-        request: 검색어(query)를 포함한 클라이언트 요청.
-    Returns:
-        JSON 응답: 검색어와 부분 일치하는 사용자 닉네임 추천 리스트.
-    담당자: blakej2432
-    """
-
-    def get(self, request):
-        serializer = BuddySuggestInputSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        query = data["q"]
-
-        suggestions = CustomUser.objects.filter(nickname__icontains=query).values_list("nickname", flat=True).distinct()[:12]
-        serializer = SuggestSerializer({"suggestions": list(suggestions)})
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-@SuggestSchema.bean_suggest_schema_view
-class BeanSuggestView(APIView):
-    """
-    공식 원두 이름 검색어 12개 추천 API
-    Args:
-        request: 검색어(query)를 포함한 클라이언트 요청.
-    Returns:
-        JSON 응답: 검색어와 부분 일치하는 원두 이름 추천 리스트.
-    담당자: blakej2432
-    """
-
-    def get(self, request):
-        serializer = BeanSuggestInputSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        query = data["q"]
-
-        filters = Q(name__icontains=query) & Q(is_official=True)
-        suggestions = Bean.objects.filter(filters).values_list("name", flat=True).distinct()[:12]
-
-        serializer = SuggestSerializer({"suggestions": list(suggestions)})
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-@SuggestSchema.tastedrecord_suggest_schema_view
-class TastedRecordSuggestView(APIView):
-    """
-    시음 기록 검색어 12개 추천 API
-    Args:
-        request: 검색어(query)를 포함한 클라이언트 요청.
-    Returns:
-        JSON 응답: 검색어와 부분 일치하는 원두 이름 추천 리스트.
-    담당자: blakej2432
-    """
-
-    def get(self, request):
-        serializer = TastedRecordSuggestInputSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        query = data["q"]
-
-        suggestions = TastedRecord.objects.filter(bean__name__icontains=query).values_list("bean__name", flat=True).distinct()[:12]
-
-        serializer = SuggestSerializer({"suggestions": list(suggestions)})
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-@SuggestSchema.post_suggest_schema_view
-class PostSuggestView(APIView):
-    """
-    게시글 검색어 12개 추천 API
-    Args:
-        request: 검색어(query)를 포함한 클라이언트 요청.
-    Returns:
-        JSON 응답: 검색어와 부분 일치하는 게시글 제목 추천 리스트.
-    담당자: blakej2432
-    """
-
-    def get(self, request):
-        serializer = PostSuggestInputSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        query = data["q"]
-
-        suggestions = Post.objects.filter(title__icontains=query).values_list("title", flat=True).distinct()[:12]
-
-        serializer = SuggestSerializer({"suggestions": list(suggestions)})
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @SearchSchema.buddy_search_schema_view
@@ -228,7 +130,15 @@ class TastedRecordSearchView(APIView):
         if is_decaf := data.get("is_decaf"):
             base_filters &= Q(bean__is_decaf=is_decaf)
 
-        records = TastedRecord.objects.filter(base_filters).select_related("bean", "author", "taste_review").distinct()
+        records = (
+            TastedRecord.objects.filter(base_filters)
+            .select_related("bean", "author", "taste_review")
+            .prefetch_related("photo_set")
+            .annotate(
+                photo_url=Subquery(Photo.objects.filter(tasted_record=OuterRef("pk")).values("photo_url")[:1]),
+            )
+            .distinct()
+        )
 
         if sort_by := data.get("sort_by"):
             if sort_by == "latest":
@@ -238,8 +148,6 @@ class TastedRecordSearchView(APIView):
             elif sort_by == "star_rank":
                 records = records.order_by("-taste_review__star")
 
-        serializer = TastedRecordSearchSerializer(records, many=True)
-
         return get_paginated_response_with_class(request, records, TastedRecordSearchSerializer)
 
 
@@ -248,9 +156,9 @@ class PostSearchView(APIView):
     """
     게시글 검색 API
     Args:
-        request: 검색어(query), 정렬 기준(sort_by), 필터 조건(subject)를 포함한 클라이언트 요청.
+        request: 검색어(query)와 정렬 기준(sort_by)를 포함한 클라이언트 요청.
     Returns:
-        JSON 응답: 검색 조건과 정렬 기준에 따른 게시글 리스트.
+        JSON 응답: 검색어와 일치하는 게시글의 리스트, 정렬 기준 적용 가능.
     담당자: blakej2432
     """
 
