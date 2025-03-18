@@ -14,6 +14,7 @@ from repo.beans.models import Bean
 from repo.common.utils import get_paginated_response_with_class
 from repo.profiles.models import CustomUser
 from repo.records.models import Photo, Post, TastedRecord
+from repo.search.filters import *
 from repo.search.schemas import SearchSchema
 from repo.search.serializers import *
 
@@ -32,21 +33,15 @@ class BuddySearchView(APIView):
     def get(self, request):
         serializer = BuddySearchInputSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
 
-        query = data["q"]
-
-        users = CustomUser.objects.filter(nickname__icontains=query).annotate(
+        users = CustomUser.objects.annotate(
             record_cnt=Count("tastedrecord"), follower_cnt=Count("relationships_to", filter=Q(relationships_to__relationship_type="follow"))
         )
 
-        if sort_by := data.get("sort_by"):
-            if sort_by == "record_cnt":
-                users = users.order_by("-record_cnt")
-            elif sort_by == "follower_cnt":
-                users = users.order_by("-follower_cnt")
+        filterset = BuddyFilter(serializer.validated_data, queryset=users)
+        filtered_users = filterset.qs
 
-        return get_paginated_response_with_class(request, users, BuddySearchSerializer)
+        return get_paginated_response_with_class(request, filtered_users, BuddySearchSerializer)
 
 
 @SearchSchema.bean_search_schema_view
@@ -63,22 +58,8 @@ class BeanSearchView(APIView):
     def get(self, request):
         serializer = BeanSearchInputSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
 
-        base_filters = Q(name__icontains=data["q"]) & Q(is_official=True)
-
-        if bean_type := data.get("bean_type"):
-            base_filters &= Q(bean_type=bean_type)
-        if origin_country := data.get("origin_country"):
-            base_filters &= Q(origin_country=origin_country)
-        if is_decaf := data.get("is_decaf"):
-            base_filters &= Q(is_decaf=is_decaf)
-        if min_star := data.get("min_star"):
-            base_filters &= Q(avg_star__gte=float(min_star))
-        if max_star := data.get("max_star"):
-            base_filters &= Q(avg_star__lte=float(max_star))
-
-        beans = Bean.objects.filter(base_filters).annotate(
+        beans = Bean.objects.filter(is_official=True).annotate(
             avg_star=ExpressionWrapper(
                 Round(Avg("tastedrecord__taste_review__star"), 1),
                 output_field=FloatField(),
@@ -86,13 +67,10 @@ class BeanSearchView(APIView):
             record_count=Count("tastedrecord"),
         )
 
-        if data.get("sort_by"):
-            if data["sort_by"] == "avg_star":
-                beans = beans.order_by("-avg_star")
-            elif data["sort_by"] == "record_count":
-                beans = beans.order_by("-record_count")
+        filterset = BeanFilter(serializer.validated_data, queryset=beans)
+        filtered_beans = filterset.qs
 
-        return get_paginated_response_with_class(request, beans, BeanSearchSerializer)
+        return get_paginated_response_with_class(request, filtered_beans, BeanSearchSerializer)
 
 
 @SearchSchema.tastedrecord_search_schema_view
@@ -109,29 +87,9 @@ class TastedRecordSearchView(APIView):
     def get(self, request):
         serializer = TastedRecordSearchInputSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        query = data["q"]
-        base_filters = (
-            Q(content__icontains=query)
-            | Q(bean__name__icontains=query)
-            | Q(tag__icontains=query)
-            | Q(taste_review__flavor__icontains=query)
-        )
-
-        if bean_type := data.get("bean_type"):
-            base_filters &= Q(bean__bean_type=bean_type)
-        if origin_country := data.get("origin_country"):
-            base_filters &= Q(bean__origin_country__icontains=origin_country)
-        if min_star := data.get("min_star"):
-            base_filters &= Q(taste_review__star__gte=float(min_star))
-        if max_star := data.get("max_star"):
-            base_filters &= Q(taste_review__star__lte=float(max_star))
-        if is_decaf := data.get("is_decaf"):
-            base_filters &= Q(bean__is_decaf=is_decaf)
 
         records = (
-            TastedRecord.objects.filter(base_filters)
+            TastedRecord.objects.all()
             .select_related("bean", "author", "taste_review")
             .prefetch_related("photo_set")
             .annotate(
@@ -140,15 +98,10 @@ class TastedRecordSearchView(APIView):
             .distinct()
         )
 
-        if sort_by := data.get("sort_by"):
-            if sort_by == "latest":
-                records = records.order_by("-created_at")
-            elif sort_by == "like_rank":
-                records = records.annotate(like_count=Count("like_cnt")).order_by("-like_count")
-            elif sort_by == "star_rank":
-                records = records.order_by("-taste_review__star")
+        filterset = TastedRecordFilter(serializer.validated_data, queryset=records)
+        filtered_records = filterset.qs
 
-        return get_paginated_response_with_class(request, records, TastedRecordSearchSerializer)
+        return get_paginated_response_with_class(request, filtered_records, TastedRecordSearchSerializer)
 
 
 @SearchSchema.post_search_schema_view
@@ -165,16 +118,9 @@ class PostSearchView(APIView):
     def get(self, request):
         serializer = PostSearchInputSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        query = data["q"]
-        base_filters = Q(title__icontains=query) | Q(content__icontains=query)
-
-        if subject := data.get("subject"):
-            base_filters &= Q(subject=subject)
 
         posts = (
-            Post.objects.filter(base_filters)
+            Post.objects.all()
             .select_related("author")
             .prefetch_related("photo_set")
             .annotate(
@@ -184,10 +130,7 @@ class PostSearchView(APIView):
             .distinct()
         )
 
-        if sort_by := data.get("sort_by"):
-            if sort_by == "latest":
-                posts = posts.order_by("-created_at")
-            elif sort_by == "like_rank":
-                posts = posts.annotate(like_count=Count("like_cnt")).order_by("-like_count")
+        filterset = PostFilter(serializer.validated_data, queryset=posts)
+        filtered_posts = filterset.qs
 
-        return get_paginated_response_with_class(request, posts, PostSearchSerializer)
+        return get_paginated_response_with_class(request, filtered_posts, PostSearchSerializer)
