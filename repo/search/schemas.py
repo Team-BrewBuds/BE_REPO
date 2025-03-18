@@ -29,7 +29,7 @@ class SuggestSchema:
             ),
             400: OpenApiResponse(description="잘못된 요청"),
         },
-        summary="사용자 검색어 추천 API",
+        summary="사용자 닉네임 검색어 12개 추천 API",
         description="""
             입력한 검색어와 부분 일치하는 사용자 닉네임 추천 목록을 반환합니다.
             담당자: blakej2432
@@ -55,7 +55,7 @@ class SuggestSchema:
             ),
             400: OpenApiResponse(description="잘못된 요청"),
         },
-        summary="원두 검색어 추천 API",
+        summary="공식 원두 검색어 12개 추천 API",
         description="""
             입력한 검색어와 부분 일치하는 원두 이름 추천 목록을 반환합니다.
             담당자: blakej2432
@@ -81,7 +81,7 @@ class SuggestSchema:
             ),
             400: OpenApiResponse(description="잘못된 요청"),
         },
-        summary="시음기록 검색어 추천 API",
+        summary="시음기록 검색어 12개 추천 API",
         description="""
             입력한 검색어와 부분 일치하는 원두 이름 추천 목록을 반환합니다.
             담당자: blakej2432
@@ -107,7 +107,7 @@ class SuggestSchema:
             ),
             400: OpenApiResponse(description="잘못된 요청"),
         },
-        summary="게시글 검색어 추천 API",
+        summary="게시글 검색어 12개 추천 API",
         description="""
             입력한 검색어와 부분 일치하는 게시글 제목 추천 목록을 반환합니다.
             담당자: blakej2432

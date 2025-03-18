@@ -13,7 +13,7 @@ from repo.search.serializers import *
 @SuggestSchema.buddy_suggest_schema_view
 class BuddySuggestView(APIView):
     """
-    사용자 이름 검색어 추천 API
+    사용자 이름 검색어 12개 추천 API
     Args:
         request: 검색어(query)를 포함한 클라이언트 요청.
     Returns:
@@ -28,7 +28,7 @@ class BuddySuggestView(APIView):
 
         query = data["q"]
 
-        suggestions = CustomUser.objects.filter(nickname__icontains=query).values_list("nickname", flat=True).distinct()
+        suggestions = CustomUser.objects.filter(nickname__icontains=query).values_list("nickname", flat=True).distinct()[:12]
         serializer = SuggestSerializer({"suggestions": list(suggestions)})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -36,7 +36,7 @@ class BuddySuggestView(APIView):
 @SuggestSchema.bean_suggest_schema_view
 class BeanSuggestView(APIView):
     """
-    원두 이름 검색어 추천 API
+    공식 원두 이름 검색어 12개 추천 API
     Args:
         request: 검색어(query)를 포함한 클라이언트 요청.
     Returns:
@@ -51,7 +51,8 @@ class BeanSuggestView(APIView):
 
         query = data["q"]
 
-        suggestions = Bean.objects.filter(name__icontains=query).values_list("name", flat=True).distinct()
+        filters = Q(name__icontains=query) & Q(is_official=True)
+        suggestions = Bean.objects.filter(filters).values_list("name", flat=True).distinct()[:12]
 
         serializer = SuggestSerializer({"suggestions": list(suggestions)})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -60,7 +61,7 @@ class BeanSuggestView(APIView):
 @SuggestSchema.tastedrecord_suggest_schema_view
 class TastedRecordSuggestView(APIView):
     """
-    시음 기록 검색어 추천 API
+    시음 기록 검색어 12개 추천 API
     Args:
         request: 검색어(query)를 포함한 클라이언트 요청.
     Returns:
@@ -75,7 +76,7 @@ class TastedRecordSuggestView(APIView):
 
         query = data["q"]
 
-        suggestions = TastedRecord.objects.filter(bean__name__icontains=query).values_list("bean__name", flat=True).distinct()
+        suggestions = TastedRecord.objects.filter(bean__name__icontains=query).values_list("bean__name", flat=True).distinct()[:12]
 
         serializer = SuggestSerializer({"suggestions": list(suggestions)})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -84,7 +85,7 @@ class TastedRecordSuggestView(APIView):
 @SuggestSchema.post_suggest_schema_view
 class PostSuggestView(APIView):
     """
-    게시글 검색어 추천 API
+    게시글 검색어 12개 추천 API
     Args:
         request: 검색어(query)를 포함한 클라이언트 요청.
     Returns:
@@ -99,7 +100,7 @@ class PostSuggestView(APIView):
 
         query = data["q"]
 
-        suggestions = Post.objects.filter(title__icontains=query).values_list("title", flat=True)
+        suggestions = Post.objects.filter(title__icontains=query).values_list("title", flat=True).distinct()[:12]
 
         serializer = SuggestSerializer({"suggestions": list(suggestions)})
         return Response(serializer.data, status=status.HTTP_200_OK)
