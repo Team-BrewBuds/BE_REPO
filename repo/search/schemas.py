@@ -4,6 +4,7 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
+from repo.common.serializers import PageNumberSerializer
 from repo.search.serializers import *
 
 Search_Tag = "Search"
@@ -123,7 +124,7 @@ class SuggestSchema:
 
 class SearchSchema:
     buddy_search_schema = extend_schema(
-        parameters=[BuddySearchInputSerializer],
+        parameters=[BuddySearchInputSerializer, PageNumberSerializer],
         responses={
             200: BuddySearchSerializer(many=True),
             400: OpenApiResponse(description="잘못된 요청"),
@@ -142,7 +143,7 @@ class SearchSchema:
     )
 
     bean_search_schema = extend_schema(
-        parameters=[BeanSearchInputSerializer],
+        parameters=[BeanSearchInputSerializer, PageNumberSerializer],
         responses={
             200: BeanSearchSerializer(many=True),
             400: OpenApiResponse(description="잘못된 요청"),
@@ -168,7 +169,7 @@ class SearchSchema:
     )
 
     tastedrecord_search_schema = extend_schema(
-        parameters=[TastedRecordSearchInputSerializer],
+        parameters=[TastedRecordSearchInputSerializer, PageNumberSerializer],
         responses={
             200: TastedRecordSearchSerializer(many=True),
             400: OpenApiResponse(description="잘못된 요청"),
@@ -196,7 +197,7 @@ class SearchSchema:
     )
 
     post_search_schema = extend_schema(
-        parameters=[PostSearchInputSerializer],
+        parameters=[PostSearchInputSerializer],  # PageNumberSerializer
         responses={
             200: PostSearchSerializer(many=True),
             400: OpenApiResponse(description="잘못된 요청"),

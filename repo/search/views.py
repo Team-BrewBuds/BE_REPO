@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from repo.beans.models import Bean
+from repo.common.utils import get_paginated_response_with_class
 from repo.profiles.models import CustomUser
 from repo.records.models import Post, TastedRecord
 from repo.search.schemas import SearchSchema, SuggestSchema
@@ -134,8 +135,7 @@ class BuddySearchView(APIView):
             elif sort_by == "follower_cnt":
                 users = users.order_by("-follower_cnt")
 
-        serializer = BuddySearchSerializer(users, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return get_paginated_response_with_class(request, users, BuddySearchSerializer)
 
 
 @SearchSchema.bean_search_schema_view
@@ -187,6 +187,7 @@ class BeanSearchView(APIView):
 
         serializer = BeanSearchSerializer(beans, many=True, context={"stats_dict": stats_dict})
         return Response(serializer.data, status=status.HTTP_200_OK)
+        # return get_paginated_response_with_class(request, beans, BeanSearchSerializer)
 
 
 @SearchSchema.tastedrecord_search_schema_view
@@ -236,7 +237,7 @@ class TastedRecordSearchView(APIView):
 
         serializer = TastedRecordSearchSerializer(records, many=True)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return get_paginated_response_with_class(request, records, TastedRecordSearchSerializer)
 
 
 @SearchSchema.post_search_schema_view
@@ -269,6 +270,4 @@ class PostSearchView(APIView):
             elif sort_by == "like_rank":
                 posts = posts.annotate(like_count=Count("like_cnt")).order_by("-like_count")
 
-        serializer = PostSearchSerializer(posts, many=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return get_paginated_response_with_class(request, posts, PostSearchSerializer)
