@@ -34,12 +34,12 @@ class BeanSearchSerializer(serializers.ModelSerializer):
 
 
 class TastedRecordSearchSerializer(serializers.ModelSerializer):
-    bean_name = serializers.CharField(source="bean.name", read_only=True)  # 원두명
+    bean_name = serializers.CharField(source="bean.name", read_only=True)
     author_nickname = serializers.CharField(source="author.nickname", read_only=True)
     star = serializers.FloatField(source="taste_review.star", read_only=True)
-    bean_type = serializers.CharField(source="bean.bean_type", read_only=True)  # 원두 유형
-    bean_taste = serializers.CharField(source="taste_review.flavor", read_only=True)  # 원두 맛
-    photo_url = serializers.SerializerMethodField()  # 사진 URL
+    bean_type = serializers.CharField(source="bean.bean_type", read_only=True)
+    bean_taste = serializers.CharField(source="taste_review.flavor", read_only=True)
+    photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = TastedRecord

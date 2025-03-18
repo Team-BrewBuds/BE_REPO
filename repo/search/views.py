@@ -217,8 +217,6 @@ class TastedRecordSearchView(APIView):
             | Q(taste_review__flavor__icontains=query)
         )
 
-        records = TastedRecord.objects.filter(base_filters).select_related("bean", "author", "taste_review").distinct()
-
         if bean_type := data.get("bean_type"):
             base_filters &= Q(bean__bean_type=bean_type)
         if origin_country := data.get("origin_country"):
@@ -229,6 +227,8 @@ class TastedRecordSearchView(APIView):
             base_filters &= Q(taste_review__star__lte=float(max_star))
         if is_decaf := data.get("is_decaf"):
             base_filters &= Q(bean__is_decaf=is_decaf)
+
+        records = TastedRecord.objects.filter(base_filters).select_related("bean", "author", "taste_review").distinct()
 
         if sort_by := data.get("sort_by"):
             if sort_by == "latest":
@@ -262,6 +262,9 @@ class PostSearchView(APIView):
         query = data["q"]
         base_filters = Q(title__icontains=query) | Q(content__icontains=query)
 
+        if subject := data.get("subject"):
+            base_filters &= Q(subject=subject)
+
         posts = (
             Post.objects.filter(base_filters)
             .select_related("author")
@@ -272,9 +275,6 @@ class PostSearchView(APIView):
             )
             .distinct()
         )
-
-        if subject := data.get("subject"):
-            base_filters &= Q(subject=subject)
 
         if sort_by := data.get("sort_by"):
             if sort_by == "latest":
