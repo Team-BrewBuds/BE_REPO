@@ -72,41 +72,41 @@ class BeanSearchSerializer(serializers.ModelSerializer):
             "is_official",
             "is_decaf",
             "origin_country",
-            "image_url",
             "avg_star",
             "record_count",
+            "image_url",
         ]
 
 
 class TastedRecordSearchSerializer(serializers.ModelSerializer):
+    author = serializers.CharField(source="author.nickname", read_only=True)
     bean_name = serializers.CharField(source="bean.name", read_only=True)
-    author_nickname = serializers.CharField(source="author.nickname", read_only=True)
-    star = serializers.FloatField(source="taste_review.star", read_only=True)
     bean_type = serializers.CharField(source="bean.bean_type", read_only=True)
     bean_taste = serializers.CharField(source="taste_review.flavor", read_only=True)
+    star = serializers.FloatField(source="taste_review.star", read_only=True)
     photo_url = serializers.URLField(read_only=True)
 
     class Meta:
         model = TastedRecord
-        fields = ["id", "author_nickname", "content", "bean_name", "star", "bean_type", "bean_taste", "photo_url"]
+        fields = ["id", "author", "content", "bean_name", "bean_type", "bean_taste", "star", "photo_url"]
 
 
 class PostSearchSerializer(serializers.ModelSerializer):
-    photo_url = serializers.URLField(read_only=True)
     author = serializers.CharField(source="author.nickname", read_only=True)
     comment_count = serializers.IntegerField(read_only=True)
+    photo_url = serializers.URLField(read_only=True)
 
     class Meta:
         model = Post
         fields = [
             "id",
+            "author",
             "title",
             "content",
-            "photo_url",
-            "likes",
-            "comment_count",
             "subject",
-            "created_at",
+            "likes",
             "view_cnt",
-            "author",
+            "comment_count",
+            "created_at",
+            "photo_url",
         ]
