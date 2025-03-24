@@ -4,6 +4,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from repo.common.utils import get_paginated_response_with_class
+
 from .models import NotificationSetting, PushNotification, UserDevice
 from .schemas import NotificationSchema
 from .serializers import (
@@ -26,8 +28,7 @@ class UserNotificationAPIView(APIView):
         """알림 목록 조회"""
         devices = UserDevice.objects.filter(user=request.user, is_active=True)
         notifications = PushNotification.objects.filter(device__in=devices).order_by("-id")
-        serializer = PushNotificationSerializer(notifications, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return get_paginated_response_with_class(request, notifications, PushNotificationSerializer)
 
     def patch(self, request):
         """알림 전체 읽음 처리"""

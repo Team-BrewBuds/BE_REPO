@@ -4,6 +4,8 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
+from repo.common.serializers import PageNumberSerializer
+
 from .serializers import (
     NotificationSettingsSerializer,
     PushNotificationSerializer,
@@ -19,6 +21,7 @@ class NotificationSchema:
     """
 
     user_notification_get_schema = extend_schema(
+        parameters=[PageNumberSerializer],
         summary="사용자 알림 목록 조회",
         description="""
             현재 로그인한 사용자의 알림 목록을 조회합니다.
