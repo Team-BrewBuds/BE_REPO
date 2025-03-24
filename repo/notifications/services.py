@@ -263,7 +263,7 @@ class NotificationService:
         comment_content = comment.content[:20]  # 댓글 내용 20자 제한
         message = NotificationTemplate(comment_author).comment_noti_template(comment_content)
         data = {"comment_id": comment.id}
-        topic_id = topic.get_topic_id(target_object.id)
+        topic_id = topic.topic_id(target_object.id)
 
         self.fcm_service.send_push_notification_to_topic(
             title=message["title"],
