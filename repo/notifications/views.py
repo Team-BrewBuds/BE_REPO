@@ -24,21 +24,21 @@ class UserNotificationAPIView(APIView):
 
     def get(self, request):
         """알림 목록 조회"""
-        device = get_object_or_404(UserDevice, user=request.user, is_active=True)
-        notifications = PushNotification.objects.filter(device=device).order_by("-id")
+        devices = UserDevice.objects.filter(user=request.user, is_active=True)
+        notifications = PushNotification.objects.filter(device__in=devices).order_by("-id")
         serializer = PushNotificationSerializer(notifications, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request):
         """알림 전체 읽음 처리"""
-        device = get_object_or_404(UserDevice, user=request.user, is_active=True)
-        PushNotification.objects.filter(device=device, is_read=False).update(is_read=True)
+        devices = UserDevice.objects.filter(user=request.user, is_active=True)
+        PushNotification.objects.filter(device__in=devices, is_read=False).update(is_read=True)
         return Response({"message": "모든 알림이 읽음 처리되었습니다."}, status=status.HTTP_200_OK)
 
     def delete(self, request):
         """알림 전체 삭제"""
-        device = get_object_or_404(UserDevice, user=request.user, is_active=True)
-        PushNotification.objects.filter(device=device).delete()
+        devices = UserDevice.objects.filter(user=request.user, is_active=True)
+        PushNotification.objects.filter(device__in=devices).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -118,14 +118,27 @@ class NotificationTokenAPIView(APIView):
         serializer = UserDeviceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        device, created = UserDevice.objects.update_or_create(user=request.user, defaults={**serializer.validated_data, "is_active": True})
+        device_token = serializer.validated_data["device_token"]
+        device_type = serializer.validated_data["device_type"]
+
+        device, created = UserDevice.objects.update_or_create(
+            user=request.user,
+            device_token=device_token,
+            defaults={"device_type": device_type, "is_active": True},
+        )
 
         serializer = UserDeviceSerializer(device)
         return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
     def delete(self, request):
         """디바이스 토큰 비활성화"""
-        device = get_object_or_404(UserDevice, user=request.user)
+        serializer = UserDeviceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        device_token = serializer.validated_data["device_token"]
+        device_type = serializer.validated_data["device_type"]
+
+        device = get_object_or_404(UserDevice, user=request.user, device_token=device_token, device_type=device_type)
         device.is_active = False
         device.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -141,7 +154,11 @@ class NotificationTestAPIView(APIView):
 
     def post(self, request):
         """테스트 알림 전송"""
-        device = get_object_or_404(UserDevice, user=request.user, is_active=True)
+        serializer = UserDeviceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        device, created = UserDevice.objects.get_or_create(user=request.user, is_active=True, defaults=serializer.validated_data)
+
         fcm_service = FCMService()
         fcm_service.send_push_notification_to_single_device(
             device_token=device.device_token, title="브루버즈", body="테스트 알림입니다.", data={"test": "true"}

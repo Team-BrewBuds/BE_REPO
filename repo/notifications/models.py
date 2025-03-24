@@ -16,14 +16,14 @@ class UserDevice(models.Model):
     ]
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    device_token = models.CharField(max_length=255)
+    device_token = models.CharField(max_length=255, unique=True)
     device_type = models.CharField(max_length=10, default="ios", choices=DEVICE_TYPE_CHOICES)
     is_active = models.BooleanField(default=True)
     last_used = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "device_token")
+        unique_together = ("user", "device_token", "device_type")
         indexes = [
             models.Index(fields=["user", "is_active"]),
             models.Index(fields=["device_token"]),
