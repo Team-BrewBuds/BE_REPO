@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import NotificationSettings, PushNotification, UserDevice
+from .models import NotificationSetting, PushNotification, UserDevice
 from .schemas import NotificationSchema
 from .serializers import (
     NotificationSettingsSerializer,
@@ -37,24 +37,27 @@ class UserNotificationAPIView(APIView):
 
     def get(self, request):
         """사용자의 알림 목록 조회"""
-        notifications = PushNotification.objects.filter(user=request.user).order_by("-created_at")
+        device = UserDevice.objects.get(user=request.user)
+        notifications = PushNotification.objects.filter(device=device).order_by("-id")
 
         serializer = PushNotificationSerializer(notifications, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
         """사용자의 알림 전체 읽음 처리"""
-        PushNotification.objects.filter(user=request.user).update(is_read=True)
+        device = UserDevice.objects.get(user=request.user)
+        PushNotification.objects.filter(device=device).update(is_read=True)
         return Response({"message": "사용자의 알림이 모두 읽음 처리되었습니다."}, status=status.HTTP_200_OK)
 
     def delete(self, request):
         """사용자의 알림 전체 삭제"""
-        PushNotification.objects.filter(user=request.user).delete()
+        device = UserDevice.objects.get(user=request.user)
+        PushNotification.objects.filter(device=device).delete()
         return Response({"message": "사용자의 알림이 모두 삭제되었습니다."}, status=status.HTTP_200_OK)
 
 
-@NotificationSchema.notification_settings_schema_view
-class NotificationSettingsAPIView(APIView):
+@NotificationSchema.notification_setting_schema_view
+class NotificationSettingAPIView(APIView):
     """
     알림 설정 관리 API
     """
@@ -63,7 +66,7 @@ class NotificationSettingsAPIView(APIView):
 
     def get(self, request):
         """알림 설정 조회"""
-        settings = NotificationSettings.objects.get(user=request.user)
+        settings = NotificationSetting.objects.get(user=request.user)
         serializer = NotificationSettingsSerializer(settings)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -71,20 +74,17 @@ class NotificationSettingsAPIView(APIView):
         """
         알림 설정 생성 (회원가입 시 설정)
         """
-        settings = NotificationSettings.objects.create(user=request.user)
+        settings = NotificationSetting.objects.create(user=request.user)
         serializer = NotificationSettingsSerializer(settings)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def patch(self, request):
         """알림 설정 수정"""
-        settings = NotificationSettings.objects.get(user=request.user)
+        settings = NotificationSetting.objects.get(user=request.user)
         serializer = NotificationSettingsSerializer(settings, data=request.data, partial=True)
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @NotificationSchema.user_device_token_schema_view

@@ -36,14 +36,12 @@ class PushNotification(models.Model):
     """
 
     NOTIFICATION_TYPE_CHOICES = [
-        # ('new_post', '새 게시물'),
-        # ("new_tasted_record", "새 시음 기록"),
         ("new_comment", "새 댓글"),
         ("like", "좋아요"),
         ("follow", "팔로우"),
     ]
 
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    device = models.OneToOneField(UserDevice, on_delete=models.CASCADE)
     notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPE_CHOICES)
     title = models.CharField(max_length=255)
     body = models.TextField()
@@ -52,7 +50,7 @@ class PushNotification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
-class NotificationSettings(models.Model):
+class NotificationSetting(models.Model):
     """
     사용자별 알림 설정
     """

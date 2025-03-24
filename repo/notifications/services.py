@@ -6,7 +6,7 @@ from firebase_admin import credentials, exceptions, messaging
 from firebase_admin.messaging import Message, MulticastMessage, Notification
 
 from repo.notifications.enums import Topic
-from repo.notifications.models import NotificationSettings, PushNotification, UserDevice
+from repo.notifications.models import NotificationSetting, PushNotification, UserDevice
 from repo.profiles.models import CustomUser
 from repo.records.models import Comment, Post, TastedRecord
 
@@ -141,7 +141,7 @@ class NotificationService:
         """
         알림 설정 확인
         """
-        notification_settings = NotificationSettings.objects.filter(user=user).first()
+        notification_settings = NotificationSetting.objects.filter(user=user).first()
         return getattr(notification_settings, notification_type)
 
     def get_device_token(self, user: CustomUser) -> str | None:
@@ -238,4 +238,5 @@ class NotificationService:
         """
         푸시 알림 저장
         """
-        PushNotification.objects.create(user=user, notification_type=notification_type, title=title, body=body, data=data)
+        device = UserDevice.objects.get(user=user)
+        PushNotification.objects.create(device=device, notification_type=notification_type, title=title, body=body, data=data)

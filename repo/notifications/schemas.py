@@ -92,7 +92,7 @@ class NotificationSchema:
         tags=[NOTIFICATION_TAG],
     )
 
-    settings_get_schema = extend_schema(
+    notification_setting_get_schema = extend_schema(
         summary="알림 설정 조회",
         description="""
             사용자의 알림 설정을 조회합니다.
@@ -106,7 +106,7 @@ class NotificationSchema:
         tags=[NOTIFICATION_TAG],
     )
 
-    settings_post_schema = extend_schema(
+    notification_setting_post_schema = extend_schema(
         summary="알림 설정 생성",
         description="""
             사용자의 알림 설정을 생성합니다.
@@ -121,7 +121,7 @@ class NotificationSchema:
         tags=[NOTIFICATION_TAG],
     )
 
-    settings_patch_schema = extend_schema(
+    notification_setting_patch_schema = extend_schema(
         summary="알림 설정 수정",
         description="""
             사용자의 알림 설정을 수정합니다.
@@ -178,10 +178,10 @@ class NotificationSchema:
         delete=user_notification_delete_schema,
     )
 
-    notification_settings_schema_view = extend_schema_view(
-        get=settings_get_schema,
-        post=settings_post_schema,
-        patch=settings_patch_schema,
+    notification_setting_schema_view = extend_schema_view(
+        get=notification_setting_get_schema,
+        post=notification_setting_post_schema,
+        patch=notification_setting_patch_schema,
     )
 
     user_device_token_schema_view = extend_schema_view(
