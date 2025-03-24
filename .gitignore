@@ -10,7 +10,7 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media
-
+secrets/
 
 
 # If your build process includes running collectstatic, then you probably don't need or want to include staticfiles/
@@ -460,6 +460,3 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/django,macos,windows,visualstudiocode,python,pycharm
-
-# FCM
-config/settings/settings_modules/*.json
