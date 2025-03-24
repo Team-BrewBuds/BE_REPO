@@ -10,6 +10,7 @@ from firebase_admin.messaging import Message, MulticastMessage, Notification
 
 from repo.notifications.enums import Topic
 from repo.notifications.models import NotificationSetting, PushNotification, UserDevice
+from repo.notifications.templates import NotificationTemplate
 from repo.profiles.models import CustomUser
 from repo.records.models import Comment, Post, TastedRecord
 
@@ -281,21 +282,18 @@ class NotificationService:
 
         comment_author = comment.author.nickname
         comment_content = comment.content[:20]  # 댓글 내용 20자 제한
-        target_object_id = target_object.id
-        topic_id = topic.get_topic_id(target_object_id)
-
-        title = comment_author
-        body = comment_content
+        message = NotificationTemplate(comment_author).comment_noti_template(comment_content)
         data = {"comment_id": comment.id}
+        topic_id = topic.get_topic_id(target_object.id)
 
         self.fcm_service.send_push_notification_to_topic(
-            title=title,
-            body=body,
+            title=message["title"],
+            body=message["body"],
             data=data,
             topic=topic_id,
         )
 
-        self.save_push_notification(comment.author, "comment", title, body, data)
+        self.save_push_notification(comment.author, "comment", message["title"], message["body"], data)
 
     def send_notification_like(self, object_type: Post | TastedRecord | Comment, liked_user: CustomUser):
         """
@@ -316,19 +314,18 @@ class NotificationService:
         else:
             object_str = "댓글"
 
-        title = "브루버즈"
-        body = f"{liked_user.nickname}님이 버디님의 {object_str}을 좋아해요."
+        message = NotificationTemplate(liked_user.nickname).like_noti_template(object_str)
         data = {"object_id": object_type.id}
         device_token = self.get_device_token(author)
 
         self.fcm_service.send_push_notification_to_single_device(
-            title=title,
-            body=body,
+            title=message["title"],
+            body=message["body"],
             data=data,
             device_token=device_token,
         )
 
-        self.save_push_notification(author, "like", title, body, data)
+        self.save_push_notification(author, "like", message["title"], message["body"], data)
 
     def send_notification_follow(self, follower: CustomUser, followee: CustomUser):
         """
@@ -340,19 +337,18 @@ class NotificationService:
         if not self.check_notification_settings(followee, "follow_notify"):
             return
 
-        title = "브루버즈"
-        body = f"{follower.nickname}님이 버디님을 팔로우하기 시작했어요."
+        message = NotificationTemplate(follower.nickname).follow_noti_template()
         data = {"following_user_id": follower.id}
         device_token = self.get_device_token(followee)
 
         self.fcm_service.send_push_notification_to_single_device(
-            title=title,
-            body=body,
+            title=message["title"],
+            body=message["body"],
             data=data,
             device_token=device_token,
         )
 
-        self.save_push_notification(followee, "follow", title, body, data)
+        self.save_push_notification(followee, "follow", message["title"], message["body"], data)
 
     def save_push_notification(self, user: CustomUser, notification_type: str, title: str, body: str, data: dict):
         """
