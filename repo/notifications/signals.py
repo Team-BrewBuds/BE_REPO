@@ -23,7 +23,7 @@ def subscribe_post_topic(sender, instance: Post, created: bool, **kwargs):
 
     notification_service = NotificationService()
     topic_id = Topic.POST.topic_id(instance.id)
-    token = notification_service.get_fcm_token(instance.author.id)
+    token = notification_service.get_device_token(instance.author)
 
     notification_service.subscribe_topic(topic_id, token)
 
@@ -40,7 +40,7 @@ def subscribe_tasted_record_topic(sender, instance: TastedRecord, created: bool,
 
     notification_service = NotificationService()
     topic_id = Topic.TASTED_RECORD.topic_id(instance.id)
-    token = notification_service.get_fcm_token(instance.author.id)
+    token = notification_service.get_device_token(instance.author.id)
 
     notification_service.subscribe_topic(topic_id, token)
 
@@ -57,7 +57,7 @@ def unsubscribe_post_topic(sender, instance: Post, **kwargs):
 
     notification_service = NotificationService()
     topic_id = Topic.POST.topic_id(instance.id)
-    token = notification_service.get_fcm_token(instance.author.id)
+    token = notification_service.get_device_token(instance.author.id)
     notification_service.unsubscribe_topic(topic_id, token)
 
     logger.info(f"게시글 {instance.id} 토픽 구독 해지 완료")
@@ -73,7 +73,7 @@ def unsubscribe_tasted_record_topic(sender, instance: TastedRecord, **kwargs):
 
     notification_service = NotificationService()
     topic_id = Topic.TASTED_RECORD.topic_id(instance.id)
-    token = notification_service.get_fcm_token(instance.author.id)
+    token = notification_service.get_device_token(instance.author.id)
     notification_service.unsubscribe_topic(topic_id, token)
 
     logger.info(f"시음기록 {instance.id} 토픽 구독 해지 완료")
