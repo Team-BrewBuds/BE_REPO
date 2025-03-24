@@ -354,5 +354,11 @@ class NotificationService:
         """
         푸시 알림 저장
         """
-        device = UserDevice.objects.get(user=user)
-        PushNotification.objects.create(device=device, notification_type=notification_type, title=title, body=body, data=data)
+
+        try:
+            device = UserDevice.objects.get(user=user)
+            PushNotification.objects.create(device=device, notification_type=notification_type, title=title, body=body, data=data)
+        except UserDevice.DoesNotExist:
+            logger.error(f"사용자 {user.id}의 디바이스를 찾을 수 없습니다.")
+        except Exception as e:
+            logger.error(f"알림 저장 중 오류 발생: {str(e)}")
