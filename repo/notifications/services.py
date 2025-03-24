@@ -8,11 +8,12 @@ from firebase_admin import credentials, exceptions, messaging
 from firebase_admin.messaging import Message, MulticastMessage, Notification
 
 from repo.common.decorators import retry
-from repo.notifications.enums import Topic
-from repo.notifications.models import NotificationSetting, PushNotification, UserDevice
-from repo.notifications.templates import NotificationTemplate
 from repo.profiles.models import CustomUser
 from repo.records.models import Comment, Post, TastedRecord
+
+from .enums import Topic
+from .models import NotificationSetting, PushNotification, UserDevice
+from .templates import NotificationTemplate
 
 logger = logging.getLogger("django.server")
 

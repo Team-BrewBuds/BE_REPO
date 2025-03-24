@@ -5,9 +5,10 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from repo.interactions.relationship.models import Relationship
-from repo.notifications.enums import Topic
-from repo.notifications.services import NotificationService
 from repo.records.models import Comment, Post, TastedRecord
+
+from .enums import Topic
+from .services import NotificationService
 
 logger = logging.getLogger("django.server")
 
