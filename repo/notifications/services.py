@@ -1,5 +1,4 @@
 import logging
-import time
 from typing import List, Optional
 
 import firebase_admin
@@ -8,6 +7,7 @@ from django.db import transaction
 from firebase_admin import credentials, exceptions, messaging
 from firebase_admin.messaging import Message, MulticastMessage, Notification
 
+from repo.common.decorators import retry
 from repo.notifications.enums import Topic
 from repo.notifications.models import NotificationSetting, PushNotification, UserDevice
 from repo.notifications.templates import NotificationTemplate
@@ -47,6 +47,7 @@ class FCMService:
                 raise
             self._initialized = True
 
+    @retry(max_retries=3)
     def send_push_notification_to_single_device(self, device_token: str, title: str, body: str, data: dict = None) -> bool:
         """
         단일 디바이스에 알림 전송
@@ -57,7 +58,7 @@ class FCMService:
             logger.warning("디바이스 토큰이 없습니다.")
             return False
 
-        def send():
+        try:
             message = Message(
                 notification=Notification(title=title, body=body),
                 token=device_token,
@@ -66,9 +67,6 @@ class FCMService:
             response = messaging.send(message, dry_run=DRY_RUN)
             logger.info(f"Successfully sent single message: {response}")
             return True
-
-        try:
-            return self._retry_send(send)
         except exceptions.UnauthenticatedError as e:
             self._handle_invalid_token(device_token)
             return False
@@ -76,6 +74,7 @@ class FCMService:
             logger.error(f"메시지 전송 중 오류 발생: {str(e)}")
             return False
 
+    @retry(max_retries=3)
     def send_push_notification_to_multiple_devices(self, device_tokens: List[str], title: str, body: str, data: dict = None) -> bool:
         """
         여러 디바이스에 알림 전송
@@ -86,7 +85,7 @@ class FCMService:
             logger.warning("전송할 디바이스 토큰이 없습니다.")
             return False
 
-        def send():
+        try:
             notification = Notification(title=title, body=body)
             message = MulticastMessage(notification, tokens=device_tokens, data=data or {})
             response: messaging.BatchResponse = messaging.send_each_for_multicast(message, dry_run=DRY_RUN)
@@ -96,9 +95,6 @@ class FCMService:
                 self._handle_failed_tokens(device_tokens, response)
 
             return response.success_count > 0
-
-        try:
-            return self._retry_send(send)
         except Exception as e:
             logger.error(f"다중 메시지 전송 중 오류 발생: {str(e)}")
             return False
@@ -118,6 +114,7 @@ class FCMService:
                 UserDevice.objects.filter(device_token__in=failed_tokens).delete()
                 logger.info(f"Removed {len(failed_tokens)} invalid tokens")
 
+    @retry(max_retries=3)
     def send_push_notification_silent(self, device_token: str, data: dict = None) -> bool:
         """
         단일 디바이스에 무음 알림 전송
@@ -128,14 +125,11 @@ class FCMService:
             logger.warning("디바이스 토큰이 없습니다.")
             return False
 
-        def send():
+        try:
             message = Message(token=device_token, data=data or {})
             response = messaging.send(message, dry_run=DRY_RUN)
             logger.info(f"Successfully sent silent message: {response}")
             return True
-
-        try:
-            return self._retry_send(send)
         except exceptions.UnauthenticatedError as e:
             self._handle_invalid_token(device_token)
             return False
@@ -143,6 +137,7 @@ class FCMService:
             logger.error(f"무음 메시지 전송 중 오류 발생: {str(e)}")
             return False
 
+    @retry(max_retries=3)
     def send_push_notification_to_topic(self, topic: str, title: str, body: str, data: dict = None) -> bool:
         """
         토픽에 알림 전송
@@ -158,19 +153,17 @@ class FCMService:
             logger.warning("토픽이 지정되지 않았습니다.")
             return False
 
-        def send():
+        try:
             notification = Notification(title=title, body=body)
             message = Message(notification=notification, topic=topic, data=data or {})
             response = messaging.send(message, dry_run=DRY_RUN)
             logger.info(f"Successfully sent topic message: {response}")
             return True
-
-        try:
-            return self._retry_send(send)
         except Exception as e:
             logger.error(f"토픽 메시지 전송 중 오류 발생: {str(e)}")
             return False
 
+    @retry(max_retries=3)
     def subscribe_topic(self, topic: str, token: str) -> bool:
         """
         토픽 구독 설정
@@ -184,17 +177,15 @@ class FCMService:
             logger.warning("토픽 또는 토큰이 지정되지 않았습니다.")
             return False
 
-        def subscribe():
+        try:
             messaging.subscribe_to_topic(token, topic)
             logger.info(f"Successfully subscribed to topic: {topic}")
             return True
-
-        try:
-            return self._retry_send(subscribe)
         except (ValueError, exceptions.FirebaseError) as e:
             logger.error(f"토픽 구독 실패: {str(e)}")
             return False
 
+    @retry(max_retries=3)
     def unsubscribe_topic(self, topic: str, token: str) -> bool:
         """
         토픽 구독 해지
@@ -208,25 +199,13 @@ class FCMService:
             logger.warning("토픽 또는 토큰이 지정되지 않았습니다.")
             return False
 
-        def unsubscribe():
+        try:
             messaging.unsubscribe_from_topic(token, topic)
             logger.info(f"Successfully unsubscribed from topic: {topic}")
             return True
-
-        try:
-            return self._retry_send(unsubscribe)
         except (ValueError, exceptions.FirebaseError) as e:
             logger.error(f"토픽 구독 해지 실패: {str(e)}")
             return False
-
-    def _retry_send(self, func, *args, max_retries=3):
-        for attempt in range(max_retries):
-            try:
-                return func(*args)
-            except Exception as e:
-                if attempt == max_retries - 1:
-                    raise
-                time.sleep(2**attempt)
 
 
 class NotificationService:
