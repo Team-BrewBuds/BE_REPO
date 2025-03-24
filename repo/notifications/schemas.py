@@ -92,6 +92,22 @@ class NotificationSchema:
         tags=[NOTIFICATION_TAG],
     )
 
+    user_notification_detail_patch_schema = extend_schema(
+        summary="개별 알림 읽음 처리",
+        description="""
+            개별 알림을 읽음 처리합니다.
+        """,
+        tags=[NOTIFICATION_TAG],
+    )
+
+    user_notification_detail_delete_schema = extend_schema(
+        summary="개별 알림 삭제",
+        description="""
+            개별 알림을 삭제합니다.
+        """,
+        tags=[NOTIFICATION_TAG],
+    )
+
     notification_setting_get_schema = extend_schema(
         summary="알림 설정 조회",
         description="""
@@ -177,6 +193,11 @@ class NotificationSchema:
         get=user_notification_get_schema,
         patch=user_notification_patch_schema,
         delete=user_notification_delete_schema,
+    )
+
+    user_notification_detail_schema_view = extend_schema_view(
+        patch=user_notification_detail_patch_schema,
+        delete=user_notification_detail_delete_schema,
     )
 
     notification_setting_schema_view = extend_schema_view(

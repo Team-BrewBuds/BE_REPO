@@ -42,6 +42,28 @@ class UserNotificationAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@NotificationSchema.user_notification_detail_schema_view
+class UserNotificationDetailAPIView(APIView):
+    """
+    개별 알림 관리 API
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, notification_id: int):
+        """개별 알림 읽음 처리"""
+        notification = get_object_or_404(PushNotification, id=notification_id, device__user=request.user, device__is_active=True)
+        notification.is_read = True
+        notification.save()
+        return Response(status=status.HTTP_200_OK)
+
+    def delete(self, request, notification_id: int):
+        """개별 알림 삭제"""
+        notification = get_object_or_404(PushNotification, id=notification_id, device__user=request.user, device__is_active=True)
+        notification.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 @NotificationSchema.notification_setting_schema_view
 class NotificationSettingAPIView(APIView):
     """
