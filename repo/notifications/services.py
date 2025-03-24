@@ -48,7 +48,7 @@ class FCMService:
             message = Message(
                 notification=Notification(title=title, body=body),
                 token=device_token,
-                data=data if data else None,
+                data=data or {},
             )
 
             response = messaging.send(message, dry_run=DRY_RUN)
@@ -61,7 +61,8 @@ class FCMService:
         """
         여러 디바이스에 알림 전송
         """
-        message = MulticastMessage(notification=Notification(title=title, body=body), tokens=device_tokens, data=data if data else None)
+        notification = Notification(title=title, body=body)
+        message = MulticastMessage(notification, tokens=device_tokens, data=data or {})
 
         response: messaging.BatchResponse = messaging.send_each_for_multicast(message, dry_run=DRY_RUN)
         logger.info(f"Successfully sent multiple message: {response}")
@@ -77,12 +78,12 @@ class FCMService:
                 UserDevice.objects.filter(device_token__in=failed_tokens).delete()
                 logger.info(f"Removed {len(failed_tokens)} invalid tokens")
 
-    def send_push_notification_silent(self, device_token: str, data: dict):
+    def send_push_notification_silent(self, device_token: str, data: dict = None):
         """
         단일 디바이스에 무음 알림 전송
         """
         try:
-            message = Message(token=device_token, data=data)
+            message = Message(token=device_token, data=data or {})
 
             response = messaging.send(message, dry_run=DRY_RUN)
             logger.info(f"Successfully sent silent message: {response}")
@@ -95,7 +96,8 @@ class FCMService:
         토픽에 알림 전송
         """
 
-        message = Message(notification=Notification(title=title, body=body), topic=topic, data=data if data else None)
+        notification = Notification(title=title, body=body)
+        message = Message(notification, topic=topic, data=data or {})
 
         response = messaging.send(message, dry_run=DRY_RUN)
         logger.info(f"Successfully sent topic message: {response}")
@@ -135,7 +137,10 @@ class NotificationService:
         """
         알림 전송 가능 여부 확인
         """
-        return all([self.check_notification_settings(user, notification_type), self.get_device_token(user)])
+        can_send_notification = self.check_notification_settings(user, notification_type)
+        device_token = self.get_device_token(user)
+
+        return all([can_send_notification, device_token])
 
     def check_notification_settings(self, user: CustomUser, notification_type: str) -> bool:
         """
