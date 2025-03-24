@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -13,47 +14,32 @@ from .serializers import (
 from .services import FCMService
 
 
-@NotificationSchema.notification_test_schema_view
-class NotificationTestAPIView(APIView):
-    """
-    푸시 알림 테스트용 API
-    """
-
-    def post(self, request, token):
-        fcm_service = FCMService()
-        fcm_service.send_push_notification_to_single_device(
-            device_token=token, title="브루버즈", body="테스트 알림입니다.", data={"test": "true"}
-        )
-        return Response({"message": "테스트 알림이 전송되었습니다."}, status=status.HTTP_200_OK)
-
-
 @NotificationSchema.user_notification_schema_view
 class UserNotificationAPIView(APIView):
     """
-    사용자별 푸시 알림 관리 API
+    특정 기기의 알림 목록 관리 API
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """사용자의 알림 목록 조회"""
-        device = UserDevice.objects.get(user=request.user)
+        """알림 목록 조회"""
+        device = get_object_or_404(UserDevice, user=request.user, is_active=True)
         notifications = PushNotification.objects.filter(device=device).order_by("-id")
-
         serializer = PushNotificationSerializer(notifications, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def post(self, request):
-        """사용자의 알림 전체 읽음 처리"""
-        device = UserDevice.objects.get(user=request.user)
-        PushNotification.objects.filter(device=device).update(is_read=True)
-        return Response({"message": "사용자의 알림이 모두 읽음 처리되었습니다."}, status=status.HTTP_200_OK)
+    def patch(self, request):
+        """알림 전체 읽음 처리"""
+        device = get_object_or_404(UserDevice, user=request.user, is_active=True)
+        PushNotification.objects.filter(device=device, is_read=False).update(is_read=True)
+        return Response({"message": "모든 알림이 읽음 처리되었습니다."}, status=status.HTTP_200_OK)
 
     def delete(self, request):
-        """사용자의 알림 전체 삭제"""
-        device = UserDevice.objects.get(user=request.user)
+        """알림 전체 삭제"""
+        device = get_object_or_404(UserDevice, user=request.user, is_active=True)
         PushNotification.objects.filter(device=device).delete()
-        return Response({"message": "사용자의 알림이 모두 삭제되었습니다."}, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @NotificationSchema.notification_setting_schema_view
@@ -66,21 +52,31 @@ class NotificationSettingAPIView(APIView):
 
     def get(self, request):
         """알림 설정 조회"""
-        settings = NotificationSetting.objects.get(user=request.user)
+        settings = get_object_or_404(NotificationSetting, user=request.user)
         serializer = NotificationSettingsSerializer(settings)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
+        """알림 설정 생성
+
+        TODO 회원가입 로직에서 호출되는 것으로 이동 필요
         """
-        알림 설정 생성 (회원가입 시 설정)
-        """
-        settings = NotificationSetting.objects.create(user=request.user)
+        serializer = NotificationSettingsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        settings, created = NotificationSetting.objects.get_or_create(user=request.user, defaults=serializer.validated_data)
+
+        if not created:
+            for key, value in serializer.validated_data.items():
+                setattr(settings, key, value)
+            settings.save()
+
         serializer = NotificationSettingsSerializer(settings)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def patch(self, request):
         """알림 설정 수정"""
-        settings = NotificationSetting.objects.get(user=request.user)
+        settings = get_object_or_404(NotificationSetting, user=request.user)
         serializer = NotificationSettingsSerializer(settings, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -90,25 +86,42 @@ class NotificationSettingAPIView(APIView):
 @NotificationSchema.user_device_token_schema_view
 class NotificationTokenAPIView(APIView):
     """
-    사용자 디바이스 토큰 관리 API
+    디바이스 토큰 관리 API
     """
 
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        """사용자의 디바이스 토큰 저장 횩은 갱신"""
+        """디바이스 토큰 등록/갱신"""
         serializer = UserDeviceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        token, created = UserDevice.objects.update_or_create(
-            user=request.user,
-            defaults=serializer.validated_data,
-        )
+        device, created = UserDevice.objects.update_or_create(user=request.user, defaults={**serializer.validated_data, "is_active": True})
 
-        message = "user device token" + "created" if created else "updated"
-        return Response({"message": message}, status=status.HTTP_200_OK)
+        serializer = UserDeviceSerializer(device)
+        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
     def delete(self, request):
-        """사용자의 디바이스 토큰 삭제"""
-        UserDevice.objects.filter(user=request.user, is_active=True).delete()
-        return Response({"message": "user device token deleted"}, status=status.HTTP_204_NO_CONTENT)
+        """디바이스 토큰 비활성화"""
+        device = get_object_or_404(UserDevice, user=request.user)
+        device.is_active = False
+        device.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@NotificationSchema.notification_test_schema_view
+class NotificationTestAPIView(APIView):
+    """
+    푸시 알림 테스트용 API
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """테스트 알림 전송"""
+        device = get_object_or_404(UserDevice, user=request.user, is_active=True)
+        fcm_service = FCMService()
+        fcm_service.send_push_notification_to_single_device(
+            device_token=device.device_token, title="브루버즈", body="테스트 알림입니다.", data={"test": "true"}
+        )
+        return Response({"message": "테스트 알림이 전송되었습니다."}, status=status.HTTP_200_OK)

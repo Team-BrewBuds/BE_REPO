@@ -58,7 +58,7 @@ class NotificationSchema:
         tags=[NOTIFICATION_TAG],
     )
 
-    user_notification_post_schema = extend_schema(
+    user_notification_patch_schema = extend_schema(
         summary="알림 전체 읽음 처리",
         description="""
             사용자의 모든 알림을 읽음 처리합니다.
@@ -145,7 +145,8 @@ class NotificationSchema:
     user_device_token_post_schema = extend_schema(
         summary="사용자의 디바이스 토큰 저장 횩은 갱신",
         description="""
-            사용자의 디바이스 토큰을 생성 혹은 갱신합니다. (로그인 시 호출)
+            사용자의 디바이스 토큰을 생성 합니다. (로그인 시 호출)
+            이미 존재하는 디바이스 토큰인 경우 갱신됩니다.
 
             담당자: hwstar1204
         """,
@@ -159,14 +160,14 @@ class NotificationSchema:
     )
 
     user_device_token_delete_schema = extend_schema(
-        summary="사용자의 디바이스 토큰 삭제",
+        summary="사용자의 디바이스 토큰 비활성화",
         description="""
-            사용자의 디바이스 토큰을 삭제합니다. (로그아웃 시 호출)
+            사용자의 디바이스 토큰을 비활성화 합니다. (로그아웃 시 호출)
 
             담당자: hwstar1204
         """,
         responses={
-            204: OpenApiResponse(description="디바이스 토큰 삭제 성공"),
+            204: OpenApiResponse(description="디바이스 토큰 비활성화 성공"),
             401: OpenApiResponse(description="Unauthorized"),
         },
         tags=[NOTIFICATION_TAG],
@@ -174,7 +175,7 @@ class NotificationSchema:
 
     user_notification_schema_view = extend_schema_view(
         get=user_notification_get_schema,
-        post=user_notification_post_schema,
+        patch=user_notification_patch_schema,
         delete=user_notification_delete_schema,
     )
 
