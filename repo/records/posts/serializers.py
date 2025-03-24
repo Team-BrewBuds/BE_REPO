@@ -2,6 +2,10 @@ from rest_framework import serializers
 
 from repo.common.serializers import PhotoSerializer
 from repo.common.utils import get_time_difference
+from repo.interactions.serializers import (
+    InteractionMethodSerializer,
+    InteractionSerializer,
+)
 from repo.profiles.serializers import UserSimpleSerializer
 from repo.records.models import Photo, Post, TastedRecord
 from repo.records.tasted_record.serializers import TastedRecordInPostSerializer
@@ -16,10 +20,12 @@ class PostListSerializer(serializers.ModelSerializer):
     created_at = serializers.SerializerMethodField()
     subject = serializers.CharField(source="get_subject_display")
     likes = serializers.IntegerField()
-    comments = serializers.IntegerField()
-    is_user_liked = serializers.BooleanField(default=False, read_only=True)
-    is_user_noted = serializers.BooleanField(default=False, read_only=True)
-    is_user_following = serializers.BooleanField(default=False, read_only=True)
+    comments = serializers.IntegerField(source="comment_set.count")
+    interaction = serializers.SerializerMethodField(read_only=True)
+
+    def get_interaction(self, obj):
+        context = {"request": self.context.get("request")}
+        return InteractionSerializer(obj, context=context).data
 
     def get_created_at(self, obj):
         return get_time_difference(obj.created_at)
@@ -34,7 +40,7 @@ class TopPostSerializer(PostListSerializer):
 
     def get_fields(self):
         fields = super().get_fields()
-        for field in ["is_user_noted", "like_cnt", "tasted_records"]:
+        for field in ["is_user_noted", "tasted_records"]:
             fields.pop(field, None)
         return fields
 
@@ -56,24 +62,20 @@ class PostDetailSerializer(serializers.ModelSerializer):
     author = UserSimpleSerializer(read_only=True)
     photos = PhotoSerializer(many=True, source="photo_set")
     tasted_records = TastedRecordInPostSerializer("post.tasted_records", many=True)
-
     subject = serializers.CharField(source="get_subject_display")
-    like_cnt = serializers.IntegerField(source="like_cnt.count")
-    is_user_liked = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
+    interaction = serializers.SerializerMethodField(read_only=True)
 
-    def get_is_user_liked(self, obj):
-        request = self.context.get("request")
-        if request and request.user.is_authenticated:
-            return obj.like_cnt.filter(id=request.user.id).exists()
-        return False
+    def get_interaction(self, obj):
+        context = {"request": self.context.get("request")}
+        return InteractionMethodSerializer(obj, context=context).data
 
     def get_created_at(self, obj):
         return get_time_difference(obj.created_at)
 
     class Meta:
         model = Post
-        fields = "__all__"
+        exclude = ["like_cnt"]
 
 
 class UserPostSerializer(serializers.ModelSerializer):
@@ -86,15 +88,18 @@ class UserPostSerializer(serializers.ModelSerializer):
     created_at = serializers.SerializerMethodField()
 
     def get_represent_post_photo(self, obj):
-        photos = obj.photo_set.all()
-        if photos.exists():
-            return PhotoSerializer(photos.first()).data
+        """게시글의 첫번째 사진 URL 반환"""
+        if photos := obj.photo_set.all():
+            return photos[0].photo_url.url
         return None
 
     def get_tasted_records_photo(self, obj):
-        for tasted_record in obj.tasted_records.all():
-            if tasted_record.photo_set.exists():
-                return PhotoSerializer(tasted_record.photo_set.first()).data
+        """게시글에 연결된 시음기록의 첫번째 사진 URL 반환"""
+        if not (tasted_records := obj.tasted_records.all()):
+            return None
+
+        if photos := tasted_records[0].photo_set.all():
+            return photos[0].photo_url.url
         return None
 
     def get_created_at(self, obj):

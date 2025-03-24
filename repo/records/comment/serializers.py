@@ -18,20 +18,13 @@ class CommentOutputSerializer(serializers.ModelSerializer):
         queryset=Comment.objects.select_related("author").filter(parent__isnull=True), required=False
     )
     author = UserSimpleSerializer(read_only=True)
-    like_cnt = serializers.IntegerField(source="like_cnt.count", read_only=True)
+    likes = serializers.IntegerField(read_only=True)
     created_at = serializers.SerializerMethodField(read_only=True)
     replies = serializers.SerializerMethodField()
-    is_user_liked = serializers.SerializerMethodField()
+    is_user_liked = serializers.BooleanField(read_only=True)
 
     def get_created_at(self, obj):
         return get_time_difference(obj.created_at)
-
-    def get_is_user_liked(self, obj):
-        request = self.context.get("request")
-        if request:
-            user = request.user
-            return obj.like_cnt.filter(id=user.id).exists()
-        return False
 
     def get_replies(self, obj):
         if hasattr(obj, "replies_list"):
@@ -41,4 +34,4 @@ class CommentOutputSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ["id", "content", "parent", "author", "like_cnt", "created_at", "replies", "is_user_liked"]
+        fields = ["id", "content", "parent", "author", "likes", "created_at", "replies", "is_user_liked"]

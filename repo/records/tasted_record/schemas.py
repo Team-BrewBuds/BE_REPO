@@ -75,6 +75,7 @@ class TastedRecordSchema:
         summary="시음기록 수정",
         description="""
             시음기록의 정보를 수정합니다. (전체 수정)
+            원두 정보는 수정 불가능합니다.
             담당자 : hwstar1204
         """,
         tags=[TastedRecord_Tag],
@@ -89,6 +90,7 @@ class TastedRecordSchema:
         summary="시음기록 수정",
         description="""
             시음기록의 정보를 수정합니다. (일부 수정)
+            원두 정보는 수정 불가능합니다.
             담당자 : hwstar1204
         """,
         tags=[TastedRecord_Tag],
@@ -135,6 +137,8 @@ class UserTastedRecordListSchema:
             OpenApiParameter(name="star_min", type=float, enum=[x / 2 for x in range(11)], required=False),
             OpenApiParameter(name="star_max", type=float, enum=[x / 2 for x in range(11)], required=False),
             OpenApiParameter(name="is_decaf", type=bool, enum=[True, False], required=False),
+            OpenApiParameter(name="roast_point_min", type=float, required=False),
+            OpenApiParameter(name="roast_point_max", type=float, required=False),
             OpenApiParameter(name="ordering", type=str, enum=["-created_at", "-taste_review__star", "-likes"], required=False),
         ],
         responses={

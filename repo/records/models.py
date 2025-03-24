@@ -10,16 +10,14 @@ class TastedRecord(models.Model):
     taste_review = models.OneToOneField(BeanTasteReview, on_delete=models.CASCADE, verbose_name="맛&평가")
     content = models.TextField(verbose_name="노트 내용")
     view_cnt = models.IntegerField(default=0, verbose_name="조회수")
-    like_cnt = models.ManyToManyField(CustomUser, default=0, related_name="like_tasted_records")
+    like_cnt = models.ManyToManyField(CustomUser, blank=True, related_name="like_tasted_records")
     is_private = models.BooleanField(default=False, verbose_name="비공개 여부")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
-
-    def is_user_liked(self, user):
-        return user in self.like_cnt.all()
+    likes = models.IntegerField(default=0, verbose_name="좋아요 수")
 
     def __str__(self):
-        return f"{self.author.nickname} - {self.bean.name}"
+        return f"{self.bean.id} - {self.bean.name}"
 
     class Meta:
         db_table = "tasted_record"
@@ -41,12 +39,10 @@ class Post(models.Model):
     content = models.TextField(verbose_name="내용")
     subject = models.CharField(max_length=100, choices=SUBJECT_TYPE_CHOICES, verbose_name="주제")
     view_cnt = models.IntegerField(default=0, verbose_name="조회수")
-    like_cnt = models.ManyToManyField(CustomUser, related_name="like_posts")
+    like_cnt = models.ManyToManyField(CustomUser, blank=True, related_name="like_posts")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
     tag = models.TextField(null=True, blank=True, verbose_name="태그")  # 여러 태그 가능
-
-    def is_user_liked(self, user):
-        return user in self.like_cnt.all()
+    likes = models.IntegerField(default=0, verbose_name="좋아요 수")
 
     def is_saved(self, user):
         return user.not_set.filter(post=self).exists()
@@ -87,6 +83,7 @@ class Comment(models.Model):
     like_cnt = models.ManyToManyField(CustomUser, related_name="like_comments")
     is_deleted = models.BooleanField(default=False, verbose_name="삭제 여부")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="작성일")
+    likes = models.IntegerField(default=0, verbose_name="좋아요 수")
 
     def __str__(self):
         return f"삭제된 댓글 ID: {self.id}" if self.is_deleted else f"{self.author.nickname} - {self.content[:20]}"

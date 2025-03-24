@@ -1,4 +1,5 @@
-from django.db.models import OuterRef
+from django.db import transaction
+from django.db.models import F, OuterRef
 
 from repo.common.exception.exceptions import (
     ConflictException,
@@ -26,7 +27,7 @@ class LikeService:
         if object_type not in self.model_map:
             raise ValidationException(detail="Invalid object type", code="validation_error")
 
-        self.target_model = self.model_map[object_type]
+        self.target_model: Post | TastedRecord | Comment = self.model_map[object_type]
         self.object_type = object_type
         self.object_id = object_id
         self.like_repo = self._set_like_object()
@@ -42,6 +43,7 @@ class LikeService:
         except self.target_model.DoesNotExist as e:
             raise NotFoundException(detail="object not found", code="not_found") from e
 
+    @transaction.atomic
     def increase_like(self, user_id: int) -> None:
         """좋아요 증가"""
 
@@ -54,12 +56,20 @@ class LikeService:
         if self.like_repo.author.id != user_id:  # 자신의 게시물에 좋아요를 누른 경우 알림 전송하지 않음
             self.notification_service.send_notification_like(self.like_repo, user_id)
 
+        self.target_model.objects.filter(id=self.like_repo.id).select_for_update(of=["self"]).values("likes").update(likes=F("likes") + 1)
+
+    @transaction.atomic
     def decrease_like(self, user_id: int) -> None:
         """좋아요 감소"""
         if not self.like_repo.like_cnt.filter(id=user_id).exists():
             raise NotFoundException(detail="like not found", code="not_found")
 
+        if self.like_repo.likes == 0:
+            raise ValidationException(detail="like count is 0", code="invalid_like_count")
+
         self.like_repo.like_cnt.remove(user_id)
+
+        self.target_model.objects.filter(id=self.like_repo.id).select_for_update(of=["self"]).values("likes").update(likes=F("likes") - 1)
 
     def get_like_count(self) -> int:
         """좋아요 개수 반환"""

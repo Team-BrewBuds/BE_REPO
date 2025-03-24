@@ -2,7 +2,7 @@
 ###########
 
 # pull official base image
-FROM python:3.12-alpine as builder
+FROM python:3.12-slim as builder
 
 # set work directory
 WORKDIR /usr/src/app
@@ -12,7 +12,9 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 # install dependencies for building (including mariadb-dev for mysqlclient)
-RUN apk update && apk add python3 python3-dev mariadb-dev build-base curl
+RUN apt update && apt install -y \
+    python3 python3-dev default-libmysqlclient-dev build-essential curl \
+    pkg-config
 
 # install Poetry
 ENV POETRY_VERSION=1.8.3
@@ -30,15 +32,16 @@ RUN poetry config virtualenvs.create false \
 
 
 # FINAL #
+########
 
 # pull official base image
-FROM python:3.12-alpine
+FROM python:3.12-slim
 
 # create directory for the app user
 RUN mkdir -p /home/app
 
 # create the app user
-RUN addgroup -S app && adduser -S app -G app
+RUN addgroup --system app && adduser --system --group app
 
 # create the appropriate directories
 ENV HOME=/home/app
@@ -47,7 +50,7 @@ RUN mkdir -p $APP_HOME/static $APP_HOME/media
 WORKDIR $APP_HOME
 
 # install runtime dependencies
-RUN apk update && apk add libpq mariadb-dev
+RUN apt update && apt install -y libpq-dev default-libmysqlclient-dev
 
 # copy wheels and install dependencies
 COPY --from=builder /usr/src/app/wheels /wheels

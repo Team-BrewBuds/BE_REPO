@@ -31,12 +31,13 @@ MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = "public-read"
 
+STATIC_ROOT = "/home/app/web/static"
 STORAGES = {
     "default": {
         "BACKEND": "repo.common.bucket.AwsMediaStorage",
     },
     "staticfiles": {
-        "BACKEND": "repo.common.bucket.AwsStaticStorage",
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
 

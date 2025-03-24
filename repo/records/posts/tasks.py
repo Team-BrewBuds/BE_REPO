@@ -28,7 +28,6 @@ def cache_top_posts(self):
             Post.objects.filter(created_at__range=(start_date, end_date))
             .select_related("author")
             .annotate(
-                likes=Count("like_cnt", distinct=True),
                 comments=Count("comment", distinct=True),
             )
         )

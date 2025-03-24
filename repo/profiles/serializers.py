@@ -1,7 +1,10 @@
 from rest_framework import serializers
 
+from repo.beans.models import Bean
+from repo.common.utils import get_time_difference
 from repo.profiles.models import CustomUser, UserDetail
 from repo.profiles.validators import UserValidator
+from repo.records.models import Photo, Post, TastedRecord
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -77,6 +80,8 @@ class UserProfileSerializer(UserSimpleSerializer):
     introduction = serializers.CharField(required=False, default="")
     profile_link = serializers.CharField(required=False, default="")
     coffee_life = serializers.JSONField()
+    preferred_bean_taste = serializers.JSONField()
+    is_certificated = serializers.BooleanField()
     following_cnt = serializers.IntegerField()
     follower_cnt = serializers.IntegerField()
     post_cnt = serializers.IntegerField()
@@ -88,6 +93,8 @@ class UserProfileSerializer(UserSimpleSerializer):
             "introduction",
             "profile_link",
             "coffee_life",
+            "preferred_bean_taste",
+            "is_certificated",
             "following_cnt",
             "follower_cnt",
             "post_cnt",
@@ -113,3 +120,81 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ["nickname", "user_detail"]
+
+
+class PrefSummarySerializer(serializers.ModelSerializer):
+    tasted_record_cnt = serializers.IntegerField()
+    post_cnt = serializers.IntegerField()
+    saved_beans_cnt = serializers.IntegerField(required=False)
+    saved_notes_cnt = serializers.IntegerField(required=False)
+
+    class Meta:
+        model = CustomUser
+        fields = ["id", "nickname", "tasted_record_cnt", "post_cnt", "saved_beans_cnt", "saved_notes_cnt"]
+
+
+class PrefCalendarSerializer(serializers.Serializer):
+    created_date = serializers.DateField(format="%Y-%m-%d")
+
+
+class PrefTastedRecordSerializer(serializers.ModelSerializer):
+    title = serializers.CharField(source="bean.name")
+    star = serializers.FloatField(source="taste_review.star")
+    flavor = serializers.CharField(source="taste_review.flavor")
+    first_photo = serializers.SerializerMethodField()
+    created_date = serializers.DateField()
+
+    class Meta:
+        model = TastedRecord
+        fields = ["id", "title", "star", "flavor", "first_photo", "created_date"]
+
+    def get_first_photo(self, obj):
+        first_photo = Photo.objects.filter(tasted_record=obj).order_by("created_at").first()
+        return first_photo.photo_url.url if first_photo and first_photo.photo_url else None
+
+
+class PrefPostSerializer(serializers.ModelSerializer):
+    author = serializers.CharField(source="author.nickname")
+    first_photo = serializers.SerializerMethodField()
+    created_date = serializers.DateField()
+    created_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Post
+        fields = ["id", "title", "subject", "author", "first_photo", "created_date", "created_at"]
+
+    def get_first_photo(self, obj):
+        first_photo = Photo.objects.filter(post=obj).order_by("created_at").first()
+        return first_photo.photo_url.url if first_photo and first_photo.photo_url else None
+
+    def get_created_at(self, obj):
+        return get_time_difference(obj.created_at)
+
+
+class PrefSavedBeanSerializer(serializers.ModelSerializer):
+    avg_star = serializers.FloatField()
+    image_url = serializers.URLField()
+    created_date = serializers.DateField()
+
+    class Meta:
+        model = Bean
+        fields = ["id", "name", "avg_star", "image_url", "created_date"]
+
+
+class PrefStarSerializer(serializers.Serializer):
+    star_distribution = serializers.DictField(child=serializers.IntegerField(), help_text="각 별점별 개수")
+    most_common_star = serializers.FloatField(help_text="가장 개수가 많은 별점", allow_null=True)
+    avg_star = serializers.FloatField(help_text="별점 평균 (소수점 첫째 자리까지)")
+    total_ratings = serializers.IntegerField(help_text="총 별점 개수")
+
+
+class PrefFlavorSerializer(serializers.Serializer):
+    top_flavors = serializers.ListField(
+        child=serializers.DictField(child=serializers.CharField(), allow_empty=True), help_text="유저가 가장 선호하는 맛 TOP 5"
+    )
+
+
+class PrefCountrySerializer(serializers.Serializer):
+    top_origins = serializers.ListField(
+        child=serializers.DictField(child=serializers.CharField()), help_text="유저가 가장 선호하는 원산지 TOP 5"
+    )

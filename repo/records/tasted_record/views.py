@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from rest_framework import generics, status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -48,9 +49,12 @@ class TastedRecordListCreateAPIView(APIView):
     def get(self, request):
         serializer_class = TastedRecordListSerializer
         user = request.user
+
         if not user.is_authenticated:
             tasted_records = self.tasted_record_service.get_record_list_for_anonymous()
-            return get_paginated_response_with_class(request, tasted_records, serializer_class)
+            paginator = PageNumberPagination()
+            paginated_tasted_records = paginator.paginate_queryset(tasted_records, request)
+            return paginator.get_paginated_response(paginated_tasted_records)
 
         tasted_records = self.tasted_record_service.get_record_list(user, request=request)
         return get_paginated_response_with_class(request, tasted_records, serializer_class)
@@ -98,9 +102,9 @@ class TastedRecordDetailApiView(APIView):
 
         # 쿠키 기반 조회수 업데이트
         response = update_view_count(request, tasted_record_detail, Response(), "tasted_record_viewed")
-        response.data = self.response_serializer_class(tasted_record_detail, context={"request": request}).data
+        serializer = self.response_serializer_class(tasted_record_detail, context={"request": request})
+        response.data = serializer.data
         response.status_code = status.HTTP_200_OK
-
         return response
 
     def put(self, request, pk):

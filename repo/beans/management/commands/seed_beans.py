@@ -30,24 +30,26 @@ class Command(BaseCommand):
             "콜드브루",
         ]
         process_choices = ["내추럴", "위시드", "펄프드 내추럴", "허니", "무산소 발효"]
+        variety_choices = ["아라비카", "로부스타", "리베리카"]
 
         seeder.add_entity(
             Bean,
             number,
             {
                 "bean_type": lambda x: faker.random_element(elements=("single", "blend")),
-                "is_decaf": lambda x: faker.random_element(elements=(True, False)),
                 "name": lambda x: f"{faker.word()} bean",
                 "origin_country": lambda x: faker.country(),
+                "image_url": lambda x: faker.image_url(),
+                "is_decaf": lambda x: faker.random_element(elements=(True, False)),
                 "extraction": lambda x: faker.random_element(elements=extraction_choices),
                 "roast_point": lambda x: faker.random_int(min=0, max=5),
                 "process": lambda x: faker.random_element(elements=process_choices),
                 "region": lambda x: faker.city(),
                 "bev_type": lambda x: faker.random_element(elements=(True, False)),
                 "roastery": lambda x: faker.company(),
-                "variety": lambda x: faker.random_choices(elements=("아라비카", "로부스타", "리베리카"), length=1)[0],
-                # 'is_user_created': faker.random_element(elements=(True, False)),
-                "is_user_created": False,
+                "variety": lambda x: faker.random_choices(elements=variety_choices, length=1)[0],
+                "is_user_created": True,
+                "is_official": lambda x: faker.random_element(elements=(True, False)),
             },
         )
 
