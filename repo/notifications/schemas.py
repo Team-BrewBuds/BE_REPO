@@ -20,30 +20,6 @@ class NotificationSchema:
     알림 관련 API 스키마
     """
 
-    test_notification_schema = extend_schema(
-        parameters=[
-            OpenApiParameter(
-                name="token",
-                type=OpenApiTypes.STR,
-                location=OpenApiParameter.PATH,
-                description="FCM 디바이스 토큰",
-            ),
-        ],
-        responses={
-            200: OpenApiResponse(
-                description="알림 전송 성공",
-                response={"type": "object", "properties": {"message": {"type": "string"}}},
-            ),
-        },
-        summary="푸시 알림 테스트",
-        description="""
-            FCM 토큰을 사용하여 테스트 알림을 전송합니다.
-
-            담당자: hwstar1204
-        """,
-        tags=[NOTIFICATION_TAG],
-    )
-
     user_notification_get_schema = extend_schema(
         summary="사용자 알림 목록 조회",
         description="""
@@ -156,8 +132,6 @@ class NotificationSchema:
         tags=[NOTIFICATION_TAG],
     )
 
-    notification_test_schema_view = extend_schema_view(post=test_notification_schema)
-
     user_device_token_post_schema = extend_schema(
         summary="사용자의 디바이스 토큰 저장 횩은 갱신",
         description="""
@@ -188,6 +162,32 @@ class NotificationSchema:
         },
         tags=[NOTIFICATION_TAG],
     )
+
+    test_notification_schema = extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="token",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="FCM 디바이스 토큰",
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="알림 전송 성공",
+                response={"type": "object", "properties": {"message": {"type": "string"}}},
+            ),
+        },
+        summary="푸시 알림 테스트",
+        description="""
+            FCM 토큰을 사용하여 테스트 알림을 전송합니다.
+
+            담당자: hwstar1204
+        """,
+        tags=[NOTIFICATION_TAG],
+    )
+
+    notification_test_schema_view = extend_schema_view(post=test_notification_schema)
 
     user_notification_schema_view = extend_schema_view(
         get=user_notification_get_schema,
