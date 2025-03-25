@@ -7,6 +7,7 @@ from repo.common.exception.exceptions import (
     ValidationException,
 )
 from repo.notifications.services import NotificationService
+from repo.profiles.models import CustomUser
 from repo.records.models import Comment, Post, TastedRecord
 
 
@@ -54,7 +55,8 @@ class LikeService:
 
         # 알림 전송
         if self.like_repo.author.id != user_id:  # 자신의 게시물에 좋아요를 누른 경우 알림 전송하지 않음
-            self.notification_service.send_notification_like(self.like_repo, user_id)
+            liked_user = CustomUser.objects.get(id=user_id)
+            self.notification_service.send_notification_like(self.like_repo, liked_user)
 
         self.target_model.objects.filter(id=self.like_repo.id).select_for_update(of=["self"]).values("likes").update(likes=F("likes") + 1)
 
