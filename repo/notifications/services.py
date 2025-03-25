@@ -97,7 +97,7 @@ class FCMService:
 
         try:
             notification = Notification(title=title, body=body)
-            message = MulticastMessage(notification, tokens=device_tokens, data=data or {})
+            message = MulticastMessage(tokens=device_tokens, data=data or {}, notification=notification)
             response: messaging.BatchResponse = messaging.send_each_for_multicast(message, dry_run=DRY_RUN)
             logger.info(f"Successfully sent multiple message: {response}")
 
@@ -165,7 +165,7 @@ class FCMService:
 
         try:
             notification = Notification(title=title, body=body)
-            message = Message(notification=notification, topic=topic, data=data or {})
+            message = Message(data=data or {}, notification=notification, topic=topic)
             response = messaging.send(message, dry_run=DRY_RUN)
             logger.info(f"Successfully sent topic message: {response}")
             return True
@@ -272,7 +272,7 @@ class NotificationService:
         comment_author = comment.author.nickname
         comment_content = comment.content[:20]  # 댓글 내용 20자 제한
         message = NotificationTemplate(comment_author).comment_noti_template(comment_content)
-        data = {"comment_id": comment.id}
+        data = {"comment_id": str(comment.id)}
         topic_id = topic.topic_id(target_object.id)
 
         self.fcm_service.send_push_notification_to_topic(
@@ -304,7 +304,7 @@ class NotificationService:
             object_str = "댓글"
 
         message = NotificationTemplate(liked_user.nickname).like_noti_template(object_str)
-        data = {"object_id": object_type.id}
+        data = {"object_id": str(object_type.id)}
         device_token = self.get_device_token(author)
 
         self.fcm_service.send_push_notification_to_single_device(
@@ -327,7 +327,7 @@ class NotificationService:
             return
 
         message = NotificationTemplate(follower.nickname).follow_noti_template()
-        data = {"following_user_id": follower.id}
+        data = {"following_user_id": str(follower.id)}
         device_token = self.get_device_token(followee)
 
         self.fcm_service.send_push_notification_to_single_device(
