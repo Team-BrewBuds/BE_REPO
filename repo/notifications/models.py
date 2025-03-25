@@ -41,7 +41,7 @@ class PushNotification(models.Model):
         ("follow", "팔로우"),
     ]
 
-    device = models.OneToOneField(UserDevice, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPE_CHOICES)
     title = models.CharField(max_length=255)
     body = models.TextField()

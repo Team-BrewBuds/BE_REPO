@@ -27,20 +27,17 @@ class UserNotificationAPIView(APIView):
 
     def get(self, request):
         """알림 목록 조회"""
-        devices = UserDevice.objects.filter(user=request.user, is_active=True)
-        notifications = PushNotification.objects.filter(device__in=devices).order_by("-id")
+        notifications = PushNotification.objects.filter(user=request.user).order_by("-id")
         return get_paginated_response_with_class(request, notifications, PushNotificationSerializer)
 
     def patch(self, request):
         """알림 전체 읽음 처리"""
-        devices = UserDevice.objects.filter(user=request.user, is_active=True)
-        PushNotification.objects.filter(device__in=devices, is_read=False).update(is_read=True)
+        PushNotification.objects.filter(user=request.user, is_read=False).update(is_read=True)
         return Response({"message": "모든 알림이 읽음 처리되었습니다."}, status=status.HTTP_200_OK)
 
     def delete(self, request):
         """알림 전체 삭제"""
-        devices = UserDevice.objects.filter(user=request.user, is_active=True)
-        PushNotification.objects.filter(device__in=devices).delete()
+        PushNotification.objects.filter(user=request.user).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -54,14 +51,14 @@ class UserNotificationDetailAPIView(APIView):
 
     def patch(self, request, notification_id: int):
         """개별 알림 읽음 처리"""
-        notification = get_object_or_404(PushNotification, id=notification_id, device__user=request.user, device__is_active=True)
+        notification = get_object_or_404(PushNotification, id=notification_id, user=request.user)
         notification.is_read = True
         notification.save()
         return Response(status=status.HTTP_200_OK)
 
     def delete(self, request, notification_id: int):
         """개별 알림 삭제"""
-        notification = get_object_or_404(PushNotification, id=notification_id, device__user=request.user, device__is_active=True)
+        notification = get_object_or_404(PushNotification, id=notification_id, user=request.user)
         notification.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
