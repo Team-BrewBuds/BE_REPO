@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import List, Optional
 
 import firebase_admin
@@ -22,31 +23,39 @@ DRY_RUN = True if settings.DEBUG else False
 
 
 class FCMService:
-    """
-    FCM 알림 서비스
-    """
-
-    _instance = None
-    _initialized = False
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+    """FCM 알림 서비스"""
 
     def __init__(self):
-        if not self._initialized:
-            try:
-                cred = credentials.Certificate(SERVICE_ACCOUNT_FILE)
-                self.app = firebase_admin.initialize_app(cred)
-            except (ValueError, FileNotFoundError) as e:
-                logger.error(f"Firebase 초기화 실패: {str(e)}")
-                if not settings.DEBUG:
-                    raise
-            except Exception as e:
-                logger.error(f"Firebase 초기화 중 예상치 못한 오류 발생: {str(e)}")
-                raise
-            self._initialized = True
+        self._initialize_firebase()
+
+    def _initialize_firebase(self):
+        """Firebase Admin SDK 초기화"""
+        if not SERVICE_ACCOUNT_FILE:
+            raise ValueError("FCM_SERVICE_ACCOUNT_FILE 설정이 없습니다.")
+
+        if not os.path.exists(SERVICE_ACCOUNT_FILE):
+            raise FileNotFoundError(f"Firebase 서비스 계정 키 파일을 찾을 수 없습니다: {SERVICE_ACCOUNT_FILE}")
+
+        try:
+            self.app = self._get_or_create_firebase_app()
+        except Exception as e:
+            self._handle_initialization_error(e)
+
+    def _get_or_create_firebase_app(self):
+        """기존 Firebase 앱을 가져오거나 새로 생성"""
+        try:
+            return firebase_admin.get_app()
+        except ValueError:
+            cred = credentials.Certificate(SERVICE_ACCOUNT_FILE)
+            return firebase_admin.initialize_app(cred)
+
+    def _handle_initialization_error(self, error):
+        """초기화 에러 처리"""
+        logger.error(f"Firebase 초기화 중 오류 발생: {str(error)}")
+        if settings.DEBUG:
+            logger.warning("개발 환경: Firebase 초기화를 건너뜁니다.")
+        else:
+            raise
 
     @retry(max_retries=3)
     def send_push_notification_to_single_device(self, device_token: str, title: str, body: str, data: dict = None) -> bool:
