@@ -16,7 +16,7 @@ class UserDevice(models.Model):
     ]
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    device_token = models.CharField(max_length=255, unique=True)
+    device_token = models.CharField(max_length=255)
     device_type = models.CharField(max_length=10, default="ios", choices=DEVICE_TYPE_CHOICES)
     is_active = models.BooleanField(default=True)
     last_used = models.DateTimeField(auto_now=True)
