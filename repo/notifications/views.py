@@ -10,6 +10,7 @@ from .models import NotificationSetting, PushNotification, UserDevice
 from .schemas import NotificationSchema
 from .serializers import (
     NotificationSettingsSerializer,
+    NotificationTestSerializer,
     PushNotificationSerializer,
     UserDeviceSerializer,
 )
@@ -155,13 +156,21 @@ class NotificationTestAPIView(APIView):
 
     def post(self, request):
         """테스트 알림 전송"""
-        serializer = UserDeviceSerializer(data=request.data)
+        serializer = NotificationTestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        device, created = UserDevice.objects.get_or_create(user=request.user, is_active=True, defaults=serializer.validated_data)
+        device_tokens = serializer.validated_data["device_token"]
 
         fcm_service = FCMService()
-        fcm_service.send_push_notification_to_single_device(
-            device_token=device.device_token, title="브루버즈", body="테스트 알림입니다.", data={"test": "true"}
-        )
-        return Response({"message": "테스트 알림이 전송되었습니다."}, status=status.HTTP_200_OK)
+        if len(device_tokens) == 1:
+            success = fcm_service.send_push_notification_to_single_device(
+                device_token=device_tokens[0], title="브루버즈", body="단일 디바이스 테스트 알림입니다.", data={"test": "true"}
+            )
+        else:
+            success = fcm_service.send_push_notification_to_multiple_devices(
+                device_tokens=device_tokens, title="브루버즈", body="여러 디바이스 테스트 알림입니다.", data={"test": "true"}
+            )
+
+        if not success:
+            return Response({"message": "테스트 알림 전송에 실패했습니다."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": f"{len(device_tokens)}개의 테스트 알림이 전송되었습니다."}, status=status.HTTP_200_OK)

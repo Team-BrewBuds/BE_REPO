@@ -8,6 +8,7 @@ from repo.common.serializers import PageNumberSerializer
 
 from .serializers import (
     NotificationSettingsSerializer,
+    NotificationTestSerializer,
     PushNotificationSerializer,
     UserDeviceSerializer,
 )
@@ -167,7 +168,7 @@ class NotificationSchema:
     )
 
     test_notification_schema = extend_schema(
-        parameters=[UserDeviceSerializer],
+        request=NotificationTestSerializer,
         responses={
             200: OpenApiResponse(
                 description="알림 전송 성공",

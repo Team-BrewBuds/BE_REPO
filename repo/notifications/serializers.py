@@ -31,3 +31,11 @@ class UserDeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserDevice
         fields = ["device_token", "device_type"]
+
+
+class NotificationTestSerializer(serializers.Serializer):
+    """
+    푸시 알림 테스트용 시리얼라이저
+    """
+
+    device_token = serializers.ListField(child=serializers.CharField(), required=True)
