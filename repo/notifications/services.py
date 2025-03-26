@@ -13,8 +13,8 @@ from repo.profiles.models import CustomUser
 from repo.records.models import Comment, Post, TastedRecord
 
 from .enums import Topic
+from .message_templates import PushNotificationTemplate
 from .models import NotificationSetting, PushNotification, UserDevice
-from .templates import NotificationTemplate
 
 logger = logging.getLogger("django.server")
 
@@ -278,7 +278,7 @@ class NotificationService:
 
         comment_author = comment.author.nickname
         comment_content = comment.content[:20]  # 댓글 내용 20자 제한
-        message = NotificationTemplate(comment_author).comment_noti_template(comment_content)
+        message = PushNotificationTemplate(comment_author).comment_noti_template(comment_content)
         data = {"comment_id": str(comment.id)}
         topic_id = topic.topic_id(target_object.id)
 
@@ -310,7 +310,7 @@ class NotificationService:
         else:
             object_str = "댓글"
 
-        message = NotificationTemplate(liked_user.nickname).like_noti_template(object_str)
+        message = PushNotificationTemplate(liked_user.nickname).like_noti_template(object_str)
         data = {"object_id": str(object_type.id)}
         device_token = self.get_device_token(author)
 
@@ -333,7 +333,7 @@ class NotificationService:
         if not self.check_notification_settings(followee, "follow_notify"):
             return
 
-        message = NotificationTemplate(follower.nickname).follow_noti_template()
+        message = PushNotificationTemplate(follower.nickname).follow_noti_template()
         data = {"following_user_id": str(follower.id)}
         device_token = self.get_device_token(followee)
 
