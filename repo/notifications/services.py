@@ -196,7 +196,7 @@ class FCMService:
             return False
 
     @retry(max_retries=3)
-    def unsubscribe_topic(self, topic: str, token: str) -> bool:
+    def unsubscribe_topic(self, topic: str, tokens: List[str]) -> bool:
         """
         토픽 구독 해지
         Args:
@@ -205,12 +205,12 @@ class FCMService:
         Returns:
             bool: 해지 성공 여부
         """
-        if not all([topic, token]):
+        if not all([topic, tokens]):
             logger.warning("토픽 또는 토큰이 지정되지 않았습니다.")
             return False
 
         try:
-            messaging.unsubscribe_from_topic(token, topic)
+            messaging.unsubscribe_from_topic(tokens, topic)
             logger.info(f"Successfully unsubscribed from topic: {topic}")
             return True
         except (ValueError, exceptions.FirebaseError) as e:
@@ -256,6 +256,13 @@ class NotificationService:
         """
         device = UserDevice.objects.filter(user=user, is_active=True).select_related("user").first()
         return device.device_token if device else None
+
+    @staticmethod
+    def get_device_tokens(user_ids: List[int]) -> List[str]:
+        """
+        사용자들의 디바이스 토큰 조회
+        """
+        return UserDevice.objects.filter(user_id__in=user_ids, is_active=True).values_list("device_token", flat=True)
 
     def send_notification_comment(self, topic: Topic, comment: Comment):
         """

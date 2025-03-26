@@ -8,7 +8,7 @@ from repo.interactions.relationship.models import Relationship
 from repo.records.models import Comment, Post, TastedRecord
 
 from .enums import Topic
-from .services import NotificationService
+from .services import FCMService, NotificationService
 
 logger = logging.getLogger("django.server")
 
@@ -22,12 +22,12 @@ def subscribe_post_topic(sender, instance: Post, created: bool, **kwargs):
         return
 
     notification_service = NotificationService()
-    topic_id = Topic.POST.topic_id(instance.id)
+    topic = Topic.POST.topic_id(instance.id)
     token = notification_service.get_device_token(instance.author)
 
-    notification_service.subscribe_topic(topic_id, token)
-
-    logger.info(f"게시글 {instance.id} 토픽 구독 완료")
+    if token:
+        notification_service.subscribe_topic(topic, token)
+        logger.info(f"게시글 {instance.id} 토픽 구독 완료")
 
 
 @receiver(post_save, sender=TastedRecord)
@@ -39,44 +39,58 @@ def subscribe_tasted_record_topic(sender, instance: TastedRecord, created: bool,
         return
 
     notification_service = NotificationService()
-    topic_id = Topic.TASTED_RECORD.topic_id(instance.id)
-    token = notification_service.get_device_token(instance.author.id)
+    topic = Topic.TASTED_RECORD.topic_id(instance.id)
+    token = notification_service.get_device_token(instance.author)
 
-    notification_service.subscribe_topic(topic_id, token)
-
-    logger.info(f"시음기록 {instance.id} 토픽 구독 완료")
+    if token:
+        notification_service.subscribe_topic(topic, token)
+        logger.info(f"시음기록 {instance.id} 토픽 구독 완료")
 
 
 @receiver(post_delete, sender=Post)
 def unsubscribe_post_topic(sender, instance: Post, **kwargs):
     """
-    게시글 삭제 시 토픽 구독 해지
+    게시글 삭제 시 게시글, 댓글 작성자들의 토픽 구독 해제
     """
     if settings.DEBUG:
         return
 
     notification_service = NotificationService()
-    topic_id = Topic.POST.topic_id(instance.id)
-    token = notification_service.get_device_token(instance.author.id)
-    notification_service.unsubscribe_topic(topic_id, token)
+    topic = Topic.POST.topic_id(instance.id)
 
-    logger.info(f"게시글 {instance.id} 토픽 구독 해지 완료")
+    unsubscribe_user_ids = set([instance.author.id])
+
+    comment_author_ids = instance.comments.exclude(author=instance.author).values_list("author_id", flat=True).distinct()
+    unsubscribe_user_ids.update(comment_author_ids)
+
+    tokens = notification_service.get_device_tokens(list(unsubscribe_user_ids))
+
+    fcm_service = FCMService()
+    fcm_service.unsubscribe_topic(topic, tokens)
+    logger.info(f"게시글 {instance.id}의 모든 구독자({len(tokens)}명) 토픽 해지 완료")
 
 
 @receiver(post_delete, sender=TastedRecord)
 def unsubscribe_tasted_record_topic(sender, instance: TastedRecord, **kwargs):
     """
-    시음기록 삭제 시 토픽 구독 해지
+    시음기록 삭제 시 게시글, 댓글 작성자들의 토픽 구독 해제
     """
     if settings.DEBUG:
         return
 
     notification_service = NotificationService()
-    topic_id = Topic.TASTED_RECORD.topic_id(instance.id)
-    token = notification_service.get_device_token(instance.author.id)
-    notification_service.unsubscribe_topic(topic_id, token)
+    topic = Topic.TASTED_RECORD.topic_id(instance.id)
 
-    logger.info(f"시음기록 {instance.id} 토픽 구독 해지 완료")
+    unsubscribe_user_ids = set([instance.author.id])
+
+    comment_author_ids = instance.comments.exclude(author=instance.author).values_list("author_id", flat=True).distinct()
+    unsubscribe_user_ids.update(comment_author_ids)
+
+    tokens = notification_service.get_device_tokens(list(unsubscribe_user_ids))
+
+    fcm_service = FCMService()
+    fcm_service.unsubscribe_topic(topic, tokens)
+    logger.info(f"시음기록 {instance.id}의 모든 구독자({len(tokens)}명) 토픽 해지 완료")
 
 
 @receiver(post_save, sender=Comment)
