@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import firebase_admin
 from django.conf import settings
@@ -13,7 +13,7 @@ from repo.profiles.models import CustomUser
 from repo.records.models import Comment, Post, TastedRecord
 
 from .enums import Topic
-from .message_templates import PushNotificationTemplate
+from .message_templates import PushNotificationRecordTemplate, PushNotificationTemplate
 from .models import NotificationSetting, PushNotification, UserDevice
 
 logger = logging.getLogger("django.server")
@@ -273,8 +273,10 @@ class NotificationService:
         """
         if isinstance(comment.post, Post):
             target_object = comment.post
-        else:
+            object_str = "게시물"
+        else:  # TastedRecord
             target_object = comment.tasted_record
+            object_str = "시음 기록"
 
         comment_author = comment.author.nickname
         comment_content = comment.content[:20]  # 댓글 내용 20자 제한
@@ -289,7 +291,16 @@ class NotificationService:
             topic=topic_id,
         )
 
-        self.save_push_notification(comment.author, "comment", message["title"], message["body"], data)
+        author = target_object.author
+        author_record_message = PushNotificationRecordTemplate(author).comment_noti_template_author(
+            object_type=object_str, content=comment_content
+        )
+        self.save_push_notification(author, "comment", data, author_record_message)
+
+        comment_author_record_message = PushNotificationRecordTemplate(comment_author).comment_noti_template_comment_author(
+            object_type=object_str, object_title=target_object.title, content=comment_content
+        )
+        self.save_push_notification(target_object.author, "comment", data, comment_author_record_message)
 
     def send_notification_like(self, object_type: Post | TastedRecord | Comment, liked_user: CustomUser):
         """
@@ -321,7 +332,8 @@ class NotificationService:
             device_token=device_token,
         )
 
-        self.save_push_notification(author, "like", message["title"], message["body"], data)
+        record_message = PushNotificationRecordTemplate(liked_user.nickname).like_noti_template(object_str)
+        self.save_push_notification(author, "like", data, record_message)
 
     def send_notification_follow(self, follower: CustomUser, followee: CustomUser):
         """
@@ -344,9 +356,10 @@ class NotificationService:
             device_token=device_token,
         )
 
-        self.save_push_notification(followee, "follow", message["title"], message["body"], data)
+        record_message = PushNotificationRecordTemplate(follower.nickname).follow_noti_template()
+        self.save_push_notification(followee, "follow", data, record_message)
 
-    def save_push_notification(self, user: CustomUser, notification_type: str, title: str, body: str, data: dict):
+    def save_push_notification(self, user: CustomUser, notification_type: str, data: dict, record_message: Dict[str, str]):
         """
         푸시 알림 저장
         """
@@ -354,7 +367,7 @@ class NotificationService:
         PushNotification.objects.create(
             user=user,
             notification_type=notification_type,
-            title=title,
-            body=body,
+            title=record_message["title"],
+            body=record_message["body"],
             data=data,
         )
