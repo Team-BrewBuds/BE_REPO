@@ -300,10 +300,17 @@ class NotificationService:
         )
 
         author = target_object.author
-        author_record_message = PushNotificationRecordTemplate(author).comment_noti_template_author(
-            object_type=object_str, content=comment_content
-        )
-        self.save_push_notification(author, "comment", data, author_record_message)
+        if author != comment_author:  # 게시물/시음기록 작성자와 댓글 작성자가 다른 경우
+            author_record_message = PushNotificationRecordTemplate(comment_author.nickname).comment_noti_template_author(
+                object_type=object_str, content=comment_content
+            )
+            self.save_push_notification(author, "comment", data, author_record_message)
+
+        if comment_author.id in user_ids:  # 댓글 작성자가 알림 수신 가능 대상자에 있는 경우
+            user_ids.remove(comment_author.id)  # 댓글 작성자 제외
+
+        if author.id in user_ids:
+            user_ids.remove(author.id)  # 게시물/시음기록 작성자 제외
 
         comment_author_record_message = PushNotificationRecordTemplate(comment_author.nickname).comment_noti_template_comment_author(
             object_type=object_str, object_title=target_object.title, content=comment_content
