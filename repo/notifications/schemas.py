@@ -135,7 +135,6 @@ class NotificationSchema:
     )
 
     user_device_token_post_schema = extend_schema(
-        parameters=[UserDeviceSerializer],
         summary="사용자의 디바이스 토큰 저장 횩은 갱신",
         description="""
             사용자의 디바이스 토큰을 생성 합니다. (로그인 시 호출)
@@ -153,13 +152,18 @@ class NotificationSchema:
     )
 
     user_device_token_delete_schema = extend_schema(
-        parameters=[UserDeviceSerializer],
         summary="사용자의 디바이스 토큰 비활성화",
         description="""
             사용자의 디바이스 토큰을 비활성화 합니다. (로그아웃 시 호출)
 
+            body = {
+                "device_token": "디바이스 토큰",
+                "device_type": "디바이스 타입"  # "ios" 또는 "android"
+            }
+
             담당자: hwstar1204
         """,
+        request=UserDeviceSerializer,
         responses={
             204: OpenApiResponse(description="디바이스 토큰 비활성화 성공"),
             401: OpenApiResponse(description="Unauthorized"),

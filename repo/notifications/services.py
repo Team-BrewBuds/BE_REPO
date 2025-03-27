@@ -4,7 +4,8 @@ from typing import Dict, List, Optional
 
 import firebase_admin
 from django.conf import settings
-from django.db import Q, transaction
+from django.db import transaction
+from django.db.models import Q
 from firebase_admin import credentials, exceptions, messaging
 from firebase_admin.messaging import Message, MulticastMessage, Notification
 
@@ -250,7 +251,8 @@ class NotificationService:
         """
         사용자들의 디바이스 토큰 조회
         """
-        return UserDevice.objects.filter(user_id__in=user_ids, is_active=True).values_list("device_token", flat=True)
+        tokens = UserDevice.objects.filter(user_id__in=user_ids, is_active=True).values_list("device_token", flat=True)
+        return list(tokens)
 
     def send_notification_comment(self, topic: Topic, comment: Comment):
         """
@@ -306,7 +308,6 @@ class NotificationService:
         comment_author_record_message = PushNotificationRecordTemplate(comment_author.nickname).comment_noti_template_comment_author(
             object_type=object_str, object_title=target_object.title, content=comment_content
         )
-
         self.save_push_notifications(user_ids, "comment", data, comment_author_record_message)
 
     def send_notification_like(self, object_type: Post | TastedRecord | Comment, liked_user: CustomUser):

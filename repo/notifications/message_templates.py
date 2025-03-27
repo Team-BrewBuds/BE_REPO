@@ -64,11 +64,11 @@ class PushNotificationRecordTemplate:
     MESSAGE_FORMATS = {
         "author": {
             "title": "{object_type}",
-            "body": "{sender_name}님이 버디님의 {object_type}에 댓글을 남겼어요.\n{content}"
+            "body": "{sender_name}님이 버디님의 {object_type}에 댓글을 남겼어요. \n {content}"
         },
         "comment_author": {
             "title": "{object_type}",
-            "body": "'{object_title}' {object_type}에 {sender_name}님이 댓글을 남겼어요.\n{content}"
+            "body": "'{object_title}' {object_type}에 {sender_name}님이 댓글을 남겼어요. \n {content}"
         },
         "like": {
             "title": "{object_type}",
