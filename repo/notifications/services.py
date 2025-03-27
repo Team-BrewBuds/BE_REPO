@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 import firebase_admin
 from django.conf import settings
-from django.db import transaction
+from django.db import Q, transaction
 from firebase_admin import credentials, exceptions, messaging
 from firebase_admin.messaging import Message, MulticastMessage, Notification
 
@@ -271,24 +271,45 @@ class NotificationService:
         body : 댓글 내용
         topic : 해당 게시물의 topic id
         """
+
         if isinstance(comment.post, Post):
             target_object = comment.post
             object_str = "게시물"
+            object_filter = Q(post=target_object)
         else:  # TastedRecord
             target_object = comment.tasted_record
             object_str = "시음 기록"
+            object_filter = Q(tasted_record=target_object)
 
-        comment_author = comment.author.nickname
+        comment_author = comment.author
         comment_content = comment.content[:20]  # 댓글 내용 20자 제한
-        message = PushNotificationTemplate(comment_author).comment_noti_template(comment_content)
+        message = PushNotificationTemplate(comment_author.nickname).comment_noti_template(comment_content)
         data = {"comment_id": str(comment.id)}
-        topic_id = topic.topic_id(target_object.id)
 
-        self.fcm_service.send_push_notification_to_topic(
+        # 해당 게시물/시음기록의 댓글 작성자들
+        comment_authors = Comment.objects.filter(object_filter).values_list("author_id", flat=True).distinct()
+        noti_recipients = set(comment_authors)  # 댓글 작성자들
+        noti_recipients.add(target_object.author.id)  # 게시물/시음기록 작성자
+        noti_recipients.discard(comment_author.id)  # 현재 댓글 작성자 제외
+
+        noti_recipients = NotificationSetting.objects.filter(
+            user_id__in=noti_recipients,
+            comment_notify=True,
+        ).values_list(
+            "user_id", flat=True
+        )  # 알림 수신 가능 대상자들
+
+        user_ids = list(noti_recipients)
+        related_tokens = self.get_device_tokens(user_ids)
+
+        if not related_tokens:
+            return
+
+        self.fcm_service.send_push_notification_to_multiple_devices(
+            device_tokens=related_tokens,
             title=message["title"],
             body=message["body"],
             data=data,
-            topic=topic_id,
         )
 
         author = target_object.author
