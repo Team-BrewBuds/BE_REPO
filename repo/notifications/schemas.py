@@ -135,7 +135,7 @@ class NotificationSchema:
     )
 
     user_device_token_post_schema = extend_schema(
-        summary="사용자의 디바이스 토큰 저장 횩은 갱신",
+        summary="사용자의 디바이스 토큰 저장 혹은 갱신",
         description="""
             사용자의 디바이스 토큰을 생성 합니다. (로그인 시 호출)
             이미 존재하는 디바이스 토큰인 경우 갱신됩니다.
