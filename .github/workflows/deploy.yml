@@ -28,13 +28,15 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ubuntu
         key: ${{ secrets.KEY }}
-        script: mkdir -p /home/ubuntu/srv/ubuntu
+        script: |
+          mkdir -p /home/ubuntu/srv/ubuntu
+          mkdir -p /home/ubuntu/srv/ubuntu/secrets
 
     - name: Create FCM service account key file
       run: |
         echo '${{ secrets.FCM_KEY }}' > brew-buds-fcm-account.json
-        mkdir -p /home/ubuntu/srv/ubuntu/secrets
-        mv brew-buds-fcm-account.json /home/ubuntu/srv/ubuntu/secrets/
+        mkdir -p secrets
+        mv brew-buds-fcm-account.json secrets/
 
     - name: copy source via ssh key
       uses: burnett01/rsync-deployments@4.1
