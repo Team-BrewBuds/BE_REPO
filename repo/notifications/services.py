@@ -318,10 +318,11 @@ class NotificationService:
         )
         self.save_push_notification(author, "comment", data, author_record_message)
 
-        comment_author_record_message = PushNotificationRecordTemplate(comment_author).comment_noti_template_comment_author(
+        comment_author_record_message = PushNotificationRecordTemplate(comment_author.nickname).comment_noti_template_comment_author(
             object_type=object_str, object_title=target_object.title, content=comment_content
         )
-        self.save_push_notification(target_object.author, "comment", data, comment_author_record_message)
+
+        self.save_push_notifications(user_ids, "comment", data, comment_author_record_message)
 
     def send_notification_like(self, object_type: Post | TastedRecord | Comment, liked_user: CustomUser):
         """
@@ -391,4 +392,21 @@ class NotificationService:
             title=record_message["title"],
             body=record_message["body"],
             data=data,
+        )
+
+    def save_push_notifications(self, user_ids: List[int], notification_type: str, data: dict, record_message: Dict[str, str]):
+        """
+        푸시 알림들 저장
+        """
+        PushNotification.objects.bulk_create(
+            [
+                PushNotification(
+                    user_id=user_id,
+                    notification_type=notification_type,
+                    title=record_message["title"],
+                    body=record_message["body"],
+                    data=data,
+                )
+                for user_id in user_ids
+            ]
         )
