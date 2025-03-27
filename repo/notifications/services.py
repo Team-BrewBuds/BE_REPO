@@ -57,6 +57,21 @@ class FCMService:
         else:
             raise
 
+    @staticmethod
+    def _handle_invalid_token(device_token: str) -> None:
+        """무효한 토큰 처리"""
+        with transaction.atomic():
+            UserDevice.objects.filter(device_token=device_token).delete()
+            logger.info(f"Removed invalid token: {device_token}")
+
+    def _handle_failed_tokens(self, device_tokens: List[str], response: messaging.BatchResponse) -> None:
+        """실패한 토큰들 처리"""
+        failed_tokens = [device_tokens[idx] for idx, resp in enumerate(response.responses) if not resp.success]
+        if failed_tokens:
+            with transaction.atomic():
+                UserDevice.objects.filter(device_token__in=failed_tokens).delete()
+                logger.info(f"Removed {len(failed_tokens)} invalid tokens")
+
     @retry(max_retries=3)
     def send_push_notification_to_single_device(self, device_token: str, title: str, body: str, data: dict = None) -> bool:
         """
@@ -108,21 +123,6 @@ class FCMService:
         except Exception as e:
             logger.error(f"다중 메시지 전송 중 오류 발생: {str(e)}")
             return False
-
-    @staticmethod
-    def _handle_invalid_token(device_token: str) -> None:
-        """무효한 토큰 처리"""
-        with transaction.atomic():
-            UserDevice.objects.filter(device_token=device_token).delete()
-            logger.info(f"Removed invalid token: {device_token}")
-
-    def _handle_failed_tokens(self, device_tokens: List[str], response: messaging.BatchResponse) -> None:
-        """실패한 토큰들 처리"""
-        failed_tokens = [device_tokens[idx] for idx, resp in enumerate(response.responses) if not resp.success]
-        if failed_tokens:
-            with transaction.atomic():
-                UserDevice.objects.filter(device_token__in=failed_tokens).delete()
-                logger.info(f"Removed {len(failed_tokens)} invalid tokens")
 
     @retry(max_retries=3)
     def send_push_notification_silent(self, device_token: str, data: dict = None) -> bool:
@@ -226,18 +226,6 @@ class NotificationService:
     def __init__(self):
         self.fcm_service = FCMService()
 
-    def can_send_notification(self, user: CustomUser, notification_type: str) -> bool:
-        """
-        알림 전송 가능 여부 확인
-        """
-        if not user:
-            return False
-
-        can_send_noti = self.check_notification_settings(user, notification_type)
-        device_token = self.get_device_token(user)
-
-        return bool(can_send_noti and device_token)
-
     @staticmethod
     def check_notification_settings(user: CustomUser, notification_type: str) -> bool:
         """
@@ -267,9 +255,6 @@ class NotificationService:
     def send_notification_comment(self, topic: Topic, comment: Comment):
         """
         댓글 알림 전송
-        title : 댓글 작성자 닉네임
-        body : 댓글 내용
-        topic : 해당 게시물의 topic id
         """
 
         if isinstance(comment.post, Post):
@@ -327,9 +312,6 @@ class NotificationService:
     def send_notification_like(self, object_type: Post | TastedRecord | Comment, liked_user: CustomUser):
         """
         게시물 좋아요 알림 전송
-        title : 브루버즈
-        body : {좋아요 누른 사용자 닉네임}님이 버디님의 게시물을 좋아해요.
-        token : 게시물 작성자의 token
         """
 
         author = object_type.author
@@ -360,9 +342,6 @@ class NotificationService:
     def send_notification_follow(self, follower: CustomUser, followee: CustomUser):
         """
         팔로우 알림 전송
-        title : 브루버즈
-        body : {팔로우 신청한 사용자의 닉네임}님이 버디님을 팔로우하기 시작했어요.
-        token : 팔로우 당한 사용자의 token
         """
         if not self.check_notification_settings(followee, "follow_notify"):
             return

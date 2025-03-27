@@ -2,8 +2,6 @@ from django.db import models
 
 from repo.profiles.models import CustomUser
 
-# TODO : migration
-
 
 class UserDevice(models.Model):
     """
