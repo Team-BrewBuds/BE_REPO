@@ -115,7 +115,7 @@ def send_comment_notification(sender, instance: Comment, created: bool, **kwargs
 @receiver(post_save, sender=Relationship)
 def send_follow_notification(sender, instance: Relationship, created: bool, **kwargs):
     """
-    팔로우 생성 시 알림 전송
+    팔로우 생성 시 알림 전송 및 저장
     """
 
     if not created or instance.relationship_type != "follow":
@@ -123,7 +123,7 @@ def send_follow_notification(sender, instance: Relationship, created: bool, **kw
 
     try:
         notification_service = NotificationService()
-
         notification_service.send_notification_follow(follower=instance.from_user, followee=instance.to_user)
+        notification_service.save_push_notification_follow(instance.from_user, instance.to_user)
     except Exception as e:
         logger.error(f"팔로우 알림 전송 실패: {str(e)}")

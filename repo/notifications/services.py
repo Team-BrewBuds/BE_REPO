@@ -336,9 +336,6 @@ class NotificationService:
             device_token=device_token,
         )
 
-        record_message = PushNotificationRecordTemplate(liked_user.nickname).like_noti_template(object_str)
-        self.save_push_notification(author, "like", data, record_message)
-
     def send_notification_follow(self, follower: CustomUser, followee: CustomUser):
         """
         팔로우 알림 전송
@@ -347,7 +344,7 @@ class NotificationService:
             return
 
         message = PushNotificationTemplate(follower.nickname).follow_noti_template()
-        data = {"following_user_id": str(follower.id)}
+        data = {"follower_user_id": str(follower.id)}
         device_token = self.get_device_token(followee)
 
         self.fcm_service.send_push_notification_to_single_device(
@@ -357,7 +354,31 @@ class NotificationService:
             device_token=device_token,
         )
 
+    def save_push_notification_like(self, object_type: Post | TastedRecord | Comment, liked_user: CustomUser):
+        """
+        좋아요 알림 저장
+        """
+
+        if isinstance(object_type, Post):
+            object_str = "게시물"
+        elif isinstance(object_type, TastedRecord):
+            object_str = "시음 기록"
+        else:
+            object_str = "댓글"
+
+        author = object_type.author
+        data = {"object_id": str(object_type.id)}
+
+        record_message = PushNotificationRecordTemplate(liked_user.nickname).like_noti_template(object_str)
+        self.save_push_notification(author, "like", data, record_message)
+
+    def save_push_notification_follow(self, follower: CustomUser, followee: CustomUser):
+        """
+        팔로우 알림 저장
+        """
+
         record_message = PushNotificationRecordTemplate(follower.nickname).follow_noti_template()
+        data = {"follower_user_id": str(follower.id)}
         self.save_push_notification(followee, "follow", data, record_message)
 
     def save_push_notification(self, user: CustomUser, notification_type: str, data: dict, record_message: Dict[str, str]):

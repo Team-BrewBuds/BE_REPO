@@ -53,12 +53,13 @@ class LikeService:
 
         self.like_repo.like_cnt.add(user_id)
 
+        self.target_model.objects.filter(id=self.like_repo.id).select_for_update(of=["self"]).values("likes").update(likes=F("likes") + 1)
+
         # 알림 전송
         if self.like_repo.author.id != user_id:  # 자신의 게시물에 좋아요를 누른 경우 알림 전송하지 않음
             liked_user = CustomUser.objects.get(id=user_id)
             self.notification_service.send_notification_like(self.like_repo, liked_user)
-
-        self.target_model.objects.filter(id=self.like_repo.id).select_for_update(of=["self"]).values("likes").update(likes=F("likes") + 1)
+            self.notification_service.save_push_notification_like(self.like_repo, liked_user)
 
     @transaction.atomic
     def decrease_like(self, user_id: int) -> None:
