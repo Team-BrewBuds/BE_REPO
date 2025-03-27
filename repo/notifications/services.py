@@ -39,6 +39,7 @@ class FCMService:
 
         try:
             self.app = self._get_or_create_firebase_app()
+            logger.info("Firebase 초기화 성공")
         except Exception as e:
             self._handle_initialization_error(e)
 

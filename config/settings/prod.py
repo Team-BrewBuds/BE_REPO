@@ -45,4 +45,4 @@ AWS_ACCESS_KEY_ID = env.str("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = env.str("AWS_SECRET_ACCESS_KEY")
 
 # FCM
-FCM_SERVICE_ACCOUNT_FILE = env.str("FCM_SERVICE_ACCOUNT_FILE")
+FCM_SERVICE_ACCOUNT_FILE = os.path.join(BASE_DIR, "secrets", "brew-buds-fcm-account.json")

@@ -37,4 +37,4 @@ STORAGES = {
 }
 
 # FCM
-FCM_SERVICE_ACCOUNT_FILE = env.str("FCM_SERVICE_ACCOUNT_FILE")
+FCM_SERVICE_ACCOUNT_FILE = os.path.join(BASE_DIR, "secrets", "brew-buds-fcm-account.json")
