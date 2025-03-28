@@ -43,6 +43,7 @@ class TastedRecordService(BaseRecordService):
     def get_user_records(self, user_id: int, **kwargs) -> QuerySet[TastedRecord]:
         """유저가 작성한 시음기록 조회"""
         user = self.user_service.get_user_by_id(user_id)
+        TastedRecord.objects.select_related("taste_review").only("taste_review__star")
         return (
             user.tastedrecord_set.select_related("bean", "taste_review")
             .prefetch_related("photo_set")
