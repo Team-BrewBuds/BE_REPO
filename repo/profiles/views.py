@@ -9,7 +9,7 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Avg, Count, F
+from django.db.models import Avg, Count, F, Q
 from django.db.models.functions import TruncDate
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -409,17 +409,18 @@ class UserNoteAPIView(APIView):
         post_ids = notes.values_list("post_id", flat=True)
         tasted_record_ids = notes.values_list("tasted_record_id", flat=True)
 
-        post_photos_dict = {post_id: url for post_id, url in Photo.objects.filter(post_id__in=post_ids).values_list("post_id", "photo_url")}
-        tasted_record_photos_dict = {
-            tr_id: url
-            for tr_id, url in Photo.objects.filter(tasted_record_id__in=tasted_record_ids).values_list("tasted_record_id", "photo_url")
-        }
+        photos = Photo.objects.filter(Q(post_id__in=post_ids) | Q(tasted_record_id__in=tasted_record_ids)).values_list(
+            "post_id", "tasted_record_id", "photo_url"
+        )
+
+        post_photos = {p_id: url for p_id, _, url in photos if p_id}
+        tr_photos = {tr_id: url for _, tr_id, url in photos if tr_id}
 
         for note in notes:
             if note.post_id:
-                note.photo_url = post_photos_dict.get(note.post_id)
+                note.photo_url = post_photos.get(note.post_id)
             elif note.tasted_record_id:
-                note.photo_url = tasted_record_photos_dict.get(note.tasted_record_id)
+                note.photo_url = tr_photos.get(note.tasted_record_id)
 
         return get_paginated_response_with_class(request, notes, UserNoteSerializer)
 
