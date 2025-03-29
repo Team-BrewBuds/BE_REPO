@@ -404,8 +404,10 @@ class OtherProfileAPIView(APIView):
 class UserNoteAPIView(APIView):
     def get(self, request, id):
         user = get_object_or_404(CustomUser, id=id)
-        notes = user.note_set.filter(bean__isnull=True).select_related(
-            "post", "tasted_record", "tasted_record__taste_review", "tasted_record__bean"
+        notes = (
+            user.note_set.filter(bean__isnull=True)
+            .select_related("post", "tasted_record", "tasted_record__taste_review", "tasted_record__bean")
+            .order_by("-id")
         )
 
         post_ids = notes.values_list("post_id", flat=True)
