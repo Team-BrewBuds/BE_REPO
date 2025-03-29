@@ -47,7 +47,8 @@ class NoteTastedRecordSimpleSerializer(serializers.ModelSerializer):
     bean_name = serializers.CharField(source="tasted_record.bean.name")
     flavor = serializers.CharField(source="tasted_record.taste_review.flavor")
     photo_url = serializers.CharField(read_only=True)
+    star = serializers.FloatField(source="tasted_record.taste_review.star", read_only=True, default=0, min_value=0, max_value=5)
 
     class Meta:
         model = Note
-        fields = ["tasted_record_id", "bean_name", "flavor", "photo_url"]
+        fields = ["tasted_record_id", "bean_name", "flavor", "photo_url", "star"]
