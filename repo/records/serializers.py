@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from repo.common.utils import get_time_difference
 from repo.interactions.note.models import Note
 from repo.records.models import Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
@@ -29,9 +30,12 @@ class NotePostSimpleSerializer(serializers.ModelSerializer):
     post_id = serializers.IntegerField(source="post.id")
     title = serializers.CharField(source="post.title")
     subject = serializers.CharField(source="post.subject")
-    created_at = serializers.DateTimeField(source="post.created_at")
+    created_at = serializers.SerializerMethodField()
     nickname = serializers.CharField(source="post.author.nickname", read_only=True)
     photo_url = serializers.CharField(read_only=True)
+
+    def get_created_at(self, obj):
+        return get_time_difference(obj.post.created_at)
 
     class Meta:
         model = Note
