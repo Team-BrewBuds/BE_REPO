@@ -22,7 +22,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from repo.beans.models import Bean
 from repo.beans.services import BeanService
-from repo.common.utils import get_first_photo_url, get_paginated_response_with_class
+from repo.common.utils import get_paginated_response_with_class
 from repo.interactions.note.models import Note
 from repo.profiles.models import CustomUser, UserDetail
 from repo.profiles.schemas import *
@@ -40,7 +40,7 @@ from repo.profiles.serializers import (
     UserUpdateSerializer,
 )
 from repo.profiles.services import UserService
-from repo.records.models import Post, TastedRecord
+from repo.records.models import Photo, Post, TastedRecord
 from repo.records.serializers import UserNoteSerializer
 
 BASE_BACKEND_URL = settings.BASE_BACKEND_URL
@@ -406,12 +406,22 @@ class UserNoteAPIView(APIView):
         user = get_object_or_404(CustomUser, id=id)
         notes = user.note_set.filter(bean__isnull=True).select_related("post", "tasted_record")
 
-        notes_with_photos = []
-        for note in notes:
-            note.photo_url = get_first_photo_url(note.post if note.post else note.tasted_record)
-            notes_with_photos.append(note)
+        post_ids = notes.values_list("post_id", flat=True)
+        tasted_record_ids = notes.values_list("tasted_record_id", flat=True)
 
-        return get_paginated_response_with_class(request, notes_with_photos, UserNoteSerializer)
+        post_photos_dict = {post_id: url for post_id, url in Photo.objects.filter(post_id__in=post_ids).values_list("post_id", "photo_url")}
+        tasted_record_photos_dict = {
+            tr_id: url
+            for tr_id, url in Photo.objects.filter(tasted_record_id__in=tasted_record_ids).values_list("tasted_record_id", "photo_url")
+        }
+
+        for note in notes:
+            if note.post_id:
+                note.photo_url = post_photos_dict.get(note.post_id)
+            elif note.tasted_record_id:
+                note.photo_url = tasted_record_photos_dict.get(note.tasted_record_id)
+
+        return get_paginated_response_with_class(request, notes, UserNoteSerializer)
 
 
 class PrefSummaryView(APIView):
