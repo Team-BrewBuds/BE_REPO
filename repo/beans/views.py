@@ -14,7 +14,7 @@ from repo.beans.serializers import (
     BeanSerializer,
     UserBeanSerializer,
 )
-from repo.beans.services import BeanService
+from repo.beans.services import BeanRankingService, BeanService
 from repo.common.filters import BeanFilter
 from repo.interactions.note.models import Note
 from repo.records.models import TastedRecord
@@ -111,3 +111,10 @@ class BeanTastedRecordView(APIView):
         serializer = TastedRecordSearchSerializer(paginated_records, many=True)
 
         return paginator.get_paginated_response(serializer.data)
+
+
+class BeanRankingAPIView(APIView):
+    def get(self, request):
+        service = BeanRankingService()
+        top_beans = service.get_top_weekly_beans()
+        return Response(top_beans)
