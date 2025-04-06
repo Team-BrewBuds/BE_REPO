@@ -19,4 +19,8 @@ app.conf.beat_schedule = {
         "task": "repo.records.posts.tasks.cache_top_posts",
         "schedule": crontab(hour=0, minute=0, day_of_week=1),
     },
+    "cache-top-beans-weekly": {  # 매일 자정에 원두 랭킹 캐시
+        "task": "repo.beans.tasks.cache_top_beans",
+        "schedule": crontab(hour=0, minute=0),
+    },
 }
