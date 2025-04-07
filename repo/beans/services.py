@@ -9,7 +9,6 @@ from django.utils import timezone
 from redis.exceptions import ConnectionError
 
 from repo.beans.models import Bean
-from repo.beans.serializers import BeanSerializer
 from repo.beans.tasks import TOP_BEAN_RANK_COUNT, cache_top_beans
 from repo.common.exception.exceptions import NotFoundException
 from repo.profiles.models import CustomUser
@@ -146,4 +145,4 @@ class BeanRankingService:
             .order_by("-record_count")[:TOP_BEAN_RANK_COUNT]
         )
 
-        return BeanSerializer(top_beans, many=True).data
+        return top_beans

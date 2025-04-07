@@ -5,7 +5,7 @@ from django.core.cache import cache
 from django.db.models import Count
 from django.utils import timezone
 
-from repo.beans.serializers import BeanSerializer
+from repo.beans.serializers import BeanRankingSerializer
 from repo.records.models import TastedRecord
 
 CACHE_TTL = 60 * 60 * 24 * 7  # 1주일
@@ -24,7 +24,7 @@ def cache_top_beans(self):
             .order_by("-record_count")[:TOP_BEAN_RANK_COUNT]
         )
 
-        serialized_beans = BeanSerializer(top_beans, many=True).data
+        serialized_beans = BeanRankingSerializer(top_beans, many=True).data
         cache.set("top_beans:weekly", serialized_beans, timeout=CACHE_TTL)
         print("Top beans cached successfully.")
     except Exception as e:

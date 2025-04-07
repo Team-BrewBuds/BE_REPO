@@ -1,4 +1,4 @@
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, QuerySet
 from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from rest_framework import generics, status
@@ -11,6 +11,7 @@ from repo.beans.models import Bean
 from repo.beans.schemas import *
 from repo.beans.serializers import (
     BeanDetailSerializer,
+    BeanRankingSerializer,
     BeanSerializer,
     UserBeanSerializer,
 )
@@ -117,4 +118,8 @@ class BeanRankingAPIView(APIView):
     def get(self, request):
         service = BeanRankingService()
         top_beans = service.get_top_weekly_beans()
+
+        if isinstance(top_beans, QuerySet):
+            serializer = BeanRankingSerializer(top_beans, many=True)
+            return Response(serializer.data)
         return Response(top_beans)
