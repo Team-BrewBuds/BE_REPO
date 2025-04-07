@@ -127,9 +127,9 @@ class BeanRankingService:
 
             if not cached_data:
                 cache_top_beans.delay()
-                cached_data = cache.get(self.cache_key)
+                return self._get_top_beans_from_db()
 
-            return cached_data if cached_data else []
+            return cached_data
         except ConnectionError as e:
             redis_logger.error(f"Redis 연결 실패 bean_list: {str(e)}", exc_info=True)
             return self._get_top_beans_from_db()
