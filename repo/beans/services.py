@@ -1,13 +1,21 @@
+import logging
 from collections import Counter
 from typing import Dict
 
+from django.core.cache import cache
 from django.db.models import Avg, Count, FloatField, QuerySet
 from django.db.models.functions import Coalesce
+from django.utils import timezone
+from redis.exceptions import ConnectionError
 
 from repo.beans.models import Bean
+from repo.beans.tasks import TOP_BEAN_RANK_COUNT, cache_top_beans
 from repo.common.exception.exceptions import NotFoundException
 from repo.profiles.models import CustomUser
 from repo.profiles.services import UserService
+from repo.records.models import TastedRecord
+
+redis_logger = logging.getLogger("redis.server")
 
 
 class BeanService:
@@ -106,3 +114,36 @@ class BeanService:
             top_flavors[0]["percentage"] += diff
 
         return top_flavors
+
+
+class BeanRankingService:
+    def __init__(self):
+        self.cache_key = "top_beans:weekly"
+
+    def get_top_weekly_beans(self):
+        """레디스 기반 상위 원두 반환. 없을 시 DB 직접 조회."""
+        try:
+            cached_data = cache.get(self.cache_key)
+
+            if not cached_data:
+                cache_top_beans.delay()
+                return self._get_top_beans_from_db()
+
+            return cached_data
+        except ConnectionError as e:
+            redis_logger.error(f"Redis 연결 실패 bean_list: {str(e)}", exc_info=True)
+            return self._get_top_beans_from_db()
+
+    def _get_top_beans_from_db(self):
+        """레디스 실패 시 직접 DB에서 조회"""
+        one_week_ago = timezone.now() - timezone.timedelta(days=7)
+
+        top_beans = (
+            TastedRecord.objects.filter(created_at__gte=one_week_ago, bean__is_official=True)
+            .select_related("bean")
+            .values("bean_id", "bean__name")
+            .annotate(record_count=Count("id"))
+            .order_by("-record_count")[:TOP_BEAN_RANK_COUNT]
+        )
+
+        return top_beans

@@ -42,3 +42,8 @@ class BeanDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bean
         fields = "__all__"
+
+
+class BeanRankingSerializer(serializers.Serializer):
+    bean_id = serializers.IntegerField()
+    bean__name = serializers.CharField()

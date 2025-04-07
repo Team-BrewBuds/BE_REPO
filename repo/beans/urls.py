@@ -7,4 +7,5 @@ urlpatterns = [
     path("<int:id>/tasted_records/", BeanTastedRecordView.as_view(), name="bean_tasted_records"),
     path("profile/<int:id>/", UserBeanListAPIView.as_view(), name="user_beans"),
     path("search/", BeanNameSearchView.as_view(), name="bean_search"),
+    path("ranking/", BeanRankingAPIView.as_view(), name="weekly_bean_ranking"),
 ]
