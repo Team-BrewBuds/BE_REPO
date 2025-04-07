@@ -19,6 +19,7 @@ def cache_top_beans(self):
 
         top_beans = (
             TastedRecord.objects.filter(created_at__gte=one_week_ago, bean__is_official=True)  # 공식 원두만
+            .select_related("bean")
             .values("bean_id", "bean__name")
             .annotate(record_count=Count("id"))
             .order_by("-record_count")[:TOP_BEAN_RANK_COUNT]
