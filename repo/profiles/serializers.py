@@ -122,15 +122,11 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         fields = ["nickname", "user_detail"]
 
 
-class PrefSummarySerializer(serializers.ModelSerializer):
+class PrefSummarySerializer(serializers.Serializer):
     tasted_record_cnt = serializers.IntegerField()
     post_cnt = serializers.IntegerField()
-    saved_beans_cnt = serializers.IntegerField(required=False)
-    saved_notes_cnt = serializers.IntegerField(required=False)
-
-    class Meta:
-        model = CustomUser
-        fields = ["id", "nickname", "tasted_record_cnt", "post_cnt", "saved_beans_cnt", "saved_notes_cnt"]
+    saved_notes_cnt = serializers.IntegerField()
+    saved_beans_cnt = serializers.IntegerField()
 
 
 class PrefCalendarSerializer(serializers.Serializer):

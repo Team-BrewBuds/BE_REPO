@@ -431,26 +431,36 @@ class UserNoteAPIView(APIView):
 
 class PrefSummaryView(APIView):
     """
-    활동요약 API
+    전체 기간 유저 활동 요약 API (Serializer 기반, user_id URL로 받음)
     """
 
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
-        user_stats = (
-            CustomUser.objects.filter(id=user_id)
-            .annotate(tasted_record_cnt=Count("tastedrecord"), post_cnt=Count("post"), saved_notes_cnt=Count("note", distinct=True))
-            .first()
+        # 시음기록 수
+        tasted_record_cnt = TastedRecord.objects.filter(author_id=user_id).count()
+
+        # 게시글 수
+        post_cnt = Post.objects.filter(author_id=user_id).count()
+
+        # 저장한 노트 수 (post 또는 시음기록에 연결된 노트 모두 카운트)
+        post_note_cnt = Note.objects.filter(author_id=user_id, post__isnull=False).count()
+        tasted_note_cnt = Note.objects.filter(author_id=user_id, tasted_record__isnull=False).count()
+        saved_notes_cnt = post_note_cnt + tasted_note_cnt
+
+        # 저장한 원두 수
+        saved_beans_cnt = Note.objects.filter(author_id=user_id, bean__isnull=False).count()
+
+        serializer = PrefSummarySerializer(
+            data={
+                "tasted_record_cnt": tasted_record_cnt,
+                "post_cnt": post_cnt,
+                "saved_notes_cnt": saved_notes_cnt,
+                "saved_beans_cnt": saved_beans_cnt,
+            }
         )
 
-        bean_service = BeanService()
-        saved_beans_cnt = bean_service.get_user_saved(user_id).count()
-
-        serializer = PrefSummarySerializer(user_stats)
-        response_data = serializer.data
-        response_data["saved_beans_cnt"] = saved_beans_cnt
-
-        return Response(response_data, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class PrefCalendarAPIView(APIView):
