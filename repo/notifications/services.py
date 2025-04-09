@@ -272,7 +272,7 @@ class NotificationService:
         comment_author = comment.author
         comment_content = comment.content[:20]  # 댓글 내용 20자 제한
         message = PushNotificationTemplate(comment_author.nickname).comment_noti_template(comment_content)
-        data = {"comment_id": str(comment.id)}
+        data = {"comment_id": str(comment.id), "object_id": str(target_object.id)}
 
         # 해당 게시물/시음기록의 댓글 작성자들
         comment_authors = Comment.objects.filter(object_filter).values_list("author_id", flat=True).distinct()
