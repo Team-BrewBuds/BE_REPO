@@ -51,9 +51,10 @@ class UserService:
             coffee_life=F("user_detail__coffee_life"),
             preferred_bean_taste=F("user_detail__preferred_bean_taste"),
             is_certificated=F("user_detail__is_certificated"),
-            following_cnt=Value(follower_cnt),
-            follower_cnt=Value(following_cnt),
+            following_cnt=Value(following_cnt),
+            follower_cnt=Value(follower_cnt),
             post_cnt=Count("post"),
+            tasted_record_cnt=Count("tastedrecord"),
         )
 
     @transaction.atomic
