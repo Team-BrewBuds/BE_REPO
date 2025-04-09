@@ -327,15 +327,18 @@ class NotificationService:
         if not self.check_notification_settings(author, "like_notify"):
             return
 
-        if isinstance(object_type, Post):
-            object_str = "게시물"
-        elif isinstance(object_type, TastedRecord):
-            object_str = "시음 기록"
-        else:
-            object_str = "댓글"
+        object_type_map = {Post: ("게시물", "post_id"), TastedRecord: ("시음 기록", "tasted_record_id"), Comment: ("댓글", "comment_id")}
+
+        object_str, id_key = object_type_map[type(object_type)]
+        data = {id_key: str(object_type.id)}
+
+        if isinstance(object_type, Comment):
+            if object_type.post:
+                data.update({"post_id": str(object_type.post.id)})
+            elif object_type.tasted_record:
+                data.update({"tasted_record_id": str(object_type.tasted_record.id)})
 
         message = PushNotificationTemplate(liked_user.nickname).like_noti_template(object_str)
-        data = {"object_id": str(object_type.id)}
         device_token = self.get_device_token(author)
 
         self.fcm_service.send_push_notification_to_single_device(
