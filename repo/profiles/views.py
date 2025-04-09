@@ -431,10 +431,10 @@ class UserNoteAPIView(APIView):
 
 class PrefSummaryView(APIView):
     """
-    전체 기간 유저 활동 요약 API (Serializer 기반, user_id URL로 받음)
+    전체 기간 유저 활동 요약 API
     """
 
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, user_id):
         # 시음기록 수
@@ -452,7 +452,7 @@ class PrefSummaryView(APIView):
         saved_beans_cnt = Note.objects.filter(author_id=user_id, bean__isnull=False).count()
 
         serializer = PrefSummarySerializer(
-            data={
+            {
                 "tasted_record_cnt": tasted_record_cnt,
                 "post_cnt": post_cnt,
                 "saved_notes_cnt": saved_notes_cnt,
