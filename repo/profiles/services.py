@@ -54,6 +54,7 @@ class UserService:
             following_cnt=Value(following_cnt),
             follower_cnt=Value(follower_cnt),
             post_cnt=Count("post"),
+            tasted_record_cnt=Count("tastedrecord"),
         )
 
     @transaction.atomic
