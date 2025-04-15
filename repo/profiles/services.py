@@ -31,7 +31,7 @@ class UserService:
         is_user_following = self.relationship_repo.check_relationship(user_id, other_user_id, "follow")
         is_user_blocking = self.relationship_repo.check_relationship(user_id, other_user_id, "block")
 
-        base_queryset = self.get_profile_base_queryset(user_id)
+        base_queryset = self.get_profile_base_queryset(other_user_id)
         return (
             base_queryset.filter(id=other_user_id)
             .annotate(
