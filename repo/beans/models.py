@@ -64,7 +64,7 @@ class BeanTasteReview(BeanTasteBase):
 
     star = models.FloatField(choices=star_choices, verbose_name="별점")
     tasted_at = models.DateField(null=True, blank=True, verbose_name="시음일")
-    place = models.CharField(max_length=100, verbose_name="시음 장소")
+    place = models.CharField(null=True, blank=True, max_length=100, verbose_name="시음 장소")
 
     def __str__(self):
         return f"bean :{self.flavor} - {self.tasted_at}"
