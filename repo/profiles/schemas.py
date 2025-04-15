@@ -6,6 +6,7 @@ from drf_spectacular.utils import (
 )
 
 from repo.profiles.serializers import (
+    UserAccountSerializer,
     UserProfileSerializer,
     UserUpdateSerializer,
 )
@@ -120,3 +121,18 @@ class UserNoteSchema:
     )
 
     user_note_schema_view = extend_schema_view(get=user_note_get_schema)
+
+
+class UserAccountSchema:
+    user_account_get_schema = extend_schema(
+        summary="사용자 계정 정보 조회",
+        description="생일과 이메일은 null일 수 있습니다.",
+        responses={
+            200: UserAccountSerializer,
+            401: OpenApiResponse(description="user not authenticated"),
+            404: OpenApiResponse(description="user not found"),
+        },
+        tags=[Profile_Tag],
+    )
+
+    user_account_schema_view = extend_schema_view(get=user_account_get_schema)
