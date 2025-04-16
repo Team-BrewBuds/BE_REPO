@@ -62,11 +62,9 @@ class BeanService:
     def create(self, bean_data: Dict) -> Bean:
         """원두 생성"""
 
-        bean, created = Bean.objects.get_or_create(**bean_data)
-        if created:
-            # 새로운 원두 데이터는 모두 유저가 생성한 원두
-            bean.is_user_created = True
-            bean.save()
+        bean = Bean.objects.filter(**bean_data).first()
+        if not bean:
+            bean = Bean.objects.create(**bean_data)
         return bean
 
     def update(self, bean_data: Dict, user: CustomUser) -> Bean:
