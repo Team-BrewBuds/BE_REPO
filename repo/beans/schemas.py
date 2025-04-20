@@ -22,13 +22,16 @@ class BeanSchema:
         parameters=[
             PageNumberSerializer,
             OpenApiParameter(name="name", type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, description="원두명"),
+            OpenApiParameter(name="is_official", type=OpenApiTypes.BOOL, location=OpenApiParameter.QUERY, description="공식 원두 여부"),
         ],
         responses={200: BeanSerializer(many=True)},
         summary="원두명 검색",
         description="""
                시음기록 작성시 원두 선택을 위해 사용
-               - name 파라미터가 있으면 해당 원두명을 포함하는 원두 리스트를 가져온다.
                - name 파라미터가 없으면 모든 원두 리스트를 가져온다.
+               - is_official 파라미터가 true이면 공식 원두 데이터만 가져온다.
+               - is_official 파라미터가 false이면 비공식 원두 데이터만 가져온다.
+               - is_official 파라미터가 없으면 공식/비공식 데이터를 가져온다.
                - page_size = 20
 
                담당자 : hwstar1204

@@ -24,13 +24,22 @@ from repo.search.serializers import TastedRecordSearchSerializer
 
 @BeanSchema.bean_name_search_schema
 class BeanNameSearchView(APIView):
+    """
+    원두 데이터 이름 기반 검색 API
+    """
 
     def __init__(self):
         self.bean_service = BeanService()
 
     def get(self, request):
         name = request.query_params.get("name")
+        is_official = request.query_params.get("is_official", None)
+
         beans = self.bean_service.search_by_name(name).order_by("name")
+
+        if is_official is not None:
+            is_official_bool = is_official.lower() == "true"
+            beans = beans.filter(is_official=is_official_bool)
 
         paginator = PageNumberPagination()
         paginator.page_size = 20
