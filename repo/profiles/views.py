@@ -34,6 +34,7 @@ from repo.profiles.serializers import (
     PrefStarSerializer,
     PrefSummarySerializer,
     PrefTastedRecordSerializer,
+    UserAccountSerializer,
     UserDetailSignupSerializer,
     UserProfileSerializer,
     UserSignupSerializer,
@@ -682,38 +683,32 @@ class PrefCountryAPIView(APIView):
         return Response(serializer.data)
 
 
+@UserAccountSchema.user_account_schema_view
 class UserAccountInfoView(APIView):
     """
     사용자 계정 정보 조회 API
-
-    - 가입일 (YYYY년 MM월 DD일)
-    - 가입 기간 (000일째)
-    - 로그인 유형 변환
-    - 성별 변환
-    - 태어난 연도
     """
 
-    def get(self, request, user_id):
-        user = get_object_or_404(CustomUser, id=user_id)
+    permission_classes = [IsAuthenticated]
 
-        # 가입일 변환 (변환 없이 그대로 사용)
-        joined_date_str = user.created_at.strftime("%Y년 %m월 %d일")
+    def get(self, request):
+        user = request.user
 
-        # 가입 기간 계산 (오늘 날짜 - 가입일)
-        today = datetime.now().date()
-        days_since_joined = (today - user.created_at.date()).days
-        joined_duration = f"{days_since_joined}일째"
-
-        login_type = dict(CustomUser.login_type_choices).get(user.login_type, "알 수 없음")
         gender = dict(CustomUser.gender_choices).get(user.gender, "미입력")
-        birth_year = user.birth if user.birth else "미입력"
+        login_type = dict(CustomUser.login_type_choices).get(user.login_type, "알 수 없음")
+        joined_at = user.created_at.strftime("%Y년 %m월 %d일")
+
+        today = datetime.now().date()
+        joined_duration = (today - user.created_at.date()).days
 
         data = {
-            "가입일": joined_date_str,
-            "가입기간": joined_duration,
-            "로그인 유형": login_type,
-            "성별": gender,
-            "태어난 연도": birth_year,
+            "email": user.email,
+            "birth_year": user.birth,
+            "gender": gender,
+            "login_type": login_type,
+            "joined_at": joined_at,
+            "joined_duration": joined_duration,
         }
 
-        return Response(data, status=status.HTTP_200_OK)
+        serializer = UserAccountSerializer(data)
+        return Response(serializer.data, status=status.HTTP_200_OK)

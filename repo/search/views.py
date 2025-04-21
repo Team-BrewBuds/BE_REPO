@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from repo.beans.models import Bean
 from repo.common.utils import get_paginated_response_with_class
+from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.records.models import Photo, Post, TastedRecord
 from repo.search.filters import *
@@ -37,6 +38,12 @@ class BuddySearchView(APIView):
         users = CustomUser.objects.annotate(
             record_cnt=Count("tastedrecord"), follower_cnt=Count("relationships_to", filter=Q(relationships_to__relationship_type="follow"))
         )
+
+        if request.user.is_authenticated:
+            user = request.user
+            service = RelationshipService()
+            blocked_users = service.get_unique_blocked_user_list(user)
+            users = users.exclude(id__in=blocked_users)
 
         filterset = BuddyFilter(serializer.validated_data, queryset=users)
         filtered_users = filterset.qs

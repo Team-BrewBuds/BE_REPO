@@ -124,6 +124,15 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         fields = ["nickname", "user_detail"]
 
 
+class UserAccountSerializer(serializers.Serializer):
+    joined_at = serializers.CharField()
+    joined_duration = serializers.IntegerField()
+    login_type = serializers.CharField()
+    gender = serializers.CharField()
+    birth_year = serializers.IntegerField(required=False)
+    email = serializers.CharField(required=False)
+
+
 class PrefSummarySerializer(serializers.Serializer):
     tasted_record_cnt = serializers.IntegerField()
     post_cnt = serializers.IntegerField()

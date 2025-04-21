@@ -1,11 +1,12 @@
 import random
 
 from django.db import transaction
-from django.db.models import Count, F, QuerySet, Value
+from django.db.models import F, QuerySet, Value
 from rest_framework.generics import get_object_or_404
 
 from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser, UserDetail
+from repo.records.models import Post, TastedRecord
 
 
 class UserService:
@@ -30,7 +31,7 @@ class UserService:
         is_user_following = self.relationship_repo.check_relationship(user_id, other_user_id, "follow")
         is_user_blocking = self.relationship_repo.check_relationship(user_id, other_user_id, "block")
 
-        base_queryset = self.get_profile_base_queryset(user_id)
+        base_queryset = self.get_profile_base_queryset(other_user_id)
         return (
             base_queryset.filter(id=other_user_id)
             .annotate(
@@ -44,6 +45,8 @@ class UserService:
         """유저 프로필 기본 쿼리셋 조회"""
         follower_cnt = self.relationship_repo.get_followers(id).count()
         following_cnt = self.relationship_repo.get_following(id).count()
+        post_cnt = Post.objects.filter(author_id=id).count()
+        tasted_record_cnt = TastedRecord.objects.filter(author_id=id).count()
 
         return CustomUser.objects.select_related("user_detail").annotate(
             introduction=F("user_detail__introduction"),
@@ -53,8 +56,8 @@ class UserService:
             is_certificated=F("user_detail__is_certificated"),
             following_cnt=Value(following_cnt),
             follower_cnt=Value(follower_cnt),
-            post_cnt=Count("post"),
-            tasted_record_cnt=Count("tastedrecord"),
+            post_cnt=Value(post_cnt),
+            tasted_record_cnt=Value(tasted_record_cnt),
         )
 
     @transaction.atomic
