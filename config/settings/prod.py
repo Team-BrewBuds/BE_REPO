@@ -46,3 +46,5 @@ AWS_SECRET_ACCESS_KEY = env.str("AWS_SECRET_ACCESS_KEY")
 
 # FCM
 FCM_SERVICE_ACCOUNT_FILE = os.path.join(BASE_DIR, "secrets", "brew-buds-fcm-account.json")
+
+from .settings_modules.sentry import *  # noqa: E402
