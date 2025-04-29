@@ -318,25 +318,25 @@ class NotificationService:
         )
         self.save_push_notifications(user_ids, "comment", data, comment_author_record_message)
 
-    def send_notification_like(self, object_type: Post | TastedRecord | Comment, liked_user: CustomUser):
+    def send_notification_like(self, instance: Post | TastedRecord | Comment, liked_user: CustomUser) -> tuple[dict, str]:
         """
         게시물 좋아요 알림 전송
         """
 
-        author = object_type.author
+        author = instance.author
         if not self.check_notification_settings(author, "like_notify"):
             return
 
         object_type_map = {Post: ("게시물", "post_id"), TastedRecord: ("시음 기록", "tasted_record_id"), Comment: ("댓글", "comment_id")}
 
-        object_str, id_key = object_type_map[type(object_type)]
-        data = {id_key: str(object_type.id)}
+        object_str, id_key = object_type_map[type(instance)]
+        data = {id_key: str(instance.id)}
 
-        if isinstance(object_type, Comment):
-            if object_type.post:
-                data.update({"post_id": str(object_type.post.id)})
-            elif object_type.tasted_record:
-                data.update({"tasted_record_id": str(object_type.tasted_record.id)})
+        if isinstance(instance, Comment):
+            if instance.post:
+                data.update({"post_id": str(instance.post.id)})
+            elif instance.tasted_record:
+                data.update({"tasted_record_id": str(instance.tasted_record.id)})
 
         message = PushNotificationTemplate(liked_user.nickname).like_noti_template(object_str)
         device_token = self.get_device_token(author)
@@ -347,6 +347,7 @@ class NotificationService:
             data=data,
             device_token=device_token,
         )
+        return data, object_str
 
     def send_notification_follow(self, follower: CustomUser, followee: CustomUser):
         """
@@ -366,21 +367,12 @@ class NotificationService:
             device_token=device_token,
         )
 
-    def save_push_notification_like(self, object_type: Post | TastedRecord | Comment, liked_user: CustomUser):
+    def save_push_notification_like(self, object_type: Post | TastedRecord | Comment, liked_user: CustomUser, data: dict, object_str: str):
         """
         좋아요 알림 저장
         """
 
-        if isinstance(object_type, Post):
-            object_str = "게시물"
-        elif isinstance(object_type, TastedRecord):
-            object_str = "시음 기록"
-        else:
-            object_str = "댓글"
-
         author = object_type.author
-        data = {"object_id": str(object_type.id)}
-
         record_message = PushNotificationRecordTemplate(liked_user.nickname).like_noti_template(object_str)
         self.save_push_notification(author, "like", data, record_message)
 
