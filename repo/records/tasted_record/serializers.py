@@ -19,7 +19,7 @@ class TastedRecordListSerializer(serializers.ModelSerializer):
     # 원두 정보
     bean_name = serializers.CharField(source="bean.name")
     bean_type = serializers.CharField(source="bean.get_bean_type_display")
-    star_rating = serializers.IntegerField(source="taste_review.star")
+    star_rating = serializers.FloatField(source="taste_review.star")
     flavor = serializers.CharField(source="taste_review.flavor")
     # 기타 정보
     created_at = serializers.SerializerMethodField()
@@ -77,7 +77,7 @@ class TastedRecordCreateUpdateSerializer(serializers.ModelSerializer):
 class TastedRecordInPostSerializer(serializers.ModelSerializer):
     bean_name = serializers.CharField(source="bean.name")
     bean_type = serializers.CharField(source="bean.get_bean_type_display")
-    star_rating = serializers.IntegerField(source="taste_review.star")
+    star_rating = serializers.FloatField(source="taste_review.star")
     flavor = serializers.CharField(source="taste_review.flavor")
     photos = PhotoSerializer(many=True, source="photo_set")
 
