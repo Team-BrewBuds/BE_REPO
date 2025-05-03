@@ -12,8 +12,16 @@ class PushNotificationTemplate:
     # fmt: off
     MESSAGE_FORMATS = {
         "author": {
-            "title": "{sender_name}",
+            "title": APP_NAME,
             "body": "{content}"
+        },
+        "comment": {  # (댓글 작성시) 게시물 작성자에게 알림
+            "title": APP_NAME,
+            "body": "{sender_name}님이 버디님의 {object_type}에 댓글을 남겼어요."
+        },
+        "comment_reply": {  # (대댓글 작성시) 댓글 작성자에게 알림
+            "title": APP_NAME,
+            "body": "{sender_name}님이 버디님의 댓글에 답글을 남겼어요."
         },
         "like": {
             "title": APP_NAME,
@@ -29,13 +37,20 @@ class PushNotificationTemplate:
     def __init__(self, sender_name: str):
         self.sender_name = sender_name
 
-    def comment_noti_template(self, body: str) -> dict:
+    def comment_noti_template(self, is_reply: bool = False, object_type: str = None) -> dict:
         """댓글 알림 메시지 템플릿"""
-        template = self.MESSAGE_FORMATS["author"]
-        return {
-            "title": template["title"].format(sender_name=self.sender_name),
-            "body": template["body"].format(content=body),
-        }
+        if is_reply:
+            template = self.MESSAGE_FORMATS["comment_reply"]
+            return {
+                "title": template["title"],
+                "body": template["body"].format(sender_name=self.sender_name),
+            }
+        else:
+            template = self.MESSAGE_FORMATS["comment"]
+            return {
+                "title": template["title"],
+                "body": template["body"].format(sender_name=self.sender_name, object_type=object_type),
+            }
 
     def like_noti_template(self, object_type: str = "게시물") -> dict:
         """좋아요 알림 메시지 템플릿"""
@@ -62,14 +77,6 @@ class PushNotificationRecordTemplate:
 
     # fmt: off
     MESSAGE_FORMATS = {
-        "author": {
-            "title": "{object_type}",
-            "body": "{sender_name}님이 버디님의 {object_type}에 댓글을 남겼어요. \n {content}"
-        },
-        "comment_author": {
-            "title": "{object_type}",
-            "body": "'{object_title}' {object_type}에 {sender_name}님이 댓글을 남겼어요. \n {content}"
-        },
         "like": {
             "title": "{object_type}",
             "body": "{sender_name}님이 버디님의 {object_type}을 좋아해요."
@@ -83,24 +90,6 @@ class PushNotificationRecordTemplate:
 
     def __init__(self, sender_name: str):
         self.sender_name = sender_name
-
-    def comment_noti_template_author(self, object_type: str, content: str) -> Dict[str, str]:
-        """나의 게시물에 댓글 알림 메시지 템플릿"""
-        template = self.MESSAGE_FORMATS["author"]
-        return {
-            "title": template["title"].format(object_type=object_type),
-            "body": template["body"].format(sender_name=self.sender_name, object_type=object_type, content=content),
-        }
-
-    def comment_noti_template_comment_author(self, object_type: str, object_title: str, content: str) -> Dict[str, str]:
-        """내가 댓글 단 게시물의 작성자에게 알림 메시지 템플릿"""
-        template = self.MESSAGE_FORMATS["comment_author"]
-        return {
-            "title": template["title"].format(object_type=object_type),
-            "body": template["body"].format(
-                sender_name=self.sender_name, object_type=object_type, object_title=object_title, content=content
-            ),
-        }
 
     def like_noti_template(self, object_type: str = "게시물") -> Dict[str, str]:
         """좋아요 알림 메시지 템플릿"""

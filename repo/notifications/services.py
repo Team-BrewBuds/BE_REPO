@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 import firebase_admin
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
 from firebase_admin import credentials, exceptions, messaging
 from firebase_admin.messaging import Message, MulticastMessage, Notification
 
@@ -244,7 +243,7 @@ class NotificationService:
         """
         사용자의 디바이스 토큰 조회
         """
-        device = UserDevice.objects.filter(user=user, is_active=True).select_related("user").first()
+        device = UserDevice.objects.filter(user=user, is_active=True).first()
         return device.device_token if device else None
 
     @staticmethod
@@ -255,68 +254,62 @@ class NotificationService:
         tokens = UserDevice.objects.filter(user_id__in=user_ids, is_active=True).values_list("device_token", flat=True)
         return list(tokens)
 
+    @transaction.atomic
     def send_notification_comment(self, topic: Topic, comment: Comment):
         """
         댓글 알림 전송
         """
 
+        comment_author = comment.author
+
         if isinstance(comment.post, Post):
             target_object = comment.post
             object_str = "게시물"
-            object_filter = Q(post=target_object)
         else:  # TastedRecord
             target_object = comment.tasted_record
             object_str = "시음 기록"
-            object_filter = Q(tasted_record=target_object)
 
-        comment_author = comment.author
-        comment_content = comment.content[:20]  # 댓글 내용 20자 제한
-        message = PushNotificationTemplate(comment_author.nickname).comment_noti_template(comment_content)
-        data = {"comment_id": str(comment.id), "object_id": str(target_object.id), "object_type": object_str}
+        # 알림 대상 선정
+        # {알림 대상} - {알림 트리거 유저} - {댓글 알림 설정 OFF 유저}
+        # 댓글 작성시 : 댓글의 해당 게시물 작성자만 고려
+        # 대댓글 작성시 : 대댓글의 해당 댓글의 작성자만 고려
 
-        # 해당 게시물/시음기록의 댓글 작성자들
-        comment_authors = Comment.objects.filter(object_filter).values_list("author_id", flat=True).distinct()
-        noti_recipients = set(comment_authors)  # 댓글 작성자들
-        noti_recipients.add(target_object.author.id)  # 게시물/시음기록 작성자
-        noti_recipients.discard(comment_author.id)  # 현재 댓글 작성자 제외
+        if reply := comment.parent:  # 대댓글인 경우
+            noti_target_user = reply.author
+            comment_noti_msg = PushNotificationTemplate(comment_author.nickname).comment_noti_template(is_reply=True)
+        else:  # 댓글인 경우
+            noti_target_user = target_object.author
+            comment_noti_msg = PushNotificationTemplate(comment_author.nickname).comment_noti_template(
+                is_reply=False, object_type=object_str
+            )
 
-        noti_recipients = NotificationSetting.objects.filter(
-            user_id__in=noti_recipients,
-            comment_notify=True,
-        ).values_list(
-            "user_id", flat=True
-        )  # 알림 수신 가능 대상자들
+        data = {
+            "comment_id": str(comment.id),
+            "object_id": str(target_object.id),
+            "object_type": object_str,
+        }
 
-        user_ids = list(noti_recipients)
-        related_tokens = self.get_device_tokens(user_ids)
+        if noti_target_user.id == comment_author.id:
+            return  # 댓글 작성자와 대상 객체 작성자가 같은 경우 알림 전송 제외
 
-        if not related_tokens:
-            return
+        has_comment_notify = NotificationSetting.objects.filter(user=noti_target_user).values_list("comment_notify", flat=True).first()
+        if not has_comment_notify:
+            return  # 댓글 알림 설정 OFF 유저
 
-        self.fcm_service.send_push_notification_to_multiple_devices(
-            device_tokens=related_tokens,
-            title=message["title"],
-            body=message["body"],
+        device_token = self.get_device_token(noti_target_user)
+        if not device_token:
+            return  # 댓글 알림 설정 ON 유저이지만 디바이스 토큰이 없는 경우 알림 전송 제외
+
+        self.fcm_service.send_push_notification_to_single_device(
+            device_token=device_token,
+            title=comment_noti_msg["title"],
+            body=comment_noti_msg["body"],
             data=data,
         )
 
-        author = target_object.author
-        if author != comment_author:  # 게시물/시음기록 작성자와 댓글 작성자가 다른 경우
-            author_record_message = PushNotificationRecordTemplate(comment_author.nickname).comment_noti_template_author(
-                object_type=object_str, content=comment_content
-            )
-            self.save_push_notification(author, "comment", data, author_record_message)
+        self.save_push_notification(noti_target_user, "comment", data, comment_noti_msg)
 
-        if comment_author.id in user_ids:  # 댓글 작성자가 알림 수신 가능 대상자에 있는 경우
-            user_ids.remove(comment_author.id)  # 댓글 작성자 제외
-
-        if author.id in user_ids:
-            user_ids.remove(author.id)  # 게시물/시음기록 작성자 제외
-
-        comment_author_record_message = PushNotificationRecordTemplate(comment_author.nickname).comment_noti_template_comment_author(
-            object_type=object_str, object_title=target_object.title, content=comment_content
-        )
-        self.save_push_notifications(user_ids, "comment", data, comment_author_record_message)
+        logger.info(f"댓글 알림 전송 및 저장 완료 - comment_id: {comment.id}, target_user: {noti_target_user.id}")
 
     def send_notification_like(self, instance: Post | TastedRecord | Comment, liked_user: CustomUser) -> tuple[dict, str]:
         """
