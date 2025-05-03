@@ -321,10 +321,11 @@ class NotificationService:
     def send_notification_like(self, instance: Post | TastedRecord | Comment, liked_user: CustomUser) -> tuple[dict, str]:
         """
         게시물 좋아요 알림 전송
+        - 제외 조건: 댓글 좋아요, 좋아요 알림 설정 OFF
         """
 
         author = instance.author
-        if not self.check_notification_settings(author, "like_notify"):
+        if isinstance(instance, Comment) or not self.check_notification_settings(author, "like_notify"):
             return
 
         object_type_map = {Post: ("게시물", "post_id"), TastedRecord: ("시음 기록", "tasted_record_id"), Comment: ("댓글", "comment_id")}
