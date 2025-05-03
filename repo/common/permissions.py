@@ -12,3 +12,23 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             return True
 
         return obj.author == request.user
+
+
+class IsAuthorOrOwner(permissions.BasePermission):
+    """
+    삭제 권한
+    게시물(게시글, 시음기록)의 작성자 또는 댓글 작성자인경우 삭제 가능
+    ex) 게시물 작성자는 자신 및 타인의 댓글도 삭제 가능한 권한
+    """
+
+    def has_permission(self, request, view):
+        return request.method == "DELETE"
+
+    def has_object_permission(self, request, view, obj):
+        return any(
+            [
+                obj.author and obj.author == request.user,
+                obj.post and obj.post.author == request.user,
+                obj.tasted_record and obj.tasted_record.author == request.user,
+            ]
+        )
