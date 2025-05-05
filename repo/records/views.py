@@ -19,8 +19,8 @@ from repo.common.serializers import (
     PhotoUploadSerializer,
 )
 from repo.common.utils import (
+    get_object_by_type,
     get_paginated_response_with_class,
-    get_post_or_tasted_record_detail,
 )
 from repo.records.models import Photo
 from repo.records.schemas import *
@@ -100,7 +100,7 @@ class PhotoApiView(APIView):
         object_id = serializer.validated_data["object_id"]
 
         try:
-            obj = get_post_or_tasted_record_detail(object_type, object_id)  # 객체 존재 여부 확인
+            obj = get_object_by_type(object_type, object_id)  # 객체 존재 여부 확인
 
             if obj.author != request.user:  # 작성자 권한 체크
                 return Response({"error": "권한이 없습니다"}, status=status.HTTP_403_FORBIDDEN)
@@ -132,7 +132,7 @@ class PhotoApiView(APIView):
         object_id = serializer.validated_data["object_id"]
 
         try:
-            obj = get_post_or_tasted_record_detail(object_type, object_id)
+            obj = get_object_by_type(object_type, object_id)
 
             if obj.author != request.user:  # 작성자 권한 체크
                 return Response({"error": "권한이 없습니다"}, status=status.HTTP_403_FORBIDDEN)

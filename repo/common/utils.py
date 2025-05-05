@@ -10,7 +10,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 
-from repo.records.models import Post, TastedRecord
+from repo.records.models import Comment, Post, TastedRecord
 
 
 def get_object(pk: int, model: Type[Model]) -> Tuple[Optional[Model], Optional[Response]]:
@@ -149,16 +149,16 @@ def get_first_photo_url(obj: Model) -> Optional[str]:
     return None
 
 
-def get_post_or_tasted_record_detail(object_type, object_id):
+def get_object_by_type(object_type, object_id):
     """
-    게시글 또는 시음기록의 상세 정보를 반환합니다.
+    주어진 타입과 ID에 해당하는 객체를 반환합니다.
 
     Args:
-        object_type: 객체 타입 ('post' 또는 'tasted_record')
+        object_type: 객체 타입 ('post' 또는 'tasted_record' 또는 'comment')
         object_id: 객체 ID
 
     Returns:
-        Post or TastedRecord: 요청된 객체
+        Post or TastedRecord or Comment: 요청된 객체
 
     Raises:
         ValueError: 유효하지 않은 object_type이 전달된 경우
@@ -167,6 +167,8 @@ def get_post_or_tasted_record_detail(object_type, object_id):
         obj = get_object_or_404(Post, pk=object_id)
     elif object_type == "tasted_record":
         obj = get_object_or_404(TastedRecord, pk=object_id)
+    elif object_type == "comment":
+        obj = get_object_or_404(Comment, pk=object_id)
     else:
         raise ValueError("invalid object_type")
 
