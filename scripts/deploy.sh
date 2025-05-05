@@ -26,5 +26,31 @@ fi
 echo "Stopping and removing existing containers: ubuntu"
 sudo docker-compose -f /home/ubuntu/srv/ubuntu/docker-compose.prod.yaml down
 
+# SSL 인증서 설정
+echo "Setting up SSL certificates"
+if ! command -v certbot &> /dev/null; then
+  echo "Installing certbot"
+  sudo apt-get update
+  sudo apt-get install -y certbot
+fi
+
+# Check if certificate exists
+if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+  echo "Requesting new SSL certificate"
+  # Request new certificate
+  sudo certbot certonly --standalone -d $DOMAIN --agree-tos --email $EMAIL --non-interactive
+
+  # Create ssl directory if it doesn't exist
+  sudo mkdir -p /home/ubuntu/srv/ubuntu/ssl/live/$DOMAIN
+  sudo mkdir -p /home/ubuntu/srv/ubuntu/ssl/archive/$DOMAIN
+
+  # Copy certificates
+  sudo cp /etc/letsencrypt/live/$DOMAIN/* /home/ubuntu/srv/ubuntu/ssl/live/$DOMAIN/
+  sudo cp /etc/letsencrypt/archive/$DOMAIN/* /home/ubuntu/srv/ubuntu/ssl/archive/$DOMAIN/
+
+  # Set proper permissions
+  sudo chown -R ubuntu:ubuntu /home/ubuntu/srv/ubuntu/ssl
+fi
+
 echo "start docker-compose up: ubuntu"
 sudo docker-compose -f /home/ubuntu/srv/ubuntu/docker-compose.prod.yaml up --build -d

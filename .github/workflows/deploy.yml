@@ -39,21 +39,6 @@ jobs:
         mkdir -p secrets
         mv brew-buds-fcm-account.json secrets/
 
-    - name: Setup SSL certificates
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ubuntu
-        key: ${{ secrets.KEY }}
-        script: |
-          if [ ! -d "/home/ubuntu/srv/ubuntu/ssl/live" ]; then
-            sudo apt-get update
-            sudo apt-get install -y certbot
-            sudo certbot certonly --standalone -d ${{ secrets.DOMAIN }} --agree-tos --email ${{ secrets.EMAIL }} --non-interactive
-            sudo cp -r /etc/letsencrypt/live/* /home/ubuntu/srv/ubuntu/ssl/
-            sudo cp -r /etc/letsencrypt/archive/* /home/ubuntu/srv/ubuntu/ssl/
-          fi
-
     - name: copy source via ssh key
       uses: burnett01/rsync-deployments@4.1
       with:
@@ -70,4 +55,6 @@ jobs:
         username: ubuntu
         key: ${{ secrets.KEY }}
         script: |
+          export DOMAIN=${{ secrets.DOMAIN }}
+          export EMAIL=${{ secrets.EMAIL }}
           sh /home/ubuntu/srv/ubuntu/scripts/deploy.sh
