@@ -255,24 +255,17 @@ class NotificationService:
         return list(tokens)
 
     @transaction.atomic
-    def send_notification_comment(self, topic: Topic, comment: Comment):
+    def send_notification_comment(self, topic: Topic, target_object: Post | TastedRecord, comment: Comment) -> None:
         """
         댓글 알림 전송
+
+        알림 대상 선정
+        - {알림 대상} - {알림 트리거 유저} - {댓글 알림 설정 OFF 유저}
+        - 댓글 작성시 : 댓글의 해당 게시물 작성자만 고려
+        - 대댓글 작성시 : 대댓글의 해당 댓글의 작성자만 고려
         """
 
         comment_author = comment.author
-
-        if isinstance(comment.post, Post):
-            target_object = comment.post
-            object_str = "게시물"
-        else:  # TastedRecord
-            target_object = comment.tasted_record
-            object_str = "시음 기록"
-
-        # 알림 대상 선정
-        # {알림 대상} - {알림 트리거 유저} - {댓글 알림 설정 OFF 유저}
-        # 댓글 작성시 : 댓글의 해당 게시물 작성자만 고려
-        # 대댓글 작성시 : 대댓글의 해당 댓글의 작성자만 고려
 
         if reply := comment.parent:  # 대댓글인 경우
             noti_target_user = reply.author
@@ -280,13 +273,13 @@ class NotificationService:
         else:  # 댓글인 경우
             noti_target_user = target_object.author
             comment_noti_msg = PushNotificationTemplate(comment_author.nickname).comment_noti_template(
-                is_reply=False, object_type=object_str
+                is_reply=False, object_type=topic.display_name
             )
 
         data = {
             "comment_id": str(comment.id),
             "object_id": str(target_object.id),
-            "object_type": object_str,
+            "object_type": topic.display_name,
         }
 
         if noti_target_user.id == comment_author.id:
@@ -306,12 +299,11 @@ class NotificationService:
             body=comment_noti_msg["body"],
             data=data,
         )
+        logger.info(f"댓글 알림 전송 완료 - comment_id: {comment.id}, target_user: {noti_target_user.id}")
 
-        self.save_push_notification(noti_target_user, "comment", data, comment_noti_msg)
+        self.save_push_notification_comment(comment, noti_target_user, data, comment_noti_msg)
 
-        logger.info(f"댓글 알림 전송 및 저장 완료 - comment_id: {comment.id}, target_user: {noti_target_user.id}")
-
-    def send_notification_like(self, liked_obj: Post | TastedRecord | Comment, liked_user: CustomUser) -> tuple[dict, str]:
+    def send_notification_like(self, liked_obj: Post | TastedRecord | Comment, liked_user: CustomUser) -> None:
         """
         게시물 좋아요 알림 전송
         - 제외 조건: 자신의 게시물에 좋아요를 누른 경우, 댓글 좋아요, 좋아요 알림 설정 OFF
@@ -341,9 +333,11 @@ class NotificationService:
             data=data,
             device_token=device_token,
         )
-        return data, object_str
+        logger.info(f"좋아요 알림 전송 완료 - liked_obj_id: {liked_obj.id}, liked_user: {liked_user.id}")
 
-    def send_notification_follow(self, follower: CustomUser, followee: CustomUser):
+        self.save_push_notification_like(liked_obj, liked_user, data, object_str)
+
+    def send_notification_follow(self, follower: CustomUser, followee: CustomUser) -> None:
         """
         팔로우 알림 전송
         """
@@ -361,6 +355,21 @@ class NotificationService:
             device_token=device_token,
         )
 
+        logger.info(f"팔로우 알림 전송 완료 - follower: {follower.id}, followee: {followee.id}")
+
+        self.save_push_notification_follow(follower, followee)
+
+    # 알림 저장 메서드
+
+    def save_push_notification_comment(self, comment: Comment, noti_target_user: CustomUser, data: dict, comment_noti_msg: Dict[str, str]):
+        """
+        댓글 알림 저장
+        """
+
+        self.save_push_notification(noti_target_user, "comment", data, comment_noti_msg)
+
+        logger.info(f"댓글 알림 저장 완료 - comment_id: {comment.id}, target_user: {noti_target_user.id}")
+
     def save_push_notification_like(self, liked_obj: Post | TastedRecord | Comment, liked_user: CustomUser, data: dict, object_str: str):
         """
         좋아요 알림 저장
@@ -368,7 +377,10 @@ class NotificationService:
 
         liked_obj_author = liked_obj.author
         record_message = PushNotificationRecordTemplate(liked_user.nickname).like_noti_template(object_str)
+
         self.save_push_notification(liked_obj_author, "like", data, record_message)
+
+        logger.info(f"좋아요 알림 저장 완료 - liked_obj_id: {liked_obj.id}, liked_user: {liked_user.id}")
 
     def save_push_notification_follow(self, follower: CustomUser, followee: CustomUser):
         """
@@ -377,7 +389,10 @@ class NotificationService:
 
         record_message = PushNotificationRecordTemplate(follower.nickname).follow_noti_template()
         data = {"follower_user_id": str(follower.id)}
+
         self.save_push_notification(followee, "follow", data, record_message)
+
+        logger.info(f"팔로우 알림 저장 완료 - follower: {follower.id}, followee: {followee.id}")
 
     def save_push_notification(self, user: CustomUser, notification_type: str, data: dict, record_message: Dict[str, str]):
         """
