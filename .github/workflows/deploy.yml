@@ -31,12 +31,28 @@ jobs:
         script: |
           mkdir -p /home/ubuntu/srv/ubuntu
           mkdir -p /home/ubuntu/srv/ubuntu/secrets
+          mkdir -p /home/ubuntu/srv/ubuntu/ssl
 
     - name: Create FCM service account key file
       run: |
         echo '${{ secrets.FCM_KEY }}' > brew-buds-fcm-account.json
         mkdir -p secrets
         mv brew-buds-fcm-account.json secrets/
+
+    - name: Setup SSL certificates
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.KEY }}
+        script: |
+          if [ ! -d "/home/ubuntu/srv/ubuntu/ssl/live" ]; then
+            sudo apt-get update
+            sudo apt-get install -y certbot
+            sudo certbot certonly --standalone -d ${{ secrets.DOMAIN }} --agree-tos --email ${{ secrets.EMAIL }} --non-interactive
+            sudo cp -r /etc/letsencrypt/live/* /home/ubuntu/srv/ubuntu/ssl/
+            sudo cp -r /etc/letsencrypt/archive/* /home/ubuntu/srv/ubuntu/ssl/
+          fi
 
     - name: copy source via ssh key
       uses: burnett01/rsync-deployments@4.1
