@@ -269,10 +269,10 @@ class NotificationService:
 
         if reply := comment.parent:  # 대댓글인 경우
             noti_target_user = reply.author
-            comment_noti_msg = PushNotificationTemplate(comment_author.nickname).comment_noti_template(is_reply=True)
+            comment_noti_msg = PushNotificationTemplate(comment_author.nickname).comment_noti_tmpl(is_reply=True)
         else:  # 댓글인 경우
             noti_target_user = target_object.author
-            comment_noti_msg = PushNotificationTemplate(comment_author.nickname).comment_noti_template(
+            comment_noti_msg = PushNotificationTemplate(comment_author.nickname).comment_noti_tmpl(
                 is_reply=False, object_type=topic.display_name
             )
 
@@ -324,7 +324,7 @@ class NotificationService:
         object_str, id_key = object_type_map[type(liked_obj)]
         data = {id_key: str(liked_obj.id)}
 
-        message = PushNotificationTemplate(liked_user.nickname).like_noti_template(object_str)
+        message = PushNotificationTemplate(liked_user.nickname).like_noti_tmpl(object_str)
         device_token = self.get_device_token(liked_obj_author)
 
         self.fcm_service.send_push_notification_to_single_device(
@@ -344,7 +344,7 @@ class NotificationService:
         if not self.check_notification_settings(followee, "follow_notify"):
             return
 
-        message = PushNotificationTemplate(follower.nickname).follow_noti_template()
+        message = PushNotificationTemplate(follower.nickname).follow_noti_tmpl()
         data = {"follower_user_id": str(follower.id)}
         device_token = self.get_device_token(followee)
 
@@ -376,7 +376,7 @@ class NotificationService:
         """
 
         liked_obj_author = liked_obj.author
-        record_message = PushNotificationRecordTemplate(liked_user.nickname).like_noti_template(object_str)
+        record_message = PushNotificationRecordTemplate(liked_user.nickname).like_noti_tmpl(object_str)
 
         self.save_push_notification(liked_obj_author, "like", data, record_message)
 
@@ -387,7 +387,7 @@ class NotificationService:
         팔로우 알림 저장
         """
 
-        record_message = PushNotificationRecordTemplate(follower.nickname).follow_noti_template()
+        record_message = PushNotificationRecordTemplate(follower.nickname).follow_noti_tmpl()
         data = {"follower_user_id": str(follower.id)}
 
         self.save_push_notification(followee, "follow", data, record_message)

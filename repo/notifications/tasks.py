@@ -22,11 +22,11 @@ def send_notification_comment(self, comment_id):
     try:
         comment = Comment.objects.get(id=comment_id)
 
-        notification_service = NotificationService()
+        noti_service = NotificationService()
         if comment.post:
-            notification_service.send_notification_comment(Topic.POST, comment.post, comment)
+            noti_service.send_notification_comment(Topic.POST, comment.post, comment)
         elif comment.tasted_record:
-            notification_service.send_notification_comment(Topic.TASTED_RECORD, comment.tasted_record, comment)
+            noti_service.send_notification_comment(Topic.TASTED_RECORD, comment.tasted_record, comment)
 
         logger.info(f"{log_prefix} 댓글({comment_id}) 알림 전송 완료")
         return {"status": "success", "comment_id": comment_id, "task_id": task_id}
@@ -53,8 +53,8 @@ def send_notification_follow(self, follower_id, followee_id):
         follower = CustomUser.objects.get(id=follower_id)
         followee = CustomUser.objects.get(id=followee_id)
 
-        notification_service = NotificationService()
-        notification_service.send_notification_follow(follower, followee)
+        noti_service = NotificationService()
+        noti_service.send_notification_follow(follower, followee)
 
         logger.info(f"{log_prefix} 팔로우 알림 전송 완료")
         return {"status": "success", "follower_id": follower.id, "followee_id": followee.id, "task_id": task_id}
@@ -81,8 +81,8 @@ def send_notification_like(self, liked_obj_type, liked_obj_id, liked_user_id):
         liked_user = CustomUser.objects.get(id=liked_user_id)
         liked_obj = get_object_by_type(liked_obj_type, liked_obj_id)
 
-        notification_service = NotificationService()
-        notification_service.send_notification_like(liked_obj, liked_user)
+        noti_service = NotificationService()
+        noti_service.send_notification_like(liked_obj, liked_user)
 
         logger.info(f"{log_prefix} 좋아요 알림 전송 완료")
         return {

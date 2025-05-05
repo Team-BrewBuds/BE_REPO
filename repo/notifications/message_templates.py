@@ -37,7 +37,7 @@ class PushNotificationTemplate:
     def __init__(self, sender_name: str):
         self.sender_name = sender_name
 
-    def comment_noti_template(self, is_reply: bool = False, object_type: str = None) -> dict:
+    def comment_noti_tmpl(self, is_reply: bool = False, object_type: str = None) -> dict:
         """댓글 알림 메시지 템플릿"""
         if is_reply:
             template = self.MESSAGE_FORMATS["comment_reply"]
@@ -52,7 +52,7 @@ class PushNotificationTemplate:
                 "body": template["body"].format(sender_name=self.sender_name, object_type=object_type),
             }
 
-    def like_noti_template(self, object_type: str = "게시물") -> dict:
+    def like_noti_tmpl(self, object_type: str = "게시물") -> dict:
         """좋아요 알림 메시지 템플릿"""
         template = self.MESSAGE_FORMATS["like"]
         return {
@@ -60,7 +60,7 @@ class PushNotificationTemplate:
             "body": template["body"].format(sender_name=self.sender_name, object_type=object_type),
         }
 
-    def follow_noti_template(self) -> dict:
+    def follow_noti_tmpl(self) -> dict:
         """팔로우 알림 메시지 템플릿"""
         template = self.MESSAGE_FORMATS["follow"]
         return {
@@ -91,7 +91,7 @@ class PushNotificationRecordTemplate:
     def __init__(self, sender_name: str):
         self.sender_name = sender_name
 
-    def like_noti_template(self, object_type: str = "게시물") -> Dict[str, str]:
+    def like_noti_tmpl(self, object_type: str = "게시물") -> Dict[str, str]:
         """좋아요 알림 메시지 템플릿"""
         template = self.MESSAGE_FORMATS["like"]
         return {
@@ -99,7 +99,7 @@ class PushNotificationRecordTemplate:
             "body": template["body"].format(sender_name=self.sender_name, object_type=object_type),
         }
 
-    def follow_noti_template(self) -> Dict[str, str]:
+    def follow_noti_tmpl(self) -> Dict[str, str]:
         """팔로우 알림 메시지 템플릿"""
         template = self.MESSAGE_FORMATS["follow"]
         return {"title": template["title"], "body": template["body"].format(sender_name=self.sender_name)}
