@@ -37,8 +37,10 @@ services:
     volumes:
       - static:/home/app/web/static
       - media:/home/app/web/media
+      - ./ssl:/etc/nginx/ssl
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - web
 
