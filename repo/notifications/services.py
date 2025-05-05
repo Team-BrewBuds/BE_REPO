@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 import firebase_admin
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
 from firebase_admin import credentials, exceptions, messaging
 from firebase_admin.messaging import Message, MulticastMessage, Notification
 
@@ -244,7 +243,7 @@ class NotificationService:
         """
         사용자의 디바이스 토큰 조회
         """
-        device = UserDevice.objects.filter(user=user, is_active=True).select_related("user").first()
+        device = UserDevice.objects.filter(user=user, is_active=True).first()
         return device.device_token if device else None
 
     @staticmethod
@@ -255,91 +254,78 @@ class NotificationService:
         tokens = UserDevice.objects.filter(user_id__in=user_ids, is_active=True).values_list("device_token", flat=True)
         return list(tokens)
 
-    def send_notification_comment(self, topic: Topic, comment: Comment):
+    @transaction.atomic
+    def send_notification_comment(self, topic: Topic, target_object: Post | TastedRecord, comment: Comment) -> None:
         """
         댓글 알림 전송
-        """
 
-        if isinstance(comment.post, Post):
-            target_object = comment.post
-            object_str = "게시물"
-            object_filter = Q(post=target_object)
-        else:  # TastedRecord
-            target_object = comment.tasted_record
-            object_str = "시음 기록"
-            object_filter = Q(tasted_record=target_object)
+        알림 대상 선정
+        - {알림 대상} - {알림 트리거 유저} - {댓글 알림 설정 OFF 유저}
+        - 댓글 작성시 : 댓글의 해당 게시물 작성자만 고려
+        - 대댓글 작성시 : 대댓글의 해당 댓글의 작성자만 고려
+        """
 
         comment_author = comment.author
-        comment_content = comment.content[:20]  # 댓글 내용 20자 제한
-        message = PushNotificationTemplate(comment_author.nickname).comment_noti_template(comment_content)
-        data = {"comment_id": str(comment.id), "object_id": str(target_object.id), "object_type": object_str}
 
-        # 해당 게시물/시음기록의 댓글 작성자들
-        comment_authors = Comment.objects.filter(object_filter).values_list("author_id", flat=True).distinct()
-        noti_recipients = set(comment_authors)  # 댓글 작성자들
-        noti_recipients.add(target_object.author.id)  # 게시물/시음기록 작성자
-        noti_recipients.discard(comment_author.id)  # 현재 댓글 작성자 제외
+        if reply := comment.parent:  # 대댓글인 경우
+            noti_target_user = reply.author
+            comment_noti_msg = PushNotificationTemplate(comment_author.nickname).comment_noti_template(is_reply=True)
+        else:  # 댓글인 경우
+            noti_target_user = target_object.author
+            comment_noti_msg = PushNotificationTemplate(comment_author.nickname).comment_noti_template(
+                is_reply=False, object_type=topic.display_name
+            )
 
-        noti_recipients = NotificationSetting.objects.filter(
-            user_id__in=noti_recipients,
-            comment_notify=True,
-        ).values_list(
-            "user_id", flat=True
-        )  # 알림 수신 가능 대상자들
+        data = {
+            "comment_id": str(comment.id),
+            "object_id": str(target_object.id),
+            "object_type": topic.display_name,
+        }
 
-        user_ids = list(noti_recipients)
-        related_tokens = self.get_device_tokens(user_ids)
+        if noti_target_user.id == comment_author.id:
+            return  # 댓글 작성자와 대상 객체 작성자가 같은 경우 알림 전송 제외
 
-        if not related_tokens:
-            return
+        has_comment_notify = NotificationSetting.objects.filter(user=noti_target_user).values_list("comment_notify", flat=True).first()
+        if not has_comment_notify:
+            return  # 댓글 알림 설정 OFF 유저
 
-        self.fcm_service.send_push_notification_to_multiple_devices(
-            device_tokens=related_tokens,
-            title=message["title"],
-            body=message["body"],
+        device_token = self.get_device_token(noti_target_user)
+        if not device_token:
+            return  # 댓글 알림 설정 ON 유저이지만 디바이스 토큰이 없는 경우 알림 전송 제외
+
+        self.fcm_service.send_push_notification_to_single_device(
+            device_token=device_token,
+            title=comment_noti_msg["title"],
+            body=comment_noti_msg["body"],
             data=data,
         )
+        logger.info(f"댓글 알림 전송 완료 - comment_id: {comment.id}, target_user: {noti_target_user.id}")
 
-        author = target_object.author
-        if author != comment_author:  # 게시물/시음기록 작성자와 댓글 작성자가 다른 경우
-            author_record_message = PushNotificationRecordTemplate(comment_author.nickname).comment_noti_template_author(
-                object_type=object_str, content=comment_content
-            )
-            self.save_push_notification(author, "comment", data, author_record_message)
+        self.save_push_notification_comment(comment, noti_target_user, data, comment_noti_msg)
 
-        if comment_author.id in user_ids:  # 댓글 작성자가 알림 수신 가능 대상자에 있는 경우
-            user_ids.remove(comment_author.id)  # 댓글 작성자 제외
-
-        if author.id in user_ids:
-            user_ids.remove(author.id)  # 게시물/시음기록 작성자 제외
-
-        comment_author_record_message = PushNotificationRecordTemplate(comment_author.nickname).comment_noti_template_comment_author(
-            object_type=object_str, object_title=target_object.title, content=comment_content
-        )
-        self.save_push_notifications(user_ids, "comment", data, comment_author_record_message)
-
-    def send_notification_like(self, instance: Post | TastedRecord | Comment, liked_user: CustomUser) -> tuple[dict, str]:
+    def send_notification_like(self, liked_obj: Post | TastedRecord | Comment, liked_user: CustomUser) -> None:
         """
         게시물 좋아요 알림 전송
+        - 제외 조건: 자신의 게시물에 좋아요를 누른 경우, 댓글 좋아요, 좋아요 알림 설정 OFF
         """
 
-        author = instance.author
-        if not self.check_notification_settings(author, "like_notify"):
+        liked_obj_author = liked_obj.author
+        if any(
+            [
+                liked_obj_author.id == liked_user.id,
+                isinstance(liked_obj, Comment),
+                not self.check_notification_settings(liked_obj_author, "like_notify"),
+            ]
+        ):
             return
 
-        object_type_map = {Post: ("게시물", "post_id"), TastedRecord: ("시음 기록", "tasted_record_id"), Comment: ("댓글", "comment_id")}
+        object_type_map = {Post: ("게시물", "post_id"), TastedRecord: ("시음 기록", "tasted_record_id")}
 
-        object_str, id_key = object_type_map[type(instance)]
-        data = {id_key: str(instance.id)}
-
-        if isinstance(instance, Comment):
-            if instance.post:
-                data.update({"post_id": str(instance.post.id)})
-            elif instance.tasted_record:
-                data.update({"tasted_record_id": str(instance.tasted_record.id)})
+        object_str, id_key = object_type_map[type(liked_obj)]
+        data = {id_key: str(liked_obj.id)}
 
         message = PushNotificationTemplate(liked_user.nickname).like_noti_template(object_str)
-        device_token = self.get_device_token(author)
+        device_token = self.get_device_token(liked_obj_author)
 
         self.fcm_service.send_push_notification_to_single_device(
             title=message["title"],
@@ -347,9 +333,11 @@ class NotificationService:
             data=data,
             device_token=device_token,
         )
-        return data, object_str
+        logger.info(f"좋아요 알림 전송 완료 - liked_obj_id: {liked_obj.id}, liked_user: {liked_user.id}")
 
-    def send_notification_follow(self, follower: CustomUser, followee: CustomUser):
+        self.save_push_notification_like(liked_obj, liked_user, data, object_str)
+
+    def send_notification_follow(self, follower: CustomUser, followee: CustomUser) -> None:
         """
         팔로우 알림 전송
         """
@@ -367,14 +355,32 @@ class NotificationService:
             device_token=device_token,
         )
 
-    def save_push_notification_like(self, object_type: Post | TastedRecord | Comment, liked_user: CustomUser, data: dict, object_str: str):
+        logger.info(f"팔로우 알림 전송 완료 - follower: {follower.id}, followee: {followee.id}")
+
+        self.save_push_notification_follow(follower, followee)
+
+    # 알림 저장 메서드
+
+    def save_push_notification_comment(self, comment: Comment, noti_target_user: CustomUser, data: dict, comment_noti_msg: Dict[str, str]):
+        """
+        댓글 알림 저장
+        """
+
+        self.save_push_notification(noti_target_user, "comment", data, comment_noti_msg)
+
+        logger.info(f"댓글 알림 저장 완료 - comment_id: {comment.id}, target_user: {noti_target_user.id}")
+
+    def save_push_notification_like(self, liked_obj: Post | TastedRecord | Comment, liked_user: CustomUser, data: dict, object_str: str):
         """
         좋아요 알림 저장
         """
 
-        author = object_type.author
+        liked_obj_author = liked_obj.author
         record_message = PushNotificationRecordTemplate(liked_user.nickname).like_noti_template(object_str)
-        self.save_push_notification(author, "like", data, record_message)
+
+        self.save_push_notification(liked_obj_author, "like", data, record_message)
+
+        logger.info(f"좋아요 알림 저장 완료 - liked_obj_id: {liked_obj.id}, liked_user: {liked_user.id}")
 
     def save_push_notification_follow(self, follower: CustomUser, followee: CustomUser):
         """
@@ -383,7 +389,10 @@ class NotificationService:
 
         record_message = PushNotificationRecordTemplate(follower.nickname).follow_noti_template()
         data = {"follower_user_id": str(follower.id)}
+
         self.save_push_notification(followee, "follow", data, record_message)
+
+        logger.info(f"팔로우 알림 저장 완료 - follower: {follower.id}, followee: {followee.id}")
 
     def save_push_notification(self, user: CustomUser, notification_type: str, data: dict, record_message: Dict[str, str]):
         """

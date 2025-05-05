@@ -115,6 +115,7 @@ class PostSchema:
 
     user_post_list_get_schema = extend_schema(
         parameters=[
+            PageNumberSerializer,
             OpenApiParameter(
                 name="subject",
                 type=str,
