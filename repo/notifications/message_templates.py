@@ -1,6 +1,6 @@
 from typing import Dict
 
-APP_NAME = "브루버즈"
+APP_NAME = "Brewbuds"
 
 
 class PushNotificationTemplate:
