@@ -311,29 +311,35 @@ class NotificationService:
 
         logger.info(f"댓글 알림 전송 및 저장 완료 - comment_id: {comment.id}, target_user: {noti_target_user.id}")
 
-    def send_notification_like(self, instance: Post | TastedRecord | Comment, liked_user: CustomUser) -> tuple[dict, str]:
+    def send_notification_like(self, liked_obj: Post | TastedRecord | Comment, liked_user: CustomUser) -> tuple[dict, str]:
         """
         게시물 좋아요 알림 전송
-        - 제외 조건: 댓글 좋아요, 좋아요 알림 설정 OFF
+        - 제외 조건: 자신의 게시물에 좋아요를 누른 경우, 댓글 좋아요, 좋아요 알림 설정 OFF
         """
 
-        author = instance.author
-        if isinstance(instance, Comment) or not self.check_notification_settings(author, "like_notify"):
+        liked_obj_author = liked_obj.author
+        if any(
+            [
+                liked_obj_author.id == liked_user.id,
+                isinstance(liked_obj, Comment),
+                not self.check_notification_settings(liked_obj_author, "like_notify"),
+            ]
+        ):
             return
 
         object_type_map = {Post: ("게시물", "post_id"), TastedRecord: ("시음 기록", "tasted_record_id"), Comment: ("댓글", "comment_id")}
 
-        object_str, id_key = object_type_map[type(instance)]
-        data = {id_key: str(instance.id)}
+        object_str, id_key = object_type_map[type(liked_obj)]
+        data = {id_key: str(liked_obj.id)}
 
-        if isinstance(instance, Comment):
-            if instance.post:
-                data.update({"post_id": str(instance.post.id)})
-            elif instance.tasted_record:
-                data.update({"tasted_record_id": str(instance.tasted_record.id)})
+        if isinstance(liked_obj, Comment):
+            if liked_obj.post:
+                data.update({"post_id": str(liked_obj.post.id)})
+            elif liked_obj.tasted_record:
+                data.update({"tasted_record_id": str(liked_obj.tasted_record.id)})
 
         message = PushNotificationTemplate(liked_user.nickname).like_noti_template(object_str)
-        device_token = self.get_device_token(author)
+        device_token = self.get_device_token(liked_obj_author)
 
         self.fcm_service.send_push_notification_to_single_device(
             title=message["title"],
@@ -361,14 +367,14 @@ class NotificationService:
             device_token=device_token,
         )
 
-    def save_push_notification_like(self, object_type: Post | TastedRecord | Comment, liked_user: CustomUser, data: dict, object_str: str):
+    def save_push_notification_like(self, liked_obj: Post | TastedRecord | Comment, liked_user: CustomUser, data: dict, object_str: str):
         """
         좋아요 알림 저장
         """
 
-        author = object_type.author
+        liked_obj_author = liked_obj.author
         record_message = PushNotificationRecordTemplate(liked_user.nickname).like_noti_template(object_str)
-        self.save_push_notification(author, "like", data, record_message)
+        self.save_push_notification(liked_obj_author, "like", data, record_message)
 
     def save_push_notification_follow(self, follower: CustomUser, followee: CustomUser):
         """

@@ -1,6 +1,7 @@
 from celery import shared_task
 from celery.utils.log import get_task_logger
 
+from repo.common.utils import get_object_by_type
 from repo.profiles.models import CustomUser
 from repo.records.models import Comment
 
@@ -72,5 +73,35 @@ def send_notification_follow(self, follower_id, followee_id):
 
 
 @shared_task(name="repo.notifications.tasks.send_notification_like", bind=True, default_retry_delay=10, max_retries=3)
-def send_notification_like(post_id):
-    pass
+def send_notification_like(self, liked_obj_type, liked_obj_id, liked_user_id):
+    """
+    좋아요 알림을 비동기적으로 전송하는 Celery task
+    """
+    task_id = self.request.id
+    log_prefix = f"[Task {task_id}]"
+
+    try:
+        liked_user = CustomUser.objects.get(id=liked_user_id)
+        liked_obj = get_object_by_type(liked_obj_type, liked_obj_id)
+
+        notification_service = NotificationService()
+        data, object_str = notification_service.send_notification_like(liked_obj, liked_user)
+        notification_service.save_push_notification_like(liked_obj, liked_user, data, object_str)
+
+        logger.info(f"{log_prefix} 좋아요 알림 전송 완료")
+        return {
+            "status": "success",
+            "liked_obj_type": liked_obj_type,
+            "liked_obj_id": liked_obj_id,
+            "liked_user_id": liked_user_id,
+            "task_id": task_id,
+        }
+
+    except CustomUser.DoesNotExist:
+        logger.error(f"{log_prefix} 좋아요 알림 전송 실패: 사용자를 찾을 수 없습니다")
+        return {"status": "error", "message": "사용자를 찾을 수 없습니다", "task_id": task_id}
+
+    except Exception as e:
+        logger.error(f"{log_prefix} 좋아요 알림 전송 실패: {str(e)}")
+        self.retry(exc=e)
+        return {"status": "retrying", "message": str(e), "task_id": task_id}
