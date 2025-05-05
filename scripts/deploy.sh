@@ -39,17 +39,6 @@ if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
   echo "Requesting new SSL certificate"
   # Request new certificate
   sudo certbot certonly --standalone -d $DOMAIN --agree-tos --email $EMAIL --non-interactive
-
-  # Create ssl directory if it doesn't exist
-  sudo mkdir -p /home/ubuntu/srv/ubuntu/ssl/live/$DOMAIN
-  sudo mkdir -p /home/ubuntu/srv/ubuntu/ssl/archive/$DOMAIN
-
-  # Copy certificates
-  sudo cp /etc/letsencrypt/live/$DOMAIN/* /home/ubuntu/srv/ubuntu/ssl/live/$DOMAIN/
-  sudo cp /etc/letsencrypt/archive/$DOMAIN/* /home/ubuntu/srv/ubuntu/ssl/archive/$DOMAIN/
-
-  # Set proper permissions
-  sudo chown -R ubuntu:ubuntu /home/ubuntu/srv/ubuntu/ssl
 fi
 
 echo "start docker-compose up: ubuntu"
@@ -73,7 +62,7 @@ if ! sudo docker ps | grep -q "nginx"; then
   echo "Nginx container failed to start. Retrying..."
   # SSL 인증서 확인
   echo "Checking SSL certificates..."
-  ls -la /home/ubuntu/srv/ubuntu/ssl/live/$DOMAIN/
+  ls -la /etc/letsencrypt/live/$DOMAIN/
 
   # nginx 컨테이너만 재시작
   sudo docker-compose -f /home/ubuntu/srv/ubuntu/docker-compose.prod.yaml up -d --build nginx
