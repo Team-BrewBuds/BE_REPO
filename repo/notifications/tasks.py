@@ -1,6 +1,7 @@
 from celery import shared_task
 from celery.utils.log import get_task_logger
 
+from repo.profiles.models import CustomUser
 from repo.records.models import Comment
 
 from .enums import Topic
@@ -39,3 +40,37 @@ def send_notification_comment(self, comment_id):
         logger.error(f"{log_prefix} 댓글({comment_id}) 알림 전송 실패: {str(e)}")
         self.retry(exc=e)
         return {"status": "retrying", "message": str(e), "task_id": task_id}
+
+
+@shared_task(name="repo.notifications.tasks.send_notification_follow", bind=True, default_retry_delay=10, max_retries=3)
+def send_notification_follow(self, follower_id, followee_id):
+    """
+    팔로우 알림을 비동기적으로 전송하는 Celery task
+    """
+    task_id = self.request.id
+    log_prefix = f"[Task {task_id}]"
+
+    try:
+        follower = CustomUser.objects.get(id=follower_id)
+        followee = CustomUser.objects.get(id=followee_id)
+
+        notification_service = NotificationService()
+        notification_service.send_notification_follow(follower, followee)
+        notification_service.save_push_notification_follow(follower, followee)
+
+        logger.info(f"{log_prefix} 팔로우 알림 전송 완료")
+        return {"status": "success", "follower_id": follower.id, "followee_id": followee.id, "task_id": task_id}
+
+    except CustomUser.DoesNotExist:
+        logger.error(f"{log_prefix} 팔로우 알림 전송 실패: 사용자를 찾을 수 없습니다")
+        return {"status": "error", "message": "사용자를 찾을 수 없습니다", "task_id": task_id}
+
+    except Exception as e:
+        logger.error(f"{log_prefix} 팔로우 알림 전송 실패: {str(e)}")
+        self.retry(exc=e)
+        return {"status": "retrying", "message": str(e), "task_id": task_id}
+
+
+@shared_task(name="repo.notifications.tasks.send_notification_like", bind=True, default_retry_delay=10, max_retries=3)
+def send_notification_like(post_id):
+    pass
