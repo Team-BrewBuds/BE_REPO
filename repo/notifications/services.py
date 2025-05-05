@@ -327,16 +327,10 @@ class NotificationService:
         ):
             return
 
-        object_type_map = {Post: ("게시물", "post_id"), TastedRecord: ("시음 기록", "tasted_record_id"), Comment: ("댓글", "comment_id")}
+        object_type_map = {Post: ("게시물", "post_id"), TastedRecord: ("시음 기록", "tasted_record_id")}
 
         object_str, id_key = object_type_map[type(liked_obj)]
         data = {id_key: str(liked_obj.id)}
-
-        if isinstance(liked_obj, Comment):
-            if liked_obj.post:
-                data.update({"post_id": str(liked_obj.post.id)})
-            elif liked_obj.tasted_record:
-                data.update({"tasted_record_id": str(liked_obj.tasted_record.id)})
 
         message = PushNotificationTemplate(liked_user.nickname).like_noti_template(object_str)
         device_token = self.get_device_token(liked_obj_author)
