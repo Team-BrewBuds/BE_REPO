@@ -5,7 +5,7 @@ from ._base import *
 SECRET_KEY = env.str("SECRET_KEY")
 
 DEBUG = False  # 수정
-ALLOWED_HOSTS = [env.str("SERVER_HOST_NAME")]
+ALLOWED_HOSTS = [env.str("DOMAIN"), env.str("SERVER_HOST_NAME")]
 WSGI_APPLICATION = "config.wsgi.prod.application"
 INSTALLED_APPS += []
 
