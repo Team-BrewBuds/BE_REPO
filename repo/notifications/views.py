@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 
 from repo.common.utils import get_paginated_response_with_class
 
+from .fcm import FCMService
 from .models import NotificationSetting, PushNotification, UserDevice
 from .schemas import NotificationSchema
 from .serializers import (
@@ -14,7 +15,6 @@ from .serializers import (
     PushNotificationSerializer,
     UserDeviceSerializer,
 )
-from .services import FCMService
 
 
 @NotificationSchema.user_notification_schema_view
