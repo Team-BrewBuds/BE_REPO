@@ -19,6 +19,7 @@ LOCAL_APPS = [
     "repo.common",
     "repo.interactions",
     "repo.notifications",
+    "repo.admins",
 ]
 
 THIRD_PARTY_APPS = [
