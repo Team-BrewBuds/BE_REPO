@@ -373,6 +373,8 @@ class NotificationService:
         data = {"follower_user_id": str(follower.id)}
         device_token = self.get_device_token(followee)
 
+        if self.check_duplicate_notification(followee, "follow", data):
+            logger.info(f"중복 팔로우 알림 제외 - follower: {follower.id}, followee: {followee.id}")
         self.fcm_service.send_push_notification_to_single_device(
             title=message["title"],
             body=message["body"],
