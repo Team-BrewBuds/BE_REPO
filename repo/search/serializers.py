@@ -72,6 +72,7 @@ class BeanSearchSerializer(serializers.ModelSerializer):
             "is_official",
             "is_decaf",
             "origin_country",
+            "roast_point",
             "avg_star",
             "record_count",
             "image_url",
@@ -85,7 +86,18 @@ class TastedRecordSearchSerializer(serializers.ModelSerializer):
     bean_taste = serializers.CharField(source="taste_review.flavor", read_only=True)
     star = serializers.FloatField(source="taste_review.star", read_only=True)
     likes = serializers.IntegerField(read_only=True)
-    photo_url = serializers.URLField(read_only=True)
+    photo_url = serializers.SerializerMethodField()
+
+    # def get_photo_url(self, obj):
+    #     if obj.tasted_record_photos:
+    #         photos = obj.tasted_record_photos
+    #         return photos[0].photo_url.url if photos else None
+    #     return None
+
+    def get_photo_url(self, obj):
+        if hasattr(obj, "tasted_record_photos") and obj.tasted_record_photos:
+            return obj.tasted_record_photos[0].photo_url.url if obj.tasted_record_photos else None
+        return None
 
     class Meta:
         model = TastedRecord
@@ -95,7 +107,13 @@ class TastedRecordSearchSerializer(serializers.ModelSerializer):
 class PostSearchSerializer(serializers.ModelSerializer):
     author = serializers.CharField(source="author.nickname", read_only=True)
     comment_count = serializers.IntegerField(read_only=True)
-    photo_url = serializers.URLField(read_only=True)
+    photo_url = serializers.SerializerMethodField()
+
+    def get_photo_url(self, obj):
+        if obj.post_photos:
+            photos = obj.post_photos
+            return photos[0].photo_url.url if photos else None
+        return None
 
     class Meta:
         model = Post
