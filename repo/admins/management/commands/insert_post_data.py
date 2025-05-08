@@ -4,12 +4,16 @@ import pandas as pd
 from django.core.management.base import BaseCommand
 from faker import Faker
 
-from repo.admins.utils import create_user_and_user_detail, pre_process_create_user
+from repo.admins.utils import (
+    create_user_and_user_detail,
+    pre_process_create_user,
+)
 from repo.profiles.models import CustomUser
 from repo.records.models import Post
 
 DATETIME_NOW = datetime.now()
 FILE_PATH = ""  # 게시글 데이터 파일 경로
+PROFILE_PHOTOS_DIR_PATH = ""  # 프로필 사진 데이터 파일 경로
 POST_SUBJECT_CHOICES = {v: k for k, v in Post.SUBJECT_TYPE_CHOICES}
 
 
@@ -20,7 +24,7 @@ class Command(BaseCommand):
         faker = Faker(locale="ko_KR")
 
         # 1. 작성자 생성 (없으면 미리 생성)
-        create_user_cnt = pre_process_create_user(FILE_PATH, faker)
+        create_user_cnt = pre_process_create_user(FILE_PATH, faker, PROFILE_PHOTOS_DIR_PATH)
 
         # 2. 게시글 생성
         post_cnt = create_post(FILE_PATH, faker)
@@ -37,7 +41,7 @@ def create_post(file_path: str, faker: Faker) -> int:
         try:
             author = CustomUser.objects.get(nickname=row["작성자"])
         except CustomUser.DoesNotExist:
-            author = create_user_and_user_detail(row["작성자"], faker)
+            author = create_user_and_user_detail(row["작성자"], faker, PROFILE_PHOTOS_DIR_PATH)
 
         posts.append(
             Post(
