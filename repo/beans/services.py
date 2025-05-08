@@ -55,7 +55,7 @@ class BeanService:
                 avg_star=Coalesce(Avg("tastedrecord__taste_review__star"), 0, output_field=FloatField()),
                 tasted_records_cnt=Count("tastedrecord"),
             )
-            .values("id", "name", "origin_country", "roast_point", "avg_star", "tasted_records_cnt")
+            .values("id", "name", "origin_country", "roast_point", "bean_type", "avg_star", "tasted_records_cnt")
         )
         return saved_beans
 

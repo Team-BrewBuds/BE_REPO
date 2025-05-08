@@ -27,7 +27,7 @@ class UserBeanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bean
-        fields = ["id", "name", "origin_country", "roast_point", "avg_star", "tasted_records_cnt"]
+        fields = ["id", "name", "origin_country", "roast_point", "bean_type", "avg_star", "tasted_records_cnt"]
 
 
 class BeanDetailSerializer(serializers.ModelSerializer):
