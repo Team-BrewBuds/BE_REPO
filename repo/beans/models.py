@@ -2,7 +2,7 @@ from django.db import models
 
 
 class Bean(models.Model):
-    bean_type_choices = [("single", "싱글 오리진"), ("blend", "블랜드")]
+    bean_type_choices = [("single", "싱글 오리진"), ("blend", "블렌드")]
     roasting_point_choices = list(zip(range(0, 6), range(0, 6)))  # 0~5
 
     # 필수
