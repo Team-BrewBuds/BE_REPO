@@ -1,10 +1,12 @@
 import logging
 import os
+from datetime import timedelta
 from typing import Dict, List, Optional
 
 import firebase_admin
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 from firebase_admin import credentials, exceptions, messaging
 from firebase_admin.messaging import Message, MulticastMessage, Notification
 
@@ -239,6 +241,25 @@ class NotificationService:
             return False
 
     @staticmethod
+    def check_duplicate_notification(user: CustomUser, notification_type: str, data: dict, minutes: int = 5) -> bool:
+        """
+        일정 시간 내 중복 알림 체크
+        Args:
+            user: 알림 대상 사용자
+            notification_type: 알림 타입
+            data: 대상 객체 데이터
+            minutes: 중복 체크 시간 (분)
+        Returns:
+            bool: 중복 알림이 있으면 True, 없으면 False
+        """
+
+        recent_notification = PushNotification.objects.filter(
+            user=user, notification_type=notification_type, data=data, created_at__gte=timezone.now() - timedelta(minutes=minutes)
+        ).first()
+
+        return bool(recent_notification)
+
+    @staticmethod
     def get_device_token(user: CustomUser) -> Optional[str]:
         """
         사용자의 디바이스 토큰 조회
@@ -255,7 +276,7 @@ class NotificationService:
         return list(tokens)
 
     @transaction.atomic
-    def send_notification_comment(self, topic: Topic, target_object: Post | TastedRecord, comment: Comment) -> None:
+    def send_notification_comment(self, topic: Topic, target_object: Post | TastedRecord, comment: Comment) -> bool:
         """
         댓글 알림 전송
 
@@ -283,15 +304,15 @@ class NotificationService:
         }
 
         if noti_target_user.id == comment_author.id:
-            return  # 댓글 작성자와 대상 객체 작성자가 같은 경우 알림 전송 제외
+            return False  # 댓글 작성자와 대상 객체 작성자가 같은 경우 알림 전송 제외
 
         has_comment_notify = NotificationSetting.objects.filter(user=noti_target_user).values_list("comment_notify", flat=True).first()
         if not has_comment_notify:
-            return  # 댓글 알림 설정 OFF 유저
+            return False  # 댓글 알림 설정 OFF 유저
 
         device_token = self.get_device_token(noti_target_user)
         if not device_token:
-            return  # 댓글 알림 설정 ON 유저이지만 디바이스 토큰이 없는 경우 알림 전송 제외
+            return False  # 댓글 알림 설정 ON 유저이지만 디바이스 토큰이 없는 경우 알림 전송 제외
 
         self.fcm_service.send_push_notification_to_single_device(
             device_token=device_token,
@@ -303,12 +324,17 @@ class NotificationService:
 
         self.save_push_notification_comment(comment, noti_target_user, data, comment_noti_msg)
 
-    def send_notification_like(self, liked_obj: Post | TastedRecord | Comment, liked_user: CustomUser) -> None:
+        return True
+
+    def send_notification_like(self, liked_obj: Post | TastedRecord | Comment, liked_user: CustomUser) -> bool:
         """
         게시물 좋아요 알림 전송
-        - 제외 조건: 자신의 게시물에 좋아요를 누른 경우, 댓글 좋아요, 좋아요 알림 설정 OFF
+        - 제외 조건:
+            1. 자신의 게시물에 좋아요를 누른 경우
+            2. 댓글 좋아요
+            3. 좋아요 알림 설정 OFF
+            4. 5분 이내에 같은 사용자가 같은 게시물에 좋아요를 누른 경우
         """
-
         liked_obj_author = liked_obj.author
         if any(
             [
@@ -317,12 +343,16 @@ class NotificationService:
                 not self.check_notification_settings(liked_obj_author, "like_notify"),
             ]
         ):
-            return
+            return False
 
         object_type_map = {Post: ("게시물", "post_id"), TastedRecord: ("시음 기록", "tasted_record_id")}
 
         object_str, id_key = object_type_map[type(liked_obj)]
         data = {id_key: str(liked_obj.id)}
+
+        if self.check_duplicate_notification(liked_obj_author, "like", data):
+            logger.info(f"중복 좋아요 알림 제외 - liked_obj_id: {liked_obj.id}, liked_user: {liked_user.id}")
+            return False
 
         message = PushNotificationTemplate(liked_user.nickname).like_noti_template(object_str)
         device_token = self.get_device_token(liked_obj_author)
@@ -337,16 +367,25 @@ class NotificationService:
 
         self.save_push_notification_like(liked_obj, liked_user, data, object_str)
 
-    def send_notification_follow(self, follower: CustomUser, followee: CustomUser) -> None:
+        return True
+
+    def send_notification_follow(self, follower: CustomUser, followee: CustomUser) -> bool:
         """
         팔로우 알림 전송
         """
         if not self.check_notification_settings(followee, "follow_notify"):
-            return
+            return False
 
         message = PushNotificationTemplate(follower.nickname).follow_noti_template()
         data = {"follower_user_id": str(follower.id)}
         device_token = self.get_device_token(followee)
+
+        if not device_token:
+            return False
+
+        if self.check_duplicate_notification(followee, "follow", data):
+            logger.info(f"중복 팔로우 알림 제외 - follower: {follower.id}, followee: {followee.id}")
+            return False
 
         self.fcm_service.send_push_notification_to_single_device(
             title=message["title"],
@@ -358,6 +397,8 @@ class NotificationService:
         logger.info(f"팔로우 알림 전송 완료 - follower: {follower.id}, followee: {followee.id}")
 
         self.save_push_notification_follow(follower, followee)
+
+        return True
 
     # 알림 저장 메서드
 
