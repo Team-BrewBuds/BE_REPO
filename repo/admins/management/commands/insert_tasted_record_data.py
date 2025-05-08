@@ -1,10 +1,7 @@
-import mimetypes
 import os
 from datetime import datetime
-from io import BytesIO
 
 import pandas as pd
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.management.base import BaseCommand
 from faker import Faker
 
@@ -14,11 +11,15 @@ from repo.admins.keys import (
     full_tasted_record_keys,
     only_tasted_record_keys,
 )
-from repo.admins.utils import pre_process_create_user
+from repo.admins.utils import (
+    create_memory_file,
+    pre_process_create_user,
+    save_tasted_record_photos,
+)
 from repo.beans.models import Bean, BeanTasteReview
-from repo.common.bucket import create_unique_filename, delete_photos
+from repo.common.bucket import delete_photos
 from repo.profiles.models import CustomUser
-from repo.records.models import Photo, TastedRecord
+from repo.records.models import TastedRecord
 
 DATETIME_NOW = datetime.now()
 FILE_PATH = ""  # 시음기록 데이터 파일 경로
@@ -141,7 +142,7 @@ def upload_photos(photos_dir_path: str, idx: int, tasted_record: TastedRecord) -
         raise FileNotFoundError(f"사진 디렉토리를 찾을 수 없습니다: {photos_dir_path}")
 
     try:
-        photo_files = _get_photo_files(photos_dir_path, idx)
+        photo_files = get_photo_files_by_idx(photos_dir_path, idx)
         if not photo_files:
             print(f"경고: review_{idx}_에 해당하는 사진을 찾을 수 없습니다.")
             return False
@@ -150,7 +151,7 @@ def upload_photos(photos_dir_path: str, idx: int, tasted_record: TastedRecord) -
         photo_files.sort(key=lambda x: int(x.name.split("_")[-1].split(".")[0]))
 
         # 사진 업로드 및 TastedRecord와 연결
-        _save_photos(photo_files, tasted_record)
+        save_tasted_record_photos(photo_files, tasted_record)
         return True
 
     except Exception as e:
@@ -159,7 +160,7 @@ def upload_photos(photos_dir_path: str, idx: int, tasted_record: TastedRecord) -
         return False
 
 
-def _get_photo_files(photos_dir_path: str, idx: int) -> list:
+def get_photo_files_by_idx(photos_dir_path: str, idx: int) -> list:
     """해당 인덱스의 사진 파일들을 찾아서 반환"""
     photo_files = []
 
@@ -174,31 +175,10 @@ def _get_photo_files(photos_dir_path: str, idx: int) -> list:
 
         try:
             num = file.split("_")[-1].split(".")[0]
-            photo_file = _create_memory_file(photo_path, f"review_{idx}_{num}.jpg")
+            photo_file = create_memory_file(photo_path, f"review_{idx}_{num}.jpg")
             photo_files.append(photo_file)
         except IOError as e:
             print(f"파일 읽기 오류: {photo_path} - {str(e)}")
             continue
 
     return photo_files
-
-
-def _create_memory_file(photo_path: str, filename: str) -> InMemoryUploadedFile:
-    """파일을 메모리에 로드하여 Django 파일 객체 생성"""
-    with open(photo_path, "rb") as f:
-        file_content = BytesIO(f.read())
-        content_type = mimetypes.guess_type(filename)[0] or "image/jpeg"
-
-        return InMemoryUploadedFile(file_content, "photo_url", filename, content_type, file_content.getbuffer().nbytes, None)
-
-
-def _save_photos(photo_files: list, tasted_record: TastedRecord) -> None:
-    """사진들을 DB에 저장"""
-    for i, photo_file in enumerate(photo_files):
-        try:
-            photo_file.name = create_unique_filename(photo_file.name, is_main=(i == 0))
-            photo = Photo(tasted_record=tasted_record, photo_url=photo_file)
-            photo.save()
-        except Exception as e:
-            print(f"사진 업로드 오류: {photo_file.name} - {str(e)}")
-            continue
