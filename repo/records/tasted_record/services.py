@@ -5,7 +5,7 @@ from typing import Optional
 
 from django.core.cache import cache
 from django.db import transaction
-from django.db.models import BooleanField, Exists, Q, QuerySet, Value
+from django.db.models import BooleanField, Exists, Prefetch, Q, QuerySet, Value
 from django.utils import timezone
 
 from repo.beans.services import BeanService
@@ -16,7 +16,7 @@ from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.profiles.services import UserService
 from repo.records.base import BaseRecordService
-from repo.records.models import BeanTasteReview, TastedRecord
+from repo.records.models import BeanTasteReview, Photo, TastedRecord
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
 
 redis_logger = logging.getLogger("redis.server")
@@ -43,10 +43,17 @@ class TastedRecordService(BaseRecordService):
     def get_user_records(self, user_id: int, **kwargs) -> QuerySet[TastedRecord]:
         """유저가 작성한 시음기록 조회"""
         user = self.user_service.get_user_by_id(user_id)
-        TastedRecord.objects.select_related("taste_review").only("taste_review__star")
+
         return (
-            user.tastedrecord_set.select_related("bean", "taste_review")
-            .prefetch_related("photo_set")
+            TastedRecord.objects.filter(author=user)
+            .select_related("bean", "taste_review")
+            .prefetch_related(
+                Prefetch(
+                    "photo_set",
+                    queryset=Photo.objects.only("photo_url", "tasted_record_id"),
+                    to_attr="tasted_record_photos",
+                )
+            )
             .only("id", "bean__name", "taste_review__star", "created_at", "likes")
         )
 

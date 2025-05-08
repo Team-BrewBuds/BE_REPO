@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from repo.beans.serializers import BeanSerializer, BeanTasteReviewSerializer
 from repo.common.serializers import PhotoSerializer
-from repo.common.utils import get_first_photo_url, get_time_difference
+from repo.common.utils import get_time_difference
 from repo.interactions.serializers import (
     InteractionMethodSerializer,
     InteractionSerializer,
@@ -93,7 +93,9 @@ class UserTastedRecordSerializer(serializers.ModelSerializer):
     likes = serializers.IntegerField()
 
     def get_photo_url(self, obj):
-        return get_first_photo_url(obj)
+        if obj.tasted_record_photos:
+            return obj.tasted_record_photos[0].photo_url.url
+        return None
 
     class Meta:
         model = TastedRecord
