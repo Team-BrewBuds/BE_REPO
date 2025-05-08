@@ -139,7 +139,7 @@ class BeanRankingService:
         top_beans = (
             TastedRecord.objects.filter(created_at__gte=one_week_ago, bean__is_official=True)
             .select_related("bean")
-            .values("bean_id", "bean__name")
+            .values("bean_id", "bean__name", "bean__bean_type", "bean__roast_point")
             .annotate(record_count=Count("id"))
             .order_by("-record_count")[:TOP_BEAN_RANK_COUNT]
         )
