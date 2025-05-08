@@ -8,7 +8,7 @@ class TopicData(NamedTuple):
 
 
 class Topic(Enum):
-    POST = TopicData("post", "게시물")
+    POST = TopicData("post", "게시글")
     TASTED_RECORD = TopicData("tasted_record", "시음 기록")
 
     @property
