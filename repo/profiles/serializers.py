@@ -185,7 +185,7 @@ class PrefSavedBeanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bean
-        fields = ["id", "name", "avg_star", "image_url", "created_date"]
+        fields = ["id", "name", "bean_type", "roast_point", "avg_star", "image_url", "created_date"]
 
 
 class PrefStarSerializer(serializers.Serializer):
