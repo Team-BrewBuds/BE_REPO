@@ -1,10 +1,12 @@
 import logging
 import os
+from datetime import timedelta
 from typing import Dict, List, Optional
 
 import firebase_admin
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 from firebase_admin import credentials, exceptions, messaging
 from firebase_admin.messaging import Message, MulticastMessage, Notification
 
@@ -237,6 +239,25 @@ class NotificationService:
             return getattr(notification_settings, notification_type, False)
         except NotificationSetting.DoesNotExist:
             return False
+
+    @staticmethod
+    def check_duplicate_notification(user: CustomUser, notification_type: str, data: dict, minutes: int = 5) -> bool:
+        """
+        일정 시간 내 중복 알림 체크
+        Args:
+            user: 알림 대상 사용자
+            notification_type: 알림 타입
+            data: 대상 객체 데이터
+            minutes: 중복 체크 시간 (분)
+        Returns:
+            bool: 중복 알림이 있으면 True, 없으면 False
+        """
+
+        recent_notification = PushNotification.objects.filter(
+            user=user, notification_type=notification_type, data=data, created_at__gte=timezone.now() - timedelta(minutes=minutes)
+        ).first()
+
+        return bool(recent_notification)
 
     @staticmethod
     def get_device_token(user: CustomUser) -> Optional[str]:
