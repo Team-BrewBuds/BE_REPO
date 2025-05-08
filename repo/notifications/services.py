@@ -345,6 +345,10 @@ class NotificationService:
         object_str, id_key = object_type_map[type(liked_obj)]
         data = {id_key: str(liked_obj.id)}
 
+        if self.check_duplicate_notification(liked_obj_author, "like", data):
+            logger.info(f"중복 좋아요 알림 제외 - liked_obj_id: {liked_obj.id}, liked_user: {liked_user.id}")
+            return False
+
         message = PushNotificationTemplate(liked_user.nickname).like_noti_template(object_str)
         device_token = self.get_device_token(liked_obj_author)
 
