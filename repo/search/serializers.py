@@ -96,7 +96,13 @@ class TastedRecordSearchSerializer(serializers.ModelSerializer):
 class PostSearchSerializer(serializers.ModelSerializer):
     author = serializers.CharField(source="author.nickname", read_only=True)
     comment_count = serializers.IntegerField(read_only=True)
-    photo_url = serializers.URLField(read_only=True)
+    photo_url = serializers.SerializerMethodField()
+
+    def get_photo_url(self, obj):
+        if obj.post_photos:
+            photos = obj.post_photos
+            return photos[0].photo_url.url if photos else None
+        return None
 
     class Meta:
         model = Post

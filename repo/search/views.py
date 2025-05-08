@@ -4,6 +4,7 @@ from django.db.models import (
     ExpressionWrapper,
     FloatField,
     OuterRef,
+    Prefetch,
     Q,
     Subquery,
 )
@@ -129,10 +130,15 @@ class PostSearchView(APIView):
         posts = (
             Post.objects.all()
             .select_related("author")
-            .prefetch_related("photo_set")
+            .prefetch_related(
+                Prefetch(
+                    "photo_set",
+                    queryset=Photo.objects.only("photo_url"),
+                    to_attr="post_photos",
+                )
+            )
             .annotate(
                 comment_count=Count("comment"),
-                photo_url=Subquery(Photo.objects.filter(post=OuterRef("pk")).values("photo_url")[:1]),
             )
             .distinct()
         )
