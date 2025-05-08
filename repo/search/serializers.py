@@ -72,6 +72,7 @@ class BeanSearchSerializer(serializers.ModelSerializer):
             "is_official",
             "is_decaf",
             "origin_country",
+            "roast_point",
             "avg_star",
             "record_count",
             "image_url",
