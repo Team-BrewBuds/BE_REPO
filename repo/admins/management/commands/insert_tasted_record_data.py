@@ -24,6 +24,9 @@ DATETIME_NOW = datetime.now()
 FILE_PATH = ""  # 시음기록 데이터 파일 경로
 PHOTOS_DIR_PATH = ""  # 시음기록 사진 데이터 파일 경로
 
+BEAN_TYPE = {"싱글 오리진": "single", "블렌드": "blend"}
+BEV_TYPE = {"콜드": True, "핫": False}
+
 
 class Command(BaseCommand):
     help = "시음기록 더미 데이터를 생성"
@@ -87,7 +90,7 @@ def create_bean(df: pd.DataFrame):
     """원두 데이터 생성"""
 
     bean_data = {
-        "bean_type": df["원두 유형"],
+        "bean_type": BEAN_TYPE[df["원두 유형"]],
         "name": df["원두 이름"],
         "origin_country": df["원산지"],
         "is_decaf": df["디카페인 여부"],
@@ -95,7 +98,7 @@ def create_bean(df: pd.DataFrame):
         "roast_point": df["로스팅 포인트"],
         "process": df["가공 방식"],
         "region": df["생산 지역"],
-        "bev_type": False if df["음료 유형"] == "핫" else True,
+        "bev_type": BEV_TYPE[df["음료 유형"]],
         "roastery": df["로스터리"],
         "variety": df["품종"],
         "is_official": df["공식원두 여부"],
