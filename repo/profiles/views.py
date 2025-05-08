@@ -9,7 +9,7 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Avg, Count, F, Q
+from django.db.models import Avg, Count, F, Prefetch
 from django.db.models.functions import TruncDate
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -405,27 +405,31 @@ class OtherProfileAPIView(APIView):
 class UserNoteAPIView(APIView):
     def get(self, request, id):
         user = get_object_or_404(CustomUser, id=id)
+
+        # fmt: off
         notes = (
-            user.note_set.filter(bean__isnull=True)
-            .select_related("post", "tasted_record", "tasted_record__taste_review", "tasted_record__bean")
+            Note.objects.filter(author=user, bean__isnull=True)
+            .select_related(
+                "post",
+                "tasted_record",
+                "tasted_record__taste_review",
+                "tasted_record__bean"
+            )
+            .prefetch_related(
+                Prefetch(
+                    'post__photo_set',
+                    queryset=Photo.objects.only('photo_url', 'post_id'),
+                    to_attr='post_photos'
+                ),
+                Prefetch(
+                    'tasted_record__photo_set',
+                    queryset=Photo.objects.only('photo_url', 'tasted_record_id'),
+                    to_attr='tasted_record_photos'
+                )
+            )
             .order_by("-id")
         )
-
-        post_ids = notes.values_list("post_id", flat=True)
-        tasted_record_ids = notes.values_list("tasted_record_id", flat=True)
-
-        photos = Photo.objects.filter(Q(post_id__in=post_ids) | Q(tasted_record_id__in=tasted_record_ids)).values_list(
-            "post_id", "tasted_record_id", "photo_url"
-        )
-
-        post_photos = {p_id: url for p_id, _, url in photos if p_id}
-        tr_photos = {tr_id: url for _, tr_id, url in photos if tr_id}
-
-        for note in notes:
-            if note.post_id:
-                note.photo_url = post_photos.get(note.post_id)
-            elif note.tasted_record_id:
-                note.photo_url = tr_photos.get(note.tasted_record_id)
+        # fmt: on
 
         return get_paginated_response_with_class(request, notes, UserNoteSerializer)
 

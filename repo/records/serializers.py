@@ -32,7 +32,13 @@ class NotePostSimpleSerializer(serializers.ModelSerializer):
     subject = serializers.CharField(source="post.subject")
     created_at = serializers.SerializerMethodField()
     nickname = serializers.CharField(source="post.author.nickname", read_only=True)
-    photo_url = serializers.CharField(read_only=True)
+    photo_url = serializers.SerializerMethodField()
+
+    def get_photo_url(self, obj):
+        if obj.post and hasattr(obj.post, "post_photos"):
+            photos = obj.post.post_photos
+            return photos[0].photo_url.url if photos else None
+        return None
 
     def get_created_at(self, obj):
         return get_time_difference(obj.post.created_at)
@@ -46,8 +52,14 @@ class NoteTastedRecordSimpleSerializer(serializers.ModelSerializer):
     tasted_record_id = serializers.IntegerField(source="tasted_record.id")
     bean_name = serializers.CharField(source="tasted_record.bean.name")
     flavor = serializers.CharField(source="tasted_record.taste_review.flavor")
-    photo_url = serializers.CharField(read_only=True)
+    photo_url = serializers.SerializerMethodField()
     star = serializers.FloatField(source="tasted_record.taste_review.star", read_only=True, default=0, min_value=0, max_value=5)
+
+    def get_photo_url(self, obj):
+        if obj.tasted_record and hasattr(obj.tasted_record, "tasted_record_photos"):
+            photos = obj.tasted_record.tasted_record_photos
+            return photos[0].photo_url.url if photos else None
+        return None
 
     class Meta:
         model = Note
