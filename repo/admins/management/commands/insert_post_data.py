@@ -10,6 +10,7 @@ from repo.records.models import Post
 
 DATETIME_NOW = datetime.now()
 FILE_PATH = ""  # 게시글 데이터 파일 경로
+POST_SUBJECT_CHOICES = {v: k for k, v in Post.SUBJECT_TYPE_CHOICES}
 
 
 class Command(BaseCommand):
@@ -41,7 +42,7 @@ def create_post(file_path: str, faker: Faker) -> int:
         posts.append(
             Post(
                 author=author,
-                subject=row["주제"],
+                subject=POST_SUBJECT_CHOICES[row["주제"]],
                 title=row["제목"],
                 content=row["내용"],
                 tag=row["태그"],
