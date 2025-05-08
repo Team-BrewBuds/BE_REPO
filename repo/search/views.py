@@ -3,10 +3,8 @@ from django.db.models import (
     Count,
     ExpressionWrapper,
     FloatField,
-    OuterRef,
     Prefetch,
     Q,
-    Subquery,
 )
 from django.db.models.functions import Round
 from rest_framework.views import APIView
@@ -98,10 +96,13 @@ class TastedRecordSearchView(APIView):
 
         records = (
             TastedRecord.objects.all()
-            .select_related("bean", "author", "taste_review")
-            .prefetch_related("photo_set")
-            .annotate(
-                photo_url=Subquery(Photo.objects.filter(tasted_record=OuterRef("pk")).values("photo_url")[:1]),
+            .select_related("bean", "taste_review", "author")
+            .prefetch_related(
+                Prefetch(
+                    "photo_set",
+                    queryset=Photo.objects.only("photo_url", "tasted_record_id"),
+                    to_attr="tasted_record_photos",
+                )
             )
             .distinct()
         )
