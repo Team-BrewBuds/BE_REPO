@@ -20,4 +20,4 @@ class BeanRecommendSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bean
-        fields = ["id", "name", "image_url", "avg_star", "record_cnt"]
+        fields = ["id", "name", "bean_type", "roast_point", "image_url", "avg_star", "record_cnt"]
