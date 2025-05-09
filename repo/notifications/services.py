@@ -264,7 +264,7 @@ class NotificationService:
         """
         사용자의 디바이스 토큰 조회
         """
-        device = UserDevice.objects.filter(user=user, is_active=True).first()
+        device = UserDevice.objects.filter(user=user, is_active=True).order_by("-id").first()
         return device.device_token if device else None
 
     @staticmethod
