@@ -4,9 +4,10 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from repo.interactions.relationship.models import Relationship
+from repo.notifications.enums import Topic
+from repo.notifications.services import NotificationService
+from repo.profiles.models import CustomUser
 from repo.records.models import Comment
-
-from .tasks import send_notification_comment, send_notification_follow
 
 logger = logging.getLogger("django.server")
 
@@ -100,9 +101,27 @@ def send_comment_notification(sender, instance: Comment, created: bool, **kwargs
         return
 
     try:
-        send_notification_comment.delay(instance.id)
+        comment = Comment.objects.get(id=instance.id)
+
+        notification_service = NotificationService()
+        if comment.post:
+            is_sent = notification_service.send_notification_comment(Topic.POST, comment.post, comment)
+        elif comment.tasted_record:
+            is_sent = notification_service.send_notification_comment(Topic.TASTED_RECORD, comment.tasted_record, comment)
+
+        if not is_sent:
+            return
+
+        logger.info(f"댓글({comment.id}) 알림 전송 완료")
+        return {"status": "success", "comment_id": comment.id}
+
+    except Comment.DoesNotExist:
+        logger.error(f"댓글({comment.id})을 찾을 수 없습니다")
+        return {"status": "error", "message": "댓글을 찾을 수 없습니다"}
+
     except Exception as e:
-        logger.error(f"댓글 알림 task 등록 실패: {str(e)}")
+        logger.error(f"댓글({comment.id}) 알림 전송 실패: {str(e)}")
+        return {"status": "retrying", "message": str(e)}
 
 
 @receiver(post_save, sender=Relationship)
@@ -115,6 +134,22 @@ def send_follow_notification(sender, instance: Relationship, created: bool, **kw
         return
 
     try:
-        send_notification_follow.delay(instance.from_user.id, instance.to_user.id)
+        follower = CustomUser.objects.get(id=instance.from_user.id)
+        followee = CustomUser.objects.get(id=instance.to_user.id)
+
+        notification_service = NotificationService()
+        is_sent = notification_service.send_notification_follow(follower, followee)
+
+        if not is_sent:
+            return
+
+        logger.info(f"팔로우({instance.id}) 알림 전송 완료")
+        return {"status": "success", "follower_id": follower.id, "followee_id": followee.id}
+
+    except CustomUser.DoesNotExist:
+        logger.error(f"팔로우({instance.id}) 알림 전송 실패: 사용자를 찾을 수 없습니다")
+        return {"status": "error", "message": "사용자를 찾을 수 없습니다"}
+
     except Exception as e:
-        logger.error(f"팔로우 알림 전송 실패: {str(e)}")
+        logger.error(f"팔로우({instance.id}) 알림 전송 실패: {str(e)}")
+        return {"status": "retrying", "message": str(e)}
