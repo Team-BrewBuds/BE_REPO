@@ -1,3 +1,5 @@
+import logging
+
 from django.db import transaction
 from django.db.models import F, OuterRef
 
@@ -6,9 +8,12 @@ from repo.common.exception.exceptions import (
     NotFoundException,
     ValidationException,
 )
+from repo.common.utils import get_object_by_type
 from repo.notifications.services import NotificationService
-from repo.notifications.tasks import send_notification_like
+from repo.profiles.models import CustomUser
 from repo.records.models import Comment, Post, TastedRecord
+
+logger = logging.getLogger("django.server")
 
 
 class LikeService:
@@ -56,7 +61,31 @@ class LikeService:
         self.target_model.objects.filter(id=self.like_repo.id).select_for_update(of=["self"]).values("likes").update(likes=F("likes") + 1)
 
         # 알림 전송
-        send_notification_like.delay(self.object_type, self.object_id, user_id)
+        try:
+            liked_user = CustomUser.objects.get(id=user_id)
+            liked_obj = get_object_by_type(self.object_type, self.object_id)
+
+            notification_service = NotificationService()
+            is_sent = notification_service.send_notification_like(liked_obj, liked_user)
+
+            if not is_sent:
+                return
+
+            logger.info(f"좋아요({self.like_repo.id}) 알림 전송 완료")
+            return {
+                "status": "success",
+                "liked_obj_type": self.object_type,
+                "liked_obj_id": self.object_id,
+                "liked_user_id": user_id,
+            }
+
+        except CustomUser.DoesNotExist:
+            logger.error(f"좋아요({self.like_repo.id}) 알림 전송 실패: 사용자를 찾을 수 없습니다")
+            return {"status": "error", "message": "사용자를 찾을 수 없습니다"}
+
+        except Exception as e:
+            logger.error(f"좋아요({self.like_repo.id}) 알림 전송 실패: {str(e)}")
+            return {"status": "retrying", "message": str(e)}
 
     @transaction.atomic
     def decrease_like(self, user_id: int) -> None:

@@ -25,27 +25,37 @@ DRY_RUN = True if settings.DEBUG else False
 
 
 class FCMService:
-    """FCM 알림 서비스"""
+    """
+    Firebase Cloud Messaging(FCM) 서비스 - Thread-safe 싱글톤 클래스
+    """
 
-    def __init__(self):
-        self._initialize_firebase()
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialize_firebase()
+        return cls._instance
 
     def _initialize_firebase(self):
-        """Firebase Admin SDK 초기화"""
-        if not SERVICE_ACCOUNT_FILE:
-            raise ValueError("FCM_SERVICE_ACCOUNT_FILE 설정이 없습니다.")
-
-        if not os.path.exists(SERVICE_ACCOUNT_FILE):
-            raise FileNotFoundError(f"Firebase 서비스 계정 키 파일을 찾을 수 없습니다: {SERVICE_ACCOUNT_FILE}")
-
+        """Firebase Admin SDK를 초기화합니다."""
         try:
+            self._validate_service_account()
             self.app = self._get_or_create_firebase_app()
             logger.info("Firebase 초기화 성공")
         except Exception as e:
             self._handle_initialization_error(e)
 
+    def _validate_service_account(self):
+        """서비스 계정 키 파일 유효성 검증"""
+        if not SERVICE_ACCOUNT_FILE:
+            raise ValueError("환경변수 FCM_SERVICE_ACCOUNT_FILE이 설정되지 않았습니다.")
+
+        if not os.path.exists(SERVICE_ACCOUNT_FILE):
+            raise FileNotFoundError(f"Firebase 서비스 계정 키 파일이 존재하지 않습니다: {SERVICE_ACCOUNT_FILE}")
+
     def _get_or_create_firebase_app(self):
-        """기존 Firebase 앱을 가져오거나 새로 생성"""
+        """기존 Firebase 앱을 반환하거나 새로 생성"""
         try:
             return firebase_admin.get_app()
         except ValueError:
@@ -53,10 +63,10 @@ class FCMService:
             return firebase_admin.initialize_app(cred)
 
     def _handle_initialization_error(self, error):
-        """초기화 에러 처리"""
-        logger.error(f"Firebase 초기화 중 오류 발생: {str(error)}")
-        if settings.DEBUG:
-            logger.warning("개발 환경: Firebase 초기화를 건너뜁니다.")
+        """초기화 중 발생한 에러 처리"""
+        logger.error(f"Firebase 초기화 실패: {str(error)}")
+        if getattr(settings, "DEBUG", False):
+            logger.warning("개발 환경이므로 Firebase 초기화를 무시합니다.")
         else:
             raise
 
