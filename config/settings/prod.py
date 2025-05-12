@@ -9,6 +9,10 @@ ALLOWED_HOSTS = [env.str("DOMAIN"), env.str("SERVER_HOST_NAME")]
 WSGI_APPLICATION = "config.wsgi.prod.application"
 INSTALLED_APPS += []
 
+CSRF_TRUSTED_ORIGINS = [f"https://{env.str('DOMAIN')}"]
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_COOKIE_SECURE = True
+
 pymysql.install_as_MySQLdb()
 DATABASES = {
     "default": {
