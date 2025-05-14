@@ -13,6 +13,10 @@ bean_info_keys = {
     "공식원두 여부": "is_official",
 }
 
+is_official_keys = bean_info_keys.copy()
+is_official_keys.pop("추출 방식")
+is_official_keys.pop("음료 유형")
+
 bean_taste_review_keys = {
     "맛": "flavor",
     "바디감": "body",
@@ -37,3 +41,11 @@ full_tasted_record_keys = {
 }
 
 post_keys = {"작성 일시": "created_at", "작성자": "author", "주제": "subject", "제목": "title", "내용": "content", "태그": "tag"}
+
+bean_taste_keys = {
+    "맛": "flavor",
+    "바디감": "body",
+    "산미": "acidity",
+    "쓴맛": "bitterness",
+    "단맛": "sweetness",
+}
