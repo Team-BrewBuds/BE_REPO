@@ -35,10 +35,11 @@ class UserDetailSignupSerializer(serializers.Serializer):
             "cafe_alba": False,
             "cafe_work": False,
             "cafe_operation": False,
-        }
+        },
+        required=False,
     )
-    preferred_bean_taste = serializers.JSONField(default={"body": 3, "acidity": 3, "bitterness": 3, "sweetness": 3})
-    is_certificated = serializers.BooleanField(default=False)
+    preferred_bean_taste = serializers.JSONField(default={"body": 3, "acidity": 3, "bitterness": 3, "sweetness": 3}, required=False)
+    is_certificated = serializers.BooleanField(default=False, required=False)
 
     def validate_coffee_life(self, value):
         valid_keys = UserDetail.COFFEE_LIFE_CHOICES
