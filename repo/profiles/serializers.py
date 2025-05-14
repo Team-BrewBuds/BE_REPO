@@ -26,30 +26,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         return instance
 
 
-class UserSignupSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomUser
-        fields = ["nickname", "gender", "birth"]
-
-    def validate_nickname(self, value):
-        return UserValidator.validate_nickname(value, instance=self.instance)
-
-    def validate_gender(self, value):
-        if value not in ["남", "여"]:
-            raise serializers.ValidationError("성별은 '남' 또는 '여'만 선택 가능합니다.")
-        return value
-
-    def validate_birth(self, value):
-        if len(str(value)) != 4 or not 1900 <= value <= 2100:
-            raise serializers.ValidationError("출생 연도는 4자리 숫자여야 하며, 1900년과 2100년 사이여야 합니다.")
-        return value
-
-
-class UserDetailSignupSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserDetail
-        fields = ["introduction", "profile_link", "coffee_life", "preferred_bean_taste", "is_certificated"]
-
+class UserDetailSignupSerializer(serializers.Serializer):
     coffee_life = serializers.JSONField(
         default={
             "cafe_tour": False,
@@ -58,10 +35,47 @@ class UserDetailSignupSerializer(serializers.ModelSerializer):
             "cafe_alba": False,
             "cafe_work": False,
             "cafe_operation": False,
-        }
+        },
+        required=False,
     )
+    preferred_bean_taste = serializers.JSONField(default={"body": 3, "acidity": 3, "bitterness": 3, "sweetness": 3}, required=False)
+    is_certificated = serializers.BooleanField(default=False, required=False)
 
-    preferred_bean_taste = serializers.JSONField(default={"body": 3, "acidity": 3, "bitterness": 3, "sweetness": 3})
+    def validate_coffee_life(self, value):
+        valid_keys = UserDetail.COFFEE_LIFE_CHOICES
+        for key in value.keys():
+            if key not in valid_keys:
+                raise serializers.ValidationError(f"유효하지 않은 커피 생활 선택: {key}")
+        return value
+
+    def validate_preferred_bean_taste(self, value):
+        required_fields = UserDetail.TASTE_CHOICES
+        for field in required_fields:
+            if field not in value:
+                raise serializers.ValidationError(f"필수 필드가 누락되었습니다: {field}")
+            if not isinstance(value[field], (int, float)) or not 1 <= value[field] <= 5:
+                raise serializers.ValidationError(f"{field}는 1에서 5 사이의 숫자여야 합니다.")
+        return value
+
+
+class SignupSerializer(serializers.Serializer):
+    nickname = serializers.CharField()
+    gender = serializers.ChoiceField(choices=["남", "여"], required=False)
+    birth = serializers.IntegerField(min_value=1900, max_value=2100, required=False)
+    detail = UserDetailSignupSerializer()
+
+    def validate_nickname(self, value):
+        return UserValidator.validate_nickname(value)
+
+    def validate_birth(self, value):
+        if len(str(value)) != 4 or not 1900 <= value <= 2100:
+            raise serializers.ValidationError("출생 연도는 4자리 숫자여야 하며, 1900년과 2100년 사이여야 합니다.")
+        return value
+
+    def validate_gender(self, value):
+        if value not in ["남", "여"]:
+            raise serializers.ValidationError("성별은 '남' 또는 '여'만 선택 가능합니다.")
+        return value
 
 
 class UserSerializer(serializers.ModelSerializer):

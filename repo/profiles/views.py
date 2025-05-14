@@ -34,10 +34,9 @@ from repo.profiles.serializers import (
     PrefStarSerializer,
     PrefSummarySerializer,
     PrefTastedRecordSerializer,
+    SignupSerializer,
     UserAccountSerializer,
-    UserDetailSignupSerializer,
     UserProfileSerializer,
-    UserSignupSerializer,
     UserUpdateSerializer,
 )
 from repo.profiles.services import UserService
@@ -324,33 +323,36 @@ class SignupView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        user = request.user
-        user_data = {
-            "nickname": request.data.get("nickname"),
-            "gender": request.data.get("gender"),
-            "birth": request.data.get("birth_year"),
-        }
+        try:
+            serializer = SignupSerializer(data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
 
-        user_serializer = UserSignupSerializer(user, data=user_data, partial=True)
-        if not user_serializer.is_valid():
-            return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        user_serializer.save()
+            validated_data = serializer.validated_data
+            detail_data = validated_data.pop("detail")
 
-        coffee_life_data = {choice: choice in request.data.get("coffee_life", []) for choice in UserDetail.COFFEE_LIFE_CHOICES}
+            with transaction.atomic():
+                # 사용자 정보 업데이트
+                user: CustomUser = request.user
+                user.nickname = validated_data["nickname"]
+                user.gender = validated_data.get("gender")
+                user.birth = validated_data.get("birth")
+                user.save()
 
-        user_detail_data = {
-            "coffee_life": coffee_life_data,
-            "preferred_bean_taste": request.data.get("preferred_bean_taste", {}),
-            "is_certificated": request.data.get("is_certificated", False),
-        }
-        user_detail, created = UserDetail.objects.get_or_create(user=user)
-        user_detail_serializer = UserDetailSignupSerializer(user_detail, data=user_detail_data, partial=True)
+                # 사용자 상세 정보 업데이트
+                user_detail, _ = UserDetail.objects.get_or_create(user=user)
+                user_detail.coffee_life = detail_data["coffee_life"]
+                user_detail.preferred_bean_taste = detail_data["preferred_bean_taste"]
+                user_detail.is_certificated = detail_data["is_certificated"]
+                user_detail.save()
 
-        if not user_detail_serializer.is_valid():
-            return Response(user_detail_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        user_detail_serializer.save()
+            return Response({"message": "회원가입을 성공했습니다."}, status=status.HTTP_200_OK)
 
-        return Response({"message": "회원가입을 성공했습니다."}, status=status.HTTP_200_OK)
+        except transaction.TransactionManagementError as e:
+            return Response(
+                {"error": f"데이터베이스 트랜잭션 처리 중 오류가 발생했습니다. {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except Exception as e:
+            return Response({"error": f"회원가입 처리 중 오류가 발생했습니다. {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @ProfileSchema.my_profile_schema_view
