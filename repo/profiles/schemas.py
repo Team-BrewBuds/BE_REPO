@@ -6,6 +6,7 @@ from drf_spectacular.utils import (
 )
 
 from repo.profiles.serializers import (
+    SignupSerializer,
     UserAccountSerializer,
     UserProfileSerializer,
     UserUpdateSerializer,
@@ -14,6 +15,25 @@ from repo.records.serializers import UserNoteSerializer
 
 Profile_Tag = "profiles"
 Profile_Records_Tag = "profile_records"
+
+
+class SignUpSchema:
+    signup_post_schema = extend_schema(
+        request=SignupSerializer,
+        responses={
+            200: OpenApiResponse(description="signup success"),
+            400: OpenApiResponse(description="invalid input"),
+            409: OpenApiResponse(description="duplicated nickname"),
+        },
+        summary="회원가입",
+        description="""
+            닉네임을 제외한 나머지 필드는 선택사항입니다.
+            담당자 : hwstar1204
+        """,
+        tags=[Profile_Tag],
+    )
+
+    signup_post_schema_view = extend_schema_view(post=signup_post_schema)
 
 
 class ProfileSchema:

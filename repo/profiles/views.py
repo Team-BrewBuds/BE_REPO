@@ -301,6 +301,7 @@ class DuplicateNicknameCheckView(APIView):
             return Response({"is_available": False, "message": "이미 사용 중인 닉네임입니다."}, status=status.HTTP_200_OK)
 
 
+@SignUpSchema.signup_post_schema_view
 class SignupView(APIView):
     """
     사용자 회원가입을 처리하는 API.
@@ -324,7 +325,7 @@ class SignupView(APIView):
 
     def post(self, request):
         try:
-            serializer = SignupSerializer(data=request.data)
+            serializer = SignupSerializer(data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
 
             validated_data = serializer.validated_data
@@ -339,7 +340,7 @@ class SignupView(APIView):
                 user.save()
 
                 # 사용자 상세 정보 업데이트
-                user_detail: UserDetail = UserDetail.objects.get_or_create(user=user)
+                user_detail, _ = UserDetail.objects.get_or_create(user=user)
                 user_detail.coffee_life = detail_data["coffee_life"]
                 user_detail.preferred_bean_taste = detail_data["preferred_bean_taste"]
                 user_detail.is_certificated = detail_data["is_certificated"]
