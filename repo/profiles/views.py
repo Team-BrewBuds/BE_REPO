@@ -301,6 +301,7 @@ class DuplicateNicknameCheckView(APIView):
             return Response({"is_available": False, "message": "이미 사용 중인 닉네임입니다."}, status=status.HTTP_200_OK)
 
 
+@SignUpSchema.signup_post_schema_view
 class SignupView(APIView):
     """
     사용자 회원가입을 처리하는 API.
