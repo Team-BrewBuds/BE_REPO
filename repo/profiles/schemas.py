@@ -25,6 +25,42 @@ class SignUpSchema:
             400: OpenApiResponse(description="invalid input"),
             409: OpenApiResponse(description="duplicated nickname"),
         },
+        examples=[
+            OpenApiExample(
+                "Signup Example",
+                value={
+                    "nickname": "커피러버",
+                    "gender": "남",
+                    "birth": 1990,
+                },
+            ),
+            OpenApiExample(
+                "Signup Example",
+                value={
+                    "nickname": "브루버즈",
+                    "gender": "여",
+                    "birth": 1990,
+                    "detail": {
+                        "coffee_life": {
+                            "cafe_tour": True,
+                            "coffee_extraction": True,
+                            "coffee_study": True,
+                            "cafe_alba": True,
+                            "cafe_work": True,
+                            "cafe_operation": True,
+                        },
+                        "preferred_bean_taste": {
+                            "body": 5,
+                            "acidity": 5,
+                            "bitterness": 5,
+                            "sweetness": 5,
+                        },
+                        "is_certificated": True,
+                    },
+                },
+                request_only=True,
+            ),
+        ],
         summary="회원가입",
         description="""
             닉네임을 제외한 나머지 필드는 선택사항입니다.

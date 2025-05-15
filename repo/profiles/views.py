@@ -329,7 +329,7 @@ class SignupView(APIView):
             serializer.is_valid(raise_exception=True)
 
             validated_data = serializer.validated_data
-            detail_data = validated_data.pop("detail")
+            detail_data = validated_data.pop("detail", None)
 
             with transaction.atomic():
                 # 사용자 정보 업데이트
@@ -341,10 +341,11 @@ class SignupView(APIView):
 
                 # 사용자 상세 정보 업데이트
                 user_detail, _ = UserDetail.objects.get_or_create(user=user)
-                user_detail.coffee_life = detail_data["coffee_life"]
-                user_detail.preferred_bean_taste = detail_data["preferred_bean_taste"]
-                user_detail.is_certificated = detail_data["is_certificated"]
-                user_detail.save()
+                if detail_data:
+                    for field in ["coffee_life", "preferred_bean_taste", "is_certificated"]:
+                        if field in detail_data:
+                            setattr(user_detail, field, detail_data[field])
+                    user_detail.save()
 
             return Response({"message": "회원가입을 성공했습니다."}, status=status.HTTP_200_OK)
 
