@@ -26,20 +26,10 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         return instance
 
 
-class UserDetailSignupSerializer(serializers.Serializer):
-    coffee_life = serializers.JSONField(
-        default={
-            "cafe_tour": False,
-            "coffee_extraction": False,
-            "coffee_study": False,
-            "cafe_alba": False,
-            "cafe_work": False,
-            "cafe_operation": False,
-        },
-        required=False,
-    )
-    preferred_bean_taste = serializers.JSONField(default={"body": 3, "acidity": 3, "bitterness": 3, "sweetness": 3}, required=False)
-    is_certificated = serializers.BooleanField(default=False, required=False)
+class UserDetailSignupSerializer(serializers.ModelSerializer):
+    coffee_life = serializers.JSONField(required=False, default=UserDetail.default_coffee_life)
+    preferred_bean_taste = serializers.JSONField(required=False, default=UserDetail.default_taste)
+    is_certificated = serializers.BooleanField(required=False, default=False)
 
     def validate_coffee_life(self, value):
         valid_keys = UserDetail.COFFEE_LIFE_CHOICES
@@ -57,12 +47,13 @@ class UserDetailSignupSerializer(serializers.Serializer):
                 raise serializers.ValidationError(f"{field}는 1에서 5 사이의 숫자여야 합니다.")
         return value
 
+    class Meta:
+        model = UserDetail
+        fields = ["coffee_life", "preferred_bean_taste", "is_certificated"]
 
-class SignupSerializer(serializers.Serializer):
-    nickname = serializers.CharField()
-    gender = serializers.ChoiceField(choices=["남", "여"], required=False)
-    birth = serializers.IntegerField(min_value=1900, max_value=2100, required=False)
-    detail = UserDetailSignupSerializer()
+
+class SignupSerializer(serializers.ModelSerializer):
+    detail = UserDetailSignupSerializer(required=False)
 
     def validate_nickname(self, value):
         return UserValidator.validate_nickname(value)
@@ -76,6 +67,10 @@ class SignupSerializer(serializers.Serializer):
         if value not in ["남", "여"]:
             raise serializers.ValidationError("성별은 '남' 또는 '여'만 선택 가능합니다.")
         return value
+
+    class Meta:
+        model = CustomUser
+        fields = ["nickname", "gender", "birth", "detail"]
 
 
 class UserSerializer(serializers.ModelSerializer):
