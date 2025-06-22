@@ -119,7 +119,7 @@ class BeanRecommendAPIView(APIView):
         return Response(serializer.data)
 
     def get_random_beans(self):
-        beans = list(Bean.objects.all())
+        beans = list(Bean.objects.filter(is_official=True).all())
         random_beans = random.sample(beans, min(len(beans), 10))
         recommended_beans = Bean.objects.filter(id__in=[bean.id for bean in random_beans]).annotate(
             avg_star=Avg("tastedrecord__taste_review__star", default=0), record_cnt=Count("tastedrecord", distinct=True)
