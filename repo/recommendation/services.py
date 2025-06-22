@@ -69,7 +69,7 @@ class BeanRecommendationStrategy(RecommendationStrategy):
             .order_by("-taste_review__star")[:3]
         )
 
-        if not high_rated_reviews.exists():
+        if high_rated_reviews.count() <= 3:
             return self.get_random_beans()
 
         user_taste_data = {
