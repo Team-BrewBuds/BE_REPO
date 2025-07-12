@@ -1,12 +1,9 @@
 import logging
-import random
-from datetime import timedelta
 from typing import Optional
 
 from django.core.cache import cache
 from django.db import transaction
 from django.db.models import BooleanField, Exists, Prefetch, Q, QuerySet, Value
-from django.utils import timezone
 
 from repo.beans.services import BeanService
 from repo.common.view_counter import get_not_viewed_contents
@@ -150,7 +147,7 @@ class TastedRecordService(BaseRecordService):
                 "author__last_login",
                 "author__created_at",
             )
-        )
+        ).order_by("-id")
 
     def get_feed_queryset(self, user: CustomUser, filters: Optional[Q] = None) -> QuerySet[TastedRecord]:
         """
@@ -184,16 +181,6 @@ class TastedRecordService(BaseRecordService):
 
         return self.get_feed_queryset(user, filters).annotate(is_user_following=Value(follow, output_field=BooleanField()))
 
-    # home following feed
-    def get_following_feed_and_gte_one_hour(self, user: CustomUser) -> QuerySet[TastedRecord]:
-        """팔로잉한 사용자의 최근 1시간 이내 피드 조회"""
-        following_feed = self.get_feed_by_follow_relation(user, True)
-
-        one_hour_ago = timezone.now() - timedelta(hours=1)
-        add_filter = Q(created_at__gte=one_hour_ago)
-
-        return following_feed.filter(add_filter)
-
     # home refresh feed
     def get_refresh_feed(self, user: CustomUser) -> QuerySet[TastedRecord]:
         """새로고침용 피드 조회"""
@@ -213,5 +200,4 @@ class TastedRecordService(BaseRecordService):
             records = TastedRecordListSerializer(public_records_queryset, many=True).data
             cache.set(cache_key, records, timeout=60 * 5)
 
-        random.shuffle(records)
         return records

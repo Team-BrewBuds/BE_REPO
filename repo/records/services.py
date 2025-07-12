@@ -9,6 +9,7 @@ from repo.records.tasted_record.services import (
     TastedRecordService,
     get_tasted_record_service,
 )
+from repo.records.views import FeedSerializer
 
 
 def get_feed_service():
@@ -26,34 +27,30 @@ class FeedService:
 
     def get_following_feed(self, request, user):
         """
-        팔로잉 중인 사용자들의 최근 활동 피드를 반환합니다.
+        팔로잉 중인 사용자들의 게시글, 시음기록 피드를 반환합니다.
 
-        - 1시간 이내 작성된 시음기록과 게시글을 포함
         - 비공개 시음기록과 최근 조회한 기록은 제외
-        - 결과는 랜덤 순서로 정렬됨
+        - 결과는 최신순으로 정렬
 
         Args:
             request: HTTP 요청 객체
             user: 사용자 객체
 
         Returns:
-            list: 시음기록과 게시글이 혼합된 피드 리스트
+            list: 시음기록과 게시글이 최신순으로 정렬된 피드 리스트
         """
 
         # 1. 팔로우한 유저의 시음기록, 게시글
-        following_tasted_records = self.tasted_record_service.get_following_feed_and_gte_one_hour(user)
-
-        following_posts = self.post_service.get_following_feed_and_gte_one_hour(user)
+        following_tasted_records = self.tasted_record_service.get_feed_by_follow_relation(user, follow=True)
+        following_posts = self.post_service.get_feed_by_follow_relation(user, follow=True)
 
         # 2. 조회하지 않은 시음기록, 게시글
         not_viewed_tasted_records = get_not_viewed_contents(request, following_tasted_records, "tasted_record_viewed")
         not_viewed_posts = get_not_viewed_contents(request, following_posts, "post_viewed")
 
-        # 3. 1 + 2
+        # 3. 1+2 최신순으로 정렬
         combined_data = list(chain(not_viewed_tasted_records, not_viewed_posts))
-
-        # 4. 랜덤순으로 섞기
-        random.shuffle(combined_data)
+        combined_data.sort(key=lambda x: x.created_at, reverse=True)
         return combined_data
 
     def get_common_feed(self, request, user):
@@ -116,7 +113,7 @@ class FeedService:
         비로그인 사용자를 위한 통합 피드를 반환합니다.
 
         - 공개 시음기록과 모든 게시글 포함
-        - 랜덤 순서로 정렬
+        - 최신순 정렬
 
         Returns:
             list: 시음기록과 게시글이 랜덤으로 정렬된 피드 리스트
@@ -125,11 +122,12 @@ class FeedService:
         feeds = cache.get(cache_key)
 
         if feeds is None:
-            tasted_records = self.tasted_record_service.get_record_list_for_anonymous()
-            posts = self.post_service.get_record_list_for_anonymous()
+            tasted_records = self.tasted_record_service.get_base_record_list_queryset()
+            posts = self.post_service.get_base_record_list_queryset()
 
-            feeds = list(chain(tasted_records, posts))
+            combined_data = list(chain(tasted_records, posts))
+            combined_data.sort(key=lambda x: x.created_at, reverse=True)
+            feeds = FeedSerializer(combined_data, many=True).data
             cache.set(cache_key, feeds, timeout=60 * 5)
 
-        random.shuffle(feeds)
         return feeds

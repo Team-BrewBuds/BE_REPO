@@ -35,16 +35,14 @@ class PostSchema:
         responses={200: PostListSerializer},
         summary="홈 [게시글] 피드 조회",
         description="""
-            홈 피드의 주제별 게시글 list 데이터를 가져옵니다.
+            홈 피드의 주제별 게시글들을 가져옵니다.
             - 순서: 팔로잉, 일반
-            - 정렬: 최신순
+            - 정렬: 최신순 (회원/비회원)
             - 페이지네이션 적용 (12개)
             - 30분이내 조회하지않은 게시글만 가져옵니다.
 
             Notice:
-            - like_cnt에서 likes로 변경
-            - comments(댓글 수), is_user_noted(사용자 저장여부) 추가 됨
-            - 비회원일경우 랜덤으로 게시글을 가져옵니다. (subject 쿼리 파라미터 미사용)
+            - 비회원일경우 subject 쿼리 파라미터 미사용
             - 주제 (default: 전체)
             : normal(일반), cafe(카페), bean(원두), info(정보), question(질문), worry(고민), gear(장비)
         """,

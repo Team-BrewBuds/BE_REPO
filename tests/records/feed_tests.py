@@ -20,6 +20,7 @@ class TestFeedAPIView:
     피드 조회 API 테스트
     작성한 테스트 케이스
     - [비로그인] 비로그인 사용자의 피드 조회 성공 테스트
+    - [비로그인] 비로그인 사용자의 피드 조회시 최신순 조회정렬 테스트
     - [팔로잉] 팔로잉 피드 조회 성공 테스트
     - [팔로잉] 1시간 이내 작성된 컨텐츠만 포함되는지 테스트
     - [일반] 일반 피드 조회 성공 테스트
@@ -48,6 +49,25 @@ class TestFeedAPIView:
             assert not item["is_user_liked"]
             assert "is_user_noted" in item
             assert not item["is_user_noted"]
+
+    def test_get_anonymous_feed_order_by_latest(self, api_client):
+        """비로그인 사용자의 피드 조회시 최신순 조회정렬 테스트"""
+        # Given
+        post1 = PostFactory()
+        tasted_record1 = TastedRecordFactory()
+        post2 = PostFactory()
+        tasted_record2 = TastedRecordFactory()
+
+        # When
+        response = api_client.get(f"{self.url}?feed_type=common")
+
+        # Then
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data["results"]
+        assert results[0]["id"] == tasted_record2.id
+        assert results[1]["id"] == post2.id
+        assert results[2]["id"] == tasted_record1.id
+        assert results[3]["id"] == post1.id
 
     def test_get_following_feed_success(self, authenticated_client):
         """팔로잉 피드 조회 성공 테스트"""
