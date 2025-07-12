@@ -9,7 +9,7 @@ from .models import CustomUser, UserDetail
 
 @admin.register(CustomUser)
 class CustomUserAdmin(admin.ModelAdmin):
-    list_display = ["id", "nickname", "gender", "birth", "login_type", "email", "created_at", "is_superuser", "is_active"]
+    list_display = ["id", "nickname", "gender", "birth", "login_type", "email", "created_at", "is_superuser", "is_active", "last_login"]
     list_filter = [
         "gender",
         "login_type",
@@ -18,6 +18,7 @@ class CustomUserAdmin(admin.ModelAdmin):
         "is_superuser",
         "is_staff",
         "is_active",
+        "last_login",
         ("birth", NumericRangeFilter),
     ]
     search_fields = ["nickname", "email"]
