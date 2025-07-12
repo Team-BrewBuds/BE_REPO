@@ -94,7 +94,7 @@ class BeanTasteReviewFactory(DjangoModelFactory):
     sweetness = factory.LazyFunction(lambda: fake.random_int(min=1, max=5))
     star = factory.LazyFunction(lambda: round(fake.random.uniform(0.5, 5.0) * 2) / 2)
     place = factory.Iterator(["집", "카페", "회사", "도서관"])
-    created_at = factory.Faker("date_time_this_year")
+    tasted_at = factory.Faker("date_this_year")
 
 
 class TastedRecordFactory(DjangoModelFactory):

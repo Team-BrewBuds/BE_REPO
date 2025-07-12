@@ -22,17 +22,14 @@ class TastedRecordSchema:
         responses={200: TastedRecordListSerializer},
         summary="홈 [시음기록] 피드 조회",
         description="""
-            홈 피드의 시음기록 list를 최신순으로 가져옵니다.
+            홈 피드의 시음기록들을 최신순으로 가져옵니다.
             - 순서: 팔로잉, 일반
-            - 정렬: 최신순
+            - 정렬: 최신순 (회원/비회원)
             - 페이지네이션 적용 (12개)
-            - 30분이내 조회하지않은 게시글 가져옵니다.
+            - 30분이내 조회하지않은 시음기록 가져옵니다.
             - 프라이빗한 시음기록은 제외
 
             Notice:
-            - like_cnt에서 likes로 변경
-            - comments(댓글 수), is_user_noted(사용자 저장여부) 추가 됨
-            - 비회원일경우 랜덤으로 시음기록을 가져옵니다.
 
             담당자: hwstar1204
         """,

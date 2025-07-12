@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 import pytest
+from django.utils import timezone
 from rest_framework import status
 
 from repo.records.models import Post
@@ -20,6 +23,7 @@ class TestPostListCreateAPIView:
     - [조회] 게시글 빈 목록 조회 성공 테스트
     - [조회] 게시글 목록 최신순 정렬 테스트
     - [조회] 게시글 주제별 필터링 테스트
+    - [조회] 미인증 사용자의 게시글 조회시 최신순 조회정렬 테스트
     - [생성] 게시글 생성 성공 테스트
     - [생성] 게시글 생성 시 사진 포함 테스트
     - [생성] 필수 필드 누락 시 400 에러 반환 테스트
@@ -86,6 +90,23 @@ class TestPostListCreateAPIView:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["count"] >= 2
         assert all(post["subject"] == subject_choices.get(subject) for post in response.data["results"])
+
+    def test_get_post_list_order_by_latest_unauthenticated(self, api_client):
+        """미인증 사용자의 게시글 조회시 최신순 조회정렬 테스트"""
+        # Given
+        PostFactory(created_at=timezone.now() - timedelta(days=3))
+        PostFactory(created_at=timezone.now() - timedelta(days=2))
+        PostFactory(created_at=timezone.now() - timedelta(days=1))
+        PostFactory(created_at=timezone.now())
+
+        # When
+        response = api_client.get(self.url)
+
+        # Then
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data["results"]
+        for i in range(len(results) - 1):
+            assert results[i]["id"] > results[i + 1]["id"]
 
     def test_create_post_success(self, authenticated_client):
         """게시글 생성 성공 테스트"""

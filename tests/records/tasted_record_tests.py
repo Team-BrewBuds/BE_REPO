@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 import pytest
+from django.utils import timezone
 from rest_framework import status
 
 from repo.records.models import TastedRecord
@@ -21,6 +24,7 @@ class TestTastedRecordListCreateAPIView:
     - [조회] 시음기록 빈 목록 조회 성공 테스트
     - [조회] 시음기록 목록 최신순 정렬 테스트
     - [조회] 비인증 사용자의 시음기록 목록 조회 테스트
+    - [조회] 미인증 사용자의 시음기록 조회시 최신순 조회정렬 테스트
     - [생성] 시음기록 생성 성공 테스트
     - [생성] 시음기록 생성 시 사진 포함 테스트
     - [생성] 필수 필드 누락 시 400 에러 반환 테스트
@@ -94,6 +98,23 @@ class TestTastedRecordListCreateAPIView:
         # Then
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) == 3
+
+    def test_get_tasted_record_list_order_by_latest_unauthenticated(self, api_client):
+        """미인증 사용자의 시음기록 조회시 최신순 조회정렬 테스트"""
+        # Given
+        TastedRecordFactory(created_at=timezone.now() - timedelta(days=3))
+        TastedRecordFactory(created_at=timezone.now() - timedelta(days=2))
+        TastedRecordFactory(created_at=timezone.now() - timedelta(days=1))
+        TastedRecordFactory(created_at=timezone.now())
+
+        # When
+        response = api_client.get(self.url)
+
+        # Then
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data["results"]
+        for i in range(len(results) - 1):
+            assert results[i]["id"] > results[i + 1]["id"]
 
     def test_create_tasted_record_success(self, authenticated_client):
         """시음기록 생성 성공 테스트"""

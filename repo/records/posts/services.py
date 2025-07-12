@@ -1,5 +1,4 @@
 import logging
-import random
 from datetime import timedelta
 from typing import Optional
 
@@ -191,16 +190,6 @@ class PostService(BaseRecordService):
 
         return self.get_feed_queryset(user, filters, None).annotate(is_user_following=Value(follow, output_field=BooleanField()))
 
-    # home following feed
-    def get_following_feed_and_gte_one_hour(self, user: CustomUser) -> QuerySet[Post]:
-        """팔로잉한 사용자의 최근 1시간 이내 피드 조회"""
-        following_feed = self.get_feed_by_follow_relation(user, True)
-
-        one_hour_ago = timezone.now() - timedelta(hours=1)
-        add_filter = Q(created_at__gte=one_hour_ago)
-
-        return following_feed.filter(add_filter)
-
     # home refresh feed
     def get_refresh_feed(self, user: CustomUser) -> QuerySet[Post]:
         return self.get_feed_queryset(user, None, None).annotate(
@@ -230,7 +219,6 @@ class PostService(BaseRecordService):
             subject_value = dict(Post.SUBJECT_TYPE_CHOICES)[subject]
             posts = [post for post in posts if post["subject"] == subject_value]
 
-        random.shuffle(posts)
         return posts
 
 
