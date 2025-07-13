@@ -160,10 +160,7 @@ class TastedRecordService(BaseRecordService):
         Returns:
             QuerySet: 필터링된 시음기록 쿼리셋
         """
-        base_queryset = self.get_base_record_list_queryset().annotate(
-            is_user_liked=Exists(self.like_service.get_like_subquery_for_tasted_record(user)),
-            is_user_noted=Exists(self.note_service.get_note_subquery_for_tasted_record(user)),
-        )
+        base_queryset = self.get_base_record_list_queryset()
 
         block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
 
