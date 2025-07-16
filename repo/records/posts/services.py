@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+from itertools import chain
 from typing import Optional
 
 from django.core.cache import cache
@@ -82,7 +83,7 @@ class PostService(BaseRecordService):
             "-id"
         )
 
-        posts = following_posts.union(unfollowing_posts, all=True)
+        posts = list(chain(following_posts, unfollowing_posts))
 
         if request:
             posts = get_not_viewed_contents(request, posts, "post_viewed")

@@ -1,4 +1,5 @@
 import logging
+from itertools import chain
 from typing import Optional
 
 from django.core.cache import cache
@@ -61,7 +62,7 @@ class TastedRecordService(BaseRecordService):
         following_tasted_records = self.annotate_user_interactions(self.get_feed_by_follow_relation(user, True), user).order_by("-id")
         unfollowing_tasted_records = self.annotate_user_interactions(self.get_feed_by_follow_relation(user, False), user).order_by("-id")
 
-        tasted_records = following_tasted_records.union(unfollowing_tasted_records, all=True)
+        tasted_records = list(chain(following_tasted_records, unfollowing_tasted_records))
 
         if request:
             tasted_records = get_not_viewed_contents(request, tasted_records, "tasted_record_viewed")
