@@ -3,7 +3,7 @@ from itertools import chain
 
 from django.core.cache import cache
 
-from repo.common.view_counter import get_not_viewed_contents
+from repo.common.view_counter import RedisViewTracker, get_not_viewed_contents
 from repo.records.posts.services import PostService, get_post_service
 from repo.records.tasted_record.services import (
     TastedRecordService,
@@ -24,6 +24,7 @@ class FeedService:
     def __init__(self, post_service: PostService, tasted_record_service: TastedRecordService):
         self.post_service = post_service
         self.tasted_record_service = tasted_record_service
+        self.tracker = RedisViewTracker()
 
     def get_following_feed(self, request, user):
         """
@@ -45,8 +46,8 @@ class FeedService:
         following_posts = self.post_service.get_feed_by_follow_relation(user, follow=True)
 
         # 2. 조회하지 않은 시음기록, 게시글
-        not_viewed_tasted_records = get_not_viewed_contents(request, following_tasted_records, "tasted_record_viewed")
-        not_viewed_posts = get_not_viewed_contents(request, following_posts, "post_viewed")
+        not_viewed_tasted_records = self.tracker.filter_not_viewed_contents(request, "tasted_record", following_tasted_records)
+        not_viewed_posts = self.tracker.filter_not_viewed_contents(request, "post", following_posts)
 
         # 3. 1+2 최신순으로 정렬
         combined_data = list(chain(not_viewed_tasted_records, not_viewed_posts))
