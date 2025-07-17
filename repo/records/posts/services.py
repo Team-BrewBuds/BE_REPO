@@ -10,7 +10,7 @@ from django.utils import timezone
 from redis.exceptions import ConnectionError
 
 from repo.common.utils import get_last_monday
-from repo.common.view_counter import get_not_viewed_contents
+from repo.common.view_counter import RedisViewTracker
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
 from repo.interactions.relationship.services import RelationshipService
@@ -42,9 +42,13 @@ class PostService(BaseRecordService):
 
     def __init__(self, relationship_service, like_service, note_service):
         super().__init__(relationship_service, like_service, note_service)
+        self.tracker = RedisViewTracker()
 
-    def get_record_detail(self, pk: int) -> Post:
+    def get_record_detail(self, request, pk: int) -> Post:
         """게시글 상세 조회"""
+
+        self.tracker.track_view(request, "post", pk)
+
         return (
             Post.objects.filter(pk=pk)
             .select_related("author")
@@ -85,8 +89,7 @@ class PostService(BaseRecordService):
 
         posts = list(chain(following_posts, unfollowing_posts))
 
-        if request:
-            posts = get_not_viewed_contents(request, posts, "post_viewed")
+        posts = self.tracker.filter_not_viewed_contents(request, "post", posts)
 
         return posts
 

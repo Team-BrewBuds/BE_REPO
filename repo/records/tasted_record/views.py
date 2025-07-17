@@ -98,7 +98,7 @@ class TastedRecordDetailApiView(APIView):
 
     def get(self, request, pk):
         tasted_record = self.get_object(pk)
-        tasted_record_detail = self.tasted_record_service.get_record_detail(tasted_record.id)
+        tasted_record_detail = self.tasted_record_service.get_record_detail(request, tasted_record.id)
 
         # 쿠키 기반 조회수 업데이트
         response = update_view_count(request, tasted_record_detail, Response(), "tasted_record_viewed")

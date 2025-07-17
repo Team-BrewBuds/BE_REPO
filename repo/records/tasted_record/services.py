@@ -7,7 +7,7 @@ from django.db import transaction
 from django.db.models import BooleanField, Exists, Prefetch, Q, QuerySet, Value
 
 from repo.beans.services import BeanService
-from repo.common.view_counter import get_not_viewed_contents
+from repo.common.view_counter import RedisViewTracker
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
 from repo.interactions.relationship.services import RelationshipService
@@ -33,9 +33,12 @@ class TastedRecordService(BaseRecordService):
         super().__init__(relationship_service, like_service, note_service)
         self.bean_service = BeanService()
         self.user_service = UserService()
+        self.tracker = RedisViewTracker()
 
-    def get_record_detail(self, pk: int) -> TastedRecord:
+    def get_record_detail(self, request, pk: int) -> TastedRecord:
         """시음기록 상세 조회"""
+        self.tracker.track_view(request, "tasted_record", pk)
+
         return TastedRecord.objects.select_related("author", "bean", "taste_review").prefetch_related("photo_set").get(pk=pk)
 
     def get_user_records(self, user_id: int, **kwargs) -> QuerySet[TastedRecord]:
@@ -64,8 +67,7 @@ class TastedRecordService(BaseRecordService):
 
         tasted_records = list(chain(following_tasted_records, unfollowing_tasted_records))
 
-        if request:
-            tasted_records = get_not_viewed_contents(request, tasted_records, "tasted_record_viewed")
+        tasted_records = self.tracker.filter_not_viewed_contents(request, "tasted_record", tasted_records)
 
         return tasted_records
 

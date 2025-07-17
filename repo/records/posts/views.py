@@ -66,7 +66,7 @@ class PostDetailAPIView(APIView):
 
     def get(self, request, pk):
         post = self.get_object(pk)
-        post_detail = self.post_service.get_record_detail(post.id)
+        post_detail = self.post_service.get_record_detail(request, post.id)
 
         # 쿠키 기반 조회수 업데이트
         response = update_view_count(request, post_detail, Response(), "post_viewed")
