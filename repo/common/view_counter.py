@@ -101,18 +101,13 @@ class RedisViewTracker:
         """조회 여부 추가 및 조회 이력 관리"""
         try:
             cache_key = self.get_cache_key(request, content_type)
-
             viewed_list = cache.get(cache_key, [])
-
             if str(content_id) in viewed_list:
                 return False
 
             viewed_list.append(str(content_id))
-
-            # 최대 개수 초과 시 오래된 항목 제거
-            if len(viewed_list) > self.MAX_VIEWED_ITEMS:
+            if len(viewed_list) > self.MAX_VIEWED_ITEMS:  # 최대 개수 초과 시 오래된 항목 제거
                 viewed_list.pop(0)
-
             cache.set(cache_key, viewed_list, timeout=self.REDIS_VIEW_EXP_SEC)
             return True
         except UnauthorizedException:
@@ -149,3 +144,9 @@ class RedisViewTracker:
         """사용자가 아직 조회하지 않은 데이터만 필터링하여 반환합니다."""
         viewed_contents = self.get_user_viewed_contents(request, content_type)
         return [content for content in queryset if content.id not in viewed_contents]
+
+    def update_view_count(self, instance) -> bool:
+        """조회수 업데이트"""
+        instance.view_cnt += 1
+        instance.save(update_fields=["view_cnt"])
+        return instance

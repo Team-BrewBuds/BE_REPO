@@ -35,9 +35,14 @@ class TastedRecordService(BaseRecordService):
         self.user_service = UserService()
         self.tracker = RedisViewTracker()
 
+    @transaction.atomic
     def get_record_detail(self, request, pk: int) -> TastedRecord:
         """시음기록 상세 조회"""
-        self.tracker.track_view(request, "tasted_record", pk)
+
+        is_tracked = self.tracker.track_view(request, "tasted_record", pk)
+        if is_tracked:
+            tasted_record = TastedRecord.objects.get(id=pk)
+            self.tracker.update_view_count(tasted_record)
 
         return TastedRecord.objects.select_related("author", "bean", "taste_review").prefetch_related("photo_set").get(pk=pk)
 

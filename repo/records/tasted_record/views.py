@@ -9,7 +9,6 @@ from rest_framework.views import APIView
 from repo.common.filters import TastedRecordFilter
 from repo.common.permissions import IsOwnerOrReadOnly
 from repo.common.utils import get_paginated_response_with_class
-from repo.common.view_counter import update_view_count
 from repo.records.models import TastedRecord
 from repo.records.tasted_record.schemas import (
     TastedRecordSchema,
@@ -99,13 +98,8 @@ class TastedRecordDetailApiView(APIView):
     def get(self, request, pk):
         tasted_record = self.get_object(pk)
         tasted_record_detail = self.tasted_record_service.get_record_detail(request, tasted_record.id)
-
-        # 쿠키 기반 조회수 업데이트
-        response = update_view_count(request, tasted_record_detail, Response(), "tasted_record_viewed")
         serializer = self.response_serializer_class(tasted_record_detail, context={"request": request})
-        response.data = serializer.data
-        response.status_code = status.HTTP_200_OK
-        return response
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request, pk):
         tasted_record = self.get_object(pk)

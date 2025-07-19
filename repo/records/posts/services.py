@@ -44,10 +44,14 @@ class PostService(BaseRecordService):
         super().__init__(relationship_service, like_service, note_service)
         self.tracker = RedisViewTracker()
 
+    @transaction.atomic
     def get_record_detail(self, request, pk: int) -> Post:
         """게시글 상세 조회"""
 
-        self.tracker.track_view(request, "post", pk)
+        is_tracked = self.tracker.track_view(request, "post", pk)
+        if is_tracked:
+            post = Post.objects.get(id=pk)
+            self.tracker.update_view_count(post)
 
         return (
             Post.objects.filter(pk=pk)

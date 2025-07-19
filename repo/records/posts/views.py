@@ -7,7 +7,6 @@ from rest_framework.views import APIView
 
 from repo.common.permissions import IsOwnerOrReadOnly
 from repo.common.utils import get_paginated_response_with_class
-from repo.common.view_counter import update_view_count
 from repo.records.posts.schemas import PostSchema
 from repo.records.posts.serializers import *
 from repo.records.posts.services import *
@@ -68,12 +67,8 @@ class PostDetailAPIView(APIView):
         post = self.get_object(pk)
         post_detail = self.post_service.get_record_detail(request, post.id)
 
-        # 쿠키 기반 조회수 업데이트
-        response = update_view_count(request, post_detail, Response(), "post_viewed")
         serializer = PostDetailSerializer(post_detail, context={"request": request})
-        response.data = serializer.data
-        response.status_code = status.HTTP_200_OK
-        return response
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request, pk):
         post = self.get_object(pk)
