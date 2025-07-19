@@ -10,7 +10,7 @@ from django.utils import timezone
 from redis.exceptions import ConnectionError
 
 from repo.common.utils import get_last_monday
-from repo.common.view_counter import RedisViewTracker
+from repo.common.view_tracker import RedisViewTracker
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
 from repo.interactions.relationship.services import RelationshipService

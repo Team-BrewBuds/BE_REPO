@@ -7,7 +7,7 @@ from django.db import transaction
 from django.db.models import BooleanField, Exists, Prefetch, Q, QuerySet, Value
 
 from repo.beans.services import BeanService
-from repo.common.view_counter import RedisViewTracker
+from repo.common.view_tracker import RedisViewTracker
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
 from repo.interactions.relationship.services import RelationshipService
