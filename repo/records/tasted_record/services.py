@@ -71,9 +71,17 @@ class TastedRecordService(BaseRecordService):
         unfollowing_tasted_records = self.annotate_user_interactions(self.get_feed_by_follow_relation(user, False), user).order_by("-id")
 
         tasted_records = list(chain(following_tasted_records, unfollowing_tasted_records))
-
         tasted_records = self.tracker.filter_not_viewed_contents(request, "tasted_record", tasted_records)
+        return tasted_records
 
+    def get_record_list_v2(self, user: CustomUser, **kwargs) -> QuerySet[TastedRecord]:
+        request = kwargs.get("request", None)
+
+        blocked_users_list = self.relationship_service.get_unique_blocked_user_list(user.id)
+
+        tasted_records = self.get_base_record_list_queryset().exclude(author_id__in=blocked_users_list)
+        tasted_records = self.annotate_user_interactions(tasted_records, user)
+        tasted_records = self.tracker.filter_not_viewed_contents(request, "tasted_record", tasted_records)
         return tasted_records
 
     @transaction.atomic

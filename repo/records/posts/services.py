@@ -92,9 +92,18 @@ class PostService(BaseRecordService):
         )
 
         posts = list(chain(following_posts, unfollowing_posts))
-
         posts = self.tracker.filter_not_viewed_contents(request, "post", posts)
+        return posts
 
+    def get_record_list_v2(self, user: CustomUser, **kwargs) -> QuerySet[Post]:
+        request = kwargs.get("request", None)
+        subject = kwargs.get("subject", None)
+
+        blocked_users_list = self.relationship_service.get_unique_blocked_user_list(user.id)
+
+        posts = self.get_base_record_list_queryset().filter(subject=subject).exclude(author_id__in=blocked_users_list)
+        posts = self.annotate_user_interactions(posts, user)
+        posts = self.tracker.filter_not_viewed_contents(request, "post", posts)
         return posts
 
     @transaction.atomic

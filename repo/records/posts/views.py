@@ -31,7 +31,7 @@ class PostListCreateAPIView(APIView):
             paginated_posts = paginator.paginate_queryset(posts, request)
             return paginator.get_paginated_response(paginated_posts)
 
-        posts = self.post_service.get_record_list(user, subject=subject, request=request)
+        posts = self.post_service.get_record_list_v2(user, subject=subject, request=request)
         return get_paginated_response_with_class(request, posts, PostListSerializer)
 
     def post(self, request):

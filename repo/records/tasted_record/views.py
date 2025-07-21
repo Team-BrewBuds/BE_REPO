@@ -55,7 +55,7 @@ class TastedRecordListCreateAPIView(APIView):
             paginated_tasted_records = paginator.paginate_queryset(tasted_records, request)
             return paginator.get_paginated_response(paginated_tasted_records)
 
-        tasted_records = self.tasted_record_service.get_record_list(user, request=request)
+        tasted_records = self.tasted_record_service.get_record_list_v2(user, request=request)
         return get_paginated_response_with_class(request, tasted_records, serializer_class)
 
     def post(self, request):
