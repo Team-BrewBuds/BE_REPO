@@ -26,6 +26,23 @@ class FeedService:
         self.tasted_record_service = tasted_record_service
         self.tracker = RedisViewTracker()
 
+    def get_feed(self, request, user):
+        """
+        팔로우여부와 상관없이 모든 시음기록과 게시글 조회
+
+        - 비공개 시음기록과 최근 조회한 기록은 제외
+        - 차단한 사용자의 컨텐츠 제외
+        - 결과는 최신순으로 정렬
+        - following + common 두개의 api를 대체 가능
+        """
+
+        tasted_records = self.tasted_record_service.get_record_list_v2(user, request=request)
+        posts = self.post_service.get_record_list_v2(user, request=request)
+
+        combined_data = list(chain(tasted_records, posts))
+        combined_data.sort(key=lambda x: x.created_at, reverse=True)  # 최신순
+        return combined_data
+
     def get_following_feed(self, request, user):
         """
         팔로잉 중인 사용자들의 게시글, 시음기록 피드를 반환합니다.
