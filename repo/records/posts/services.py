@@ -99,9 +99,10 @@ class PostService(BaseRecordService):
         request = kwargs.get("request", None)
         subject = kwargs.get("subject", None)
 
+        filters = Q(subject=subject) if subject else Q()
         blocked_users_list = self.relationship_service.get_unique_blocked_user_list(user.id)
 
-        posts = self.get_base_record_list_queryset().filter(subject=subject).exclude(author_id__in=blocked_users_list)
+        posts = self.get_base_record_list_queryset().filter(filters).exclude(author_id__in=blocked_users_list)
         posts = self.annotate_user_interactions(posts, user)
         posts = self.tracker.filter_not_viewed_contents(request, "post", posts)
         return posts
