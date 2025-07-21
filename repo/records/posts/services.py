@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+from itertools import chain
 from typing import Optional
 
 from django.core.cache import cache
@@ -9,7 +10,7 @@ from django.utils import timezone
 from redis.exceptions import ConnectionError
 
 from repo.common.utils import get_last_monday
-from repo.common.view_counter import get_not_viewed_contents
+from repo.common.view_tracker import RedisViewTracker
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
 from repo.interactions.relationship.services import RelationshipService
@@ -41,9 +42,17 @@ class PostService(BaseRecordService):
 
     def __init__(self, relationship_service, like_service, note_service):
         super().__init__(relationship_service, like_service, note_service)
+        self.tracker = RedisViewTracker()
 
-    def get_record_detail(self, pk: int) -> Post:
+    @transaction.atomic
+    def get_record_detail(self, request, pk: int) -> Post:
         """게시글 상세 조회"""
+
+        is_tracked = self.tracker.track_view(request, "post", pk)
+        if is_tracked:
+            post = Post.objects.get(id=pk)
+            self.tracker.update_view_count(post)
+
         return (
             Post.objects.filter(pk=pk)
             .select_related("author")
@@ -82,11 +91,19 @@ class PostService(BaseRecordService):
             "-id"
         )
 
-        posts = following_posts.union(unfollowing_posts, all=True)
+        posts = list(chain(following_posts, unfollowing_posts))
+        posts = self.tracker.filter_not_viewed_contents(request, "post", posts)
+        return posts
 
-        if request:
-            posts = get_not_viewed_contents(request, posts, "post_viewed")
+    def get_record_list_v2(self, user: CustomUser, **kwargs) -> QuerySet[Post]:
+        request = kwargs.get("request", None)
+        subject = kwargs.get("subject", None)
 
+        blocked_users_list = self.relationship_service.get_unique_blocked_user_list(user.id)
+
+        posts = self.get_base_record_list_queryset().filter(subject=subject).exclude(author_id__in=blocked_users_list)
+        posts = self.annotate_user_interactions(posts, user)
+        posts = self.tracker.filter_not_viewed_contents(request, "post", posts)
         return posts
 
     @transaction.atomic

@@ -3,7 +3,7 @@ from itertools import chain
 
 from django.core.cache import cache
 
-from repo.common.view_counter import get_not_viewed_contents
+from repo.common.view_tracker import RedisViewTracker
 from repo.records.posts.services import PostService, get_post_service
 from repo.records.tasted_record.services import (
     TastedRecordService,
@@ -24,6 +24,24 @@ class FeedService:
     def __init__(self, post_service: PostService, tasted_record_service: TastedRecordService):
         self.post_service = post_service
         self.tasted_record_service = tasted_record_service
+        self.tracker = RedisViewTracker()
+
+    def get_feed(self, request, user):
+        """
+        팔로우여부와 상관없이 모든 시음기록과 게시글 조회
+
+        - 비공개 시음기록과 최근 조회한 기록은 제외
+        - 차단한 사용자의 컨텐츠 제외
+        - 결과는 최신순으로 정렬
+        - following + common 두개의 api를 대체 가능
+        """
+
+        tasted_records = self.tasted_record_service.get_record_list_v2(user, request=request)
+        posts = self.post_service.get_record_list_v2(user, request=request)
+
+        combined_data = list(chain(tasted_records, posts))
+        combined_data.sort(key=lambda x: x.created_at, reverse=True)  # 최신순
+        return combined_data
 
     def get_following_feed(self, request, user):
         """
@@ -45,8 +63,8 @@ class FeedService:
         following_posts = self.post_service.get_feed_by_follow_relation(user, follow=True)
 
         # 2. 조회하지 않은 시음기록, 게시글
-        not_viewed_tasted_records = get_not_viewed_contents(request, following_tasted_records, "tasted_record_viewed")
-        not_viewed_posts = get_not_viewed_contents(request, following_posts, "post_viewed")
+        not_viewed_tasted_records = self.tracker.filter_not_viewed_contents(request, "tasted_record", following_tasted_records)
+        not_viewed_posts = self.tracker.filter_not_viewed_contents(request, "post", following_posts)
 
         # 3. 1+2 최신순으로 정렬
         combined_data = list(chain(not_viewed_tasted_records, not_viewed_posts))
@@ -75,11 +93,11 @@ class FeedService:
         common_posts = self.post_service.get_feed_by_follow_relation(user, False)
 
         # 2. 조회하지 않은 시음기록, 게시글
-        not_viewd_tasted_records = get_not_viewed_contents(request, common_tasted_records, "tasted_record_viewed")
-        not_viewd_posts = get_not_viewed_contents(request, common_posts, "post_viewed")
+        not_viewed_tasted_records = self.tracker.filter_not_viewed_contents(request, "tasted_record", common_tasted_records)
+        not_viewed_posts = self.tracker.filter_not_viewed_contents(request, "post", common_posts)
 
         # 3. 1 + 2
-        combined_data = list(chain(not_viewd_tasted_records, not_viewd_posts))
+        combined_data = list(chain(not_viewed_tasted_records, not_viewed_posts))
 
         # 4. 최신순으로 정렬
         combined_data.sort(key=lambda x: x.created_at, reverse=True)

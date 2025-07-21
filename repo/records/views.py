@@ -58,6 +58,46 @@ class FeedAPIView(APIView):
         return get_paginated_response_with_class(request, queryset, serializer_class)
 
 
+@FeedSchemaV2.feed_schema_view_v2
+class FeedAPIViewV2(APIView):
+    REFRESH_FEED_TYPE = "refresh"
+
+    def __init__(self, **kwargs):
+        self.feed_service = get_feed_service()
+        self.serializer_class = FeedSerializer
+
+    def get(self, request):
+        """
+        게시글+시음기록 피드 조회 (following + common)
+
+        - 비회원 피드 조회
+        - feed_type = None : 회원 피드 조회 (following + common)
+        - feed_type = refresh : 회원 피드 새로고침
+        """
+        if not request.user.is_authenticated:
+            return self._handle_anonymous_user(request)
+        return self._handle_authenticated_user(request)
+
+    def _handle_anonymous_user(self, request):
+        """비회원 피드 처리"""
+        feed_data = self.feed_service.get_anonymous_feed()
+        paginator = PageNumberPagination()
+        paginated_queryset = paginator.paginate_queryset(feed_data, request)
+        return paginator.get_paginated_response(paginated_queryset)
+
+    def _handle_authenticated_user(self, request):
+        """회원 피드 처리"""
+        user = request.user
+        feed_type = request.query_params.get("feed_type")
+
+        if feed_type == self.REFRESH_FEED_TYPE:
+            queryset = self.feed_service.get_refresh_feed(user)
+        else:
+            queryset = self.feed_service.get_feed(request, user)
+
+        return get_paginated_response_with_class(request, queryset, self.serializer_class)
+
+
 @PhotoSchema.photo_schema_view
 class PhotoApiView(APIView):
     permission_classes = [IsAuthenticated]
