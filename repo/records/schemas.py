@@ -53,8 +53,41 @@ class FeedSchema:
         """,
         tags=[Feed_Tag],
     )
-
     feed_schema_view = extend_schema_view(get=feed_get_schema)
+
+
+class FeedSchemaV2:
+    feed_get_schema_v2 = extend_schema(
+        parameters=[
+            PageNumberSerializer,
+            OpenApiParameter(
+                name="feed_type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="feed type",
+                enum=["refresh"],
+            ),
+        ],
+        responses={200: [TastedRecordListSerializer, PostListSerializer]},
+        summary="홈 [전체] 피드 (v2)",
+        description="""
+            게시글+시음기록 전체 피드 조회
+            feed_type = None OR refresh
+
+            None:
+            - 비회원이라면 비회원용 피드 조회
+            - 회원이라면 (following + common) 두개 api 대체 및 새로운 피드 조회 로직 적용
+
+            refresh:
+            - 홈 [전체] 시음기록과 게시글을 랜덤순으로 반환하는 API
+
+            response:
+            TastedRecordListSerializer or PostListSerializer
+            (아래 Schemas 참조)
+        """,
+        tags=[Feed_Tag],
+    )
+    feed_schema_view_v2 = extend_schema_view(get=feed_get_schema_v2)
 
 
 class PhotoSchema:

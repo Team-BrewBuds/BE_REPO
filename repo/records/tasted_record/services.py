@@ -1,4 +1,5 @@
 import logging
+from itertools import chain
 from typing import Optional
 
 from django.core.cache import cache
@@ -6,7 +7,7 @@ from django.db import transaction
 from django.db.models import BooleanField, Exists, Prefetch, Q, QuerySet, Value
 
 from repo.beans.services import BeanService
-from repo.common.view_counter import get_not_viewed_contents
+from repo.common.view_tracker import RedisViewTracker
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
 from repo.interactions.relationship.services import RelationshipService
@@ -32,9 +33,17 @@ class TastedRecordService(BaseRecordService):
         super().__init__(relationship_service, like_service, note_service)
         self.bean_service = BeanService()
         self.user_service = UserService()
+        self.tracker = RedisViewTracker()
 
-    def get_record_detail(self, pk: int) -> TastedRecord:
+    @transaction.atomic
+    def get_record_detail(self, request, pk: int) -> TastedRecord:
         """시음기록 상세 조회"""
+
+        is_tracked = self.tracker.track_view(request, "tasted_record", pk)
+        if is_tracked:
+            tasted_record = TastedRecord.objects.get(id=pk)
+            self.tracker.update_view_count(tasted_record)
+
         return TastedRecord.objects.select_related("author", "bean", "taste_review").prefetch_related("photo_set").get(pk=pk)
 
     def get_user_records(self, user_id: int, **kwargs) -> QuerySet[TastedRecord]:
@@ -61,11 +70,18 @@ class TastedRecordService(BaseRecordService):
         following_tasted_records = self.annotate_user_interactions(self.get_feed_by_follow_relation(user, True), user).order_by("-id")
         unfollowing_tasted_records = self.annotate_user_interactions(self.get_feed_by_follow_relation(user, False), user).order_by("-id")
 
-        tasted_records = following_tasted_records.union(unfollowing_tasted_records, all=True)
+        tasted_records = list(chain(following_tasted_records, unfollowing_tasted_records))
+        tasted_records = self.tracker.filter_not_viewed_contents(request, "tasted_record", tasted_records)
+        return tasted_records
 
-        if request:
-            tasted_records = get_not_viewed_contents(request, tasted_records, "tasted_record_viewed")
+    def get_record_list_v2(self, user: CustomUser, **kwargs) -> QuerySet[TastedRecord]:
+        request = kwargs.get("request", None)
 
+        blocked_users_list = self.relationship_service.get_unique_blocked_user_list(user.id)
+
+        tasted_records = self.get_base_record_list_queryset().exclude(author_id__in=blocked_users_list)
+        tasted_records = self.annotate_user_interactions(tasted_records, user)
+        tasted_records = self.tracker.filter_not_viewed_contents(request, "tasted_record", tasted_records)
         return tasted_records
 
     @transaction.atomic

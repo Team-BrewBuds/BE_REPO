@@ -28,11 +28,13 @@ class BaseRecordService(ABC):
 
         if queryset.model == Post:
             queryset = queryset.annotate(
+                is_user_following=Exists(self.relationship_service.get_following_subquery_for_record(user)),
                 is_user_liked=Exists(self.like_service.get_like_subquery_for_post(user)),
                 is_user_noted=Exists(self.note_service.get_note_subquery_for_post(user)),
             )
         elif queryset.model == TastedRecord:
             queryset = queryset.annotate(
+                is_user_following=Exists(self.relationship_service.get_following_subquery_for_record(user)),
                 is_user_liked=Exists(self.like_service.get_like_subquery_for_tasted_record(user)),
                 is_user_noted=Exists(self.note_service.get_note_subquery_for_tasted_record(user)),
             )
