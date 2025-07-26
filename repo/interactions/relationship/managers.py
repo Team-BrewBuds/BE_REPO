@@ -5,6 +5,8 @@ from django.db.models import Case, IntegerField, OuterRef, Q, When
 
 from repo.profiles.models import CustomUser
 
+from .enums import RelationshipType
+
 if TYPE_CHECKING:
     pass
 
@@ -82,25 +84,25 @@ class RelationshipManager(models.Manager):
         """
         특정 유저가 팔로우한 유저 목록을 조회하는 메서드
         """
-        return self.get_queryset().get_relationship_from(from_user=user, relationship_type="follow")
+        return self.get_queryset().get_relationship_from(from_user=user, relationship_type=RelationshipType.FOLLOW.name)
 
     def get_followers(self, user: CustomUser) -> models.QuerySet:
         """
         특정 유저를 팔로우한 유저 목록을 조회하는 메서드
         """
-        return self.get_queryset().get_relationship_to(to_user=user, relationship_type="follow")
+        return self.get_queryset().get_relationship_to(to_user=user, relationship_type=RelationshipType.FOLLOW.name)
 
     def get_blocking(self, user: CustomUser) -> models.QuerySet:
         """
         특정 유저가 차단한 유저 목록을 조회하는 메서드
         """
-        return self.get_queryset().get_relationship_from(from_user=user, relationship_type="block")
+        return self.get_queryset().get_relationship_from(from_user=user, relationship_type=RelationshipType.BLOCK.name)
 
     def get_blocked(self, user: CustomUser) -> models.QuerySet:
         """
         특정 유저가 차단당한 유저 목록을 조회하는 메서드
         """
-        return self.get_queryset().get_relationship_to(to_user=user, relationship_type="block")
+        return self.get_queryset().get_relationship_to(to_user=user, relationship_type=RelationshipType.BLOCK.name)
 
     def get_unique_blocked_user_list(self, user: CustomUser) -> List[int]:
         """
@@ -109,7 +111,7 @@ class RelationshipManager(models.Manager):
 
         return (
             self.get_queryset()
-            .filter(Q(from_user=user) | Q(to_user=user), relationship_type="block")
+            .filter(Q(from_user=user) | Q(to_user=user), relationship_type=RelationshipType.BLOCK.name)
             .annotate(
                 other_user_id=Case(
                     When(from_user=user, then="to_user_id"), When(to_user=user, then="from_user_id"), output_field=IntegerField()
@@ -123,10 +125,10 @@ class RelationshipManager(models.Manager):
         """
         특정 유저가 해당 게시물의 작성자를 팔로우하는지 여부를 조회하는 서브쿼리
         """
-        return self.get_queryset().get_relationship_from_to(user, OuterRef("author_id"), "follow")
+        return self.get_queryset().get_relationship_from_to(user, OuterRef("author_id"), RelationshipType.FOLLOW.name)
 
     def get_blocking_subquery_for_record(self, user: CustomUser) -> models.QuerySet:
         """
         특정 유저가 해당 게시물의 작성자를 차단하는지 여부를 조회하는 서브쿼리
         """
-        return self.get_queryset().get_relationship_from_to(user, OuterRef("author_id"), "block")
+        return self.get_queryset().get_relationship_from_to(user, OuterRef("author_id"), RelationshipType.BLOCK.name)
