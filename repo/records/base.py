@@ -5,7 +5,7 @@ from django.db.models import Exists, QuerySet
 
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
-from repo.interactions.relationship.services import RelationshipService
+from repo.interactions.relationship.models import Relationship
 from repo.profiles.models import CustomUser
 from repo.records.models import Post, TastedRecord
 
@@ -15,11 +15,9 @@ class BaseRecordService(ABC):
 
     def __init__(
         self,
-        relationship_service: RelationshipService,
         like_service: LikeService,
         note_service: NoteService,
     ):
-        self.relationship_service = relationship_service
         self.like_service = like_service
         self.note_service = note_service
 
@@ -28,13 +26,13 @@ class BaseRecordService(ABC):
 
         if queryset.model == Post:
             queryset = queryset.annotate(
-                is_user_following=Exists(self.relationship_service.get_following_subquery_for_record(user)),
+                is_user_following=Exists(Relationship.objects.get_following_subquery_for_record(user)),
                 is_user_liked=Exists(self.like_service.get_like_subquery_for_post(user)),
                 is_user_noted=Exists(self.note_service.get_note_subquery_for_post(user)),
             )
         elif queryset.model == TastedRecord:
             queryset = queryset.annotate(
-                is_user_following=Exists(self.relationship_service.get_following_subquery_for_record(user)),
+                is_user_following=Exists(Relationship.objects.get_following_subquery_for_record(user)),
                 is_user_liked=Exists(self.like_service.get_like_subquery_for_tasted_record(user)),
                 is_user_noted=Exists(self.note_service.get_note_subquery_for_tasted_record(user)),
             )

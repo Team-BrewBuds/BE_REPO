@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from repo.common.exception.exceptions import NotFoundException, ValidationException
-from repo.interactions.relationship.services import RelationshipService
+from repo.interactions.relationship.models import Relationship
 from repo.profiles.models import CustomUser
 from repo.records.models import Comment, Post, TastedRecord
 
@@ -15,14 +15,11 @@ class CommentService:
         object_id: 댓글 대상 객체 ID
         target_model: 댓글 대상 모델 클래스
         target_object: 댓글 대상 객체 (Post, TastedRecord)
-        relationship_service: 관계 서비스 인스턴스
     """
 
     model_map = {"post": Post, "tasted_record": TastedRecord}
 
     def __init__(self, object_type: str = None, object_id: int = None):
-        self.relationship_service = RelationshipService()
-
         # 댓글 목록 조회나 생성 시
         if object_type and object_id:
             if object_type not in self.model_map:
@@ -88,7 +85,7 @@ class CommentService:
 
     def get_comment_list(self, user: CustomUser) -> list[Comment]:
         """댓글 목록 조회 (유저 최신 댓글 우선 정렬)"""
-        blocked_users = set(self.relationship_service.get_unique_blocked_user_list(user.id))
+        blocked_users = set(Relationship.objects.get_unique_blocked_user_list(user))
 
         target_object_comments = self.target_object.comment_set.exclude(author__in=blocked_users)
 

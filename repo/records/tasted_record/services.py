@@ -10,7 +10,7 @@ from repo.beans.services import BeanService
 from repo.common.view_tracker import RedisViewTracker
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
-from repo.interactions.relationship.services import RelationshipService
+from repo.interactions.relationship.models import Relationship
 from repo.profiles.models import CustomUser
 from repo.profiles.services import UserService
 from repo.records.base import BaseRecordService
@@ -21,16 +21,15 @@ redis_logger = logging.getLogger("redis.server")
 
 
 def get_tasted_record_service():
-    relationship_service = RelationshipService()
     like_service = LikeService("tasted_record")
     note_service = NoteService()
-    return TastedRecordService(relationship_service, like_service, note_service)
+    return TastedRecordService(like_service, note_service)
 
 
 class TastedRecordService(BaseRecordService):
 
-    def __init__(self, relationship_service, like_service, note_service):
-        super().__init__(relationship_service, like_service, note_service)
+    def __init__(self, like_service, note_service):
+        super().__init__(like_service, note_service)
         self.bean_service = BeanService()
         self.user_service = UserService()
         self.tracker = RedisViewTracker()
@@ -77,7 +76,7 @@ class TastedRecordService(BaseRecordService):
     def get_record_list_v2(self, user: CustomUser, **kwargs) -> QuerySet[TastedRecord]:
         request = kwargs.get("request", None)
 
-        blocked_users_list = self.relationship_service.get_unique_blocked_user_list(user.id)
+        blocked_users_list = Relationship.objects.get_unique_blocked_user_list(user)
 
         tasted_records = self.get_base_record_list_queryset().exclude(author_id__in=blocked_users_list)
         tasted_records = self.annotate_user_interactions(tasted_records, user)
@@ -181,7 +180,7 @@ class TastedRecordService(BaseRecordService):
             is_user_noted=Exists(self.note_service.get_note_subquery_for_tasted_record(user)),
         )
 
-        block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
+        block_users = Relationship.objects.get_unique_blocked_user_list(user)
 
         filters = filters if filters else Q()
         filters &= ~Q(author__in=block_users)  # 차단한 유저 필터링
@@ -191,7 +190,7 @@ class TastedRecordService(BaseRecordService):
 
     def get_feed_by_follow_relation(self, user: CustomUser, follow: bool) -> QuerySet[TastedRecord]:
         """팔로잉 관계에 따른 피드 조회"""
-        following_users = self.relationship_service.get_following_user_list(user.id)
+        following_users = Relationship.objects.get_following(user).values_list("to_user", flat=True)
 
         filters = Q(author__in=following_users) if follow else ~Q(author__in=following_users)
 
@@ -200,9 +199,7 @@ class TastedRecordService(BaseRecordService):
     # home refresh feed
     def get_refresh_feed(self, user: CustomUser) -> QuerySet[TastedRecord]:
         """새로고침용 피드 조회"""
-        return self.get_feed_queryset(user).annotate(
-            is_user_following=Exists(self.relationship_service.get_following_subquery_for_record(user))
-        )
+        return self.get_feed_queryset(user).annotate(is_user_following=Exists(Relationship.objects.get_following_subquery_for_record(user)))
 
     # 비로그인 사용자 시음기록 피드 조회
     def get_record_list_for_anonymous(self) -> QuerySet[TastedRecord]:

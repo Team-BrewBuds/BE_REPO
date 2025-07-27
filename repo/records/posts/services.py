@@ -13,7 +13,7 @@ from repo.common.utils import get_last_monday
 from repo.common.view_tracker import RedisViewTracker
 from repo.interactions.like.services import LikeService
 from repo.interactions.note.services import NoteService
-from repo.interactions.relationship.services import RelationshipService
+from repo.interactions.relationship.models import Relationship
 from repo.profiles.models import CustomUser
 from repo.records.base import BaseRecordService
 from repo.records.models import Post, TastedRecord
@@ -25,23 +25,21 @@ cache_key = "post_list_ids"
 
 
 def get_post_service():
-    relationship_service = RelationshipService()
     like_service = LikeService("post")
     note_service = NoteService()
-    return PostService(relationship_service, like_service, note_service)
+    return PostService(like_service, note_service)
 
 
 def get_top_post_service():
-    relationship_service = RelationshipService()
     like_service = LikeService("post")
-    return TopPostService(relationship_service, like_service)
+    return TopPostService(like_service)
 
 
 class PostService(BaseRecordService):
     """게시글 관련 비즈니스 로직을 처리하는 서비스"""
 
-    def __init__(self, relationship_service, like_service, note_service):
-        super().__init__(relationship_service, like_service, note_service)
+    def __init__(self, like_service, note_service):
+        super().__init__(like_service, note_service)
         self.tracker = RedisViewTracker()
 
     @transaction.atomic
@@ -100,7 +98,7 @@ class PostService(BaseRecordService):
         subject = kwargs.get("subject", None)
 
         filters = Q(subject=subject) if subject else Q()
-        blocked_users_list = self.relationship_service.get_unique_blocked_user_list(user.id)
+        blocked_users_list = Relationship.objects.get_unique_blocked_user_list(user)
 
         posts = self.get_base_record_list_queryset().filter(filters).exclude(author_id__in=blocked_users_list)
         posts = self.annotate_user_interactions(posts, user)
@@ -192,7 +190,7 @@ class PostService(BaseRecordService):
             is_user_noted=Exists(self.note_service.get_note_subquery_for_post(user)),
         )
 
-        block_users = self.relationship_service.get_unique_blocked_user_list(user.id)
+        block_users = Relationship.objects.get_unique_blocked_user_list(user)
 
         filters = add_filter if add_filter else Q()
         filters &= ~Q(author__in=block_users)  # 차단한 유저 필터링
@@ -202,7 +200,7 @@ class PostService(BaseRecordService):
 
     def get_feed_by_follow_relation(self, user: CustomUser, follow: bool) -> QuerySet[Post]:
         """팔로잉 관계에 따른 피드 조회"""
-        following_users = self.relationship_service.get_following_user_list(user.id)
+        following_users = Relationship.objects.get_following(user).values_list("to_user", flat=True)
 
         filters = Q(author__in=following_users) if follow else ~Q(author__in=following_users)
 
@@ -211,7 +209,7 @@ class PostService(BaseRecordService):
     # home refresh feed
     def get_refresh_feed(self, user: CustomUser) -> QuerySet[Post]:
         return self.get_feed_queryset(user, None, None).annotate(
-            is_user_following=Exists(self.relationship_service.get_following_subquery_for_record(user))
+            is_user_following=Exists(Relationship.objects.get_following_subquery_for_record(user))
         )
 
     # 비로그인 사용자를 위한 게시글 피드
@@ -243,8 +241,7 @@ class PostService(BaseRecordService):
 class TopPostService:
     TOP_POSTS_LIMIT = 60  # 최대 60개 조회
 
-    def __init__(self, relationship_service: RelationshipService, like_service: LikeService):
-        self.relationship_service = relationship_service
+    def __init__(self, like_service: LikeService):
         self.like_service = like_service
 
     def get_top_subject_weekly_posts(self, user: Optional[CustomUser], subject: Optional[str]) -> QuerySet[Post]:
@@ -286,7 +283,7 @@ class TopPostService:
 
     def _get_authenticated_user_posts(self, user: CustomUser, queryset: QuerySet[Post]) -> QuerySet[Post]:
         """회원용 쿼리셋"""
-        blocked_users = self.relationship_service.get_unique_blocked_user_list(user.id)
+        blocked_users = Relationship.objects.get_unique_blocked_user_list(user)
         like_subquery = self.like_service.get_like_subquery_for_post(user)
 
         return (
@@ -314,19 +311,18 @@ class TopPostService:
             if not user or not user.is_authenticated:  # 비회원
                 return self.get_top_posts_for_anonymous_user(posts)
 
-            return self.get_top_posts_for_authenticated_user(user.id, posts)
+            return self.get_top_posts_for_authenticated_user(user, posts)
         except ConnectionError as e:
             redis_logger.error(f"Redis 연결 실패 post_list_ids: {str(e)}", exc_info=True)
             return self.get_top_subject_weekly_posts(user, subject)
 
-    def get_top_posts_for_authenticated_user(self, user_id: int, posts: list):
-        # 차단한 유저 필터링
-        blocked_users = self.relationship_service.get_unique_blocked_user_list(user_id)
+    def get_top_posts_for_authenticated_user(self, user: CustomUser, posts: list):
+        blocked_users = Relationship.objects.get_unique_blocked_user_list(user)
         posts = [post for post in posts if post["author"]["id"] not in blocked_users]
 
         # 좋아요 여부 확인
         for post in posts:
-            post["is_user_liked"] = Post.objects.filter(id=post["id"], like_cnt__id=user_id).exists()
+            post["is_user_liked"] = Post.objects.filter(id=post["id"], like_cnt__id=user.id).exists()
         return posts
 
     def get_top_posts_for_anonymous_user(self, posts: list):
