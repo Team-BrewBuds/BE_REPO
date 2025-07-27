@@ -4,14 +4,13 @@ from django.db import transaction
 from django.db.models import F, QuerySet, Value
 from rest_framework.generics import get_object_or_404
 
-from repo.interactions.relationship.services import RelationshipService
+from repo.interactions.relationship.enums import RelationshipType
+from repo.interactions.relationship.models import Relationship
 from repo.profiles.models import CustomUser, UserDetail
 from repo.records.models import Post, TastedRecord
 
 
 class UserService:
-    def __init__(self):
-        self.relationship_repo = RelationshipService()
 
     def check_user_exists(self, id: int) -> bool:
         """유저 존재 여부 확인"""
@@ -26,14 +25,14 @@ class UserService:
         queryset = self.get_profile_base_queryset(user.id)
         return queryset.filter(id=user.id).first()
 
-    def get_other_user_profile(self, user_id: int, other_user_id: int) -> dict:
+    def get_other_user_profile(self, user: CustomUser, other_user: CustomUser) -> dict:
         """다른 유저 프로필 조회"""
-        is_user_following = self.relationship_repo.check_relationship(user_id, other_user_id, "follow")
-        is_user_blocking = self.relationship_repo.check_relationship(user_id, other_user_id, "block")
+        is_user_following = Relationship.objects.one_way_check(user, other_user, RelationshipType.FOLLOW.name)
+        is_user_blocking = Relationship.objects.one_way_check(user, other_user, RelationshipType.BLOCK.name)
 
-        base_queryset = self.get_profile_base_queryset(other_user_id)
+        base_queryset = self.get_profile_base_queryset(other_user.id)
         return (
-            base_queryset.filter(id=other_user_id)
+            base_queryset.filter(id=other_user.id)
             .annotate(
                 is_user_following=Value(is_user_following),
                 is_user_blocking=Value(is_user_blocking),
@@ -43,8 +42,9 @@ class UserService:
 
     def get_profile_base_queryset(self, id: int) -> QuerySet:
         """유저 프로필 기본 쿼리셋 조회"""
-        follower_cnt = self.relationship_repo.get_followers(id).count()
-        following_cnt = self.relationship_repo.get_following(id).count()
+        user = self.get_user_by_id(id)
+        follower_cnt = Relationship.objects.get_followers(user).count()
+        following_cnt = Relationship.objects.get_following(user).count()
         post_cnt = Post.objects.filter(author_id=id).count()
         tasted_record_cnt = TastedRecord.objects.filter(author_id=id).count()
 

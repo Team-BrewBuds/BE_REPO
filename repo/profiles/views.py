@@ -397,9 +397,9 @@ class OtherProfileAPIView(APIView):
         self.user_service = UserService()
 
     def get(self, request, id):
-        user_id = request.user.id
-        other_user_id = id
-        data = self.user_service.get_other_user_profile(user_id, other_user_id)
+        user = request.user
+        other_user = self.user_service.get_user_by_id(id)
+        data = self.user_service.get_other_user_profile(user, other_user)
 
         serializer = UserProfileSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
