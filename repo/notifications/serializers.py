@@ -28,6 +28,16 @@ class UserDeviceSerializer(serializers.ModelSerializer):
     사용자 디바이스 정보 시리얼라이저
     """
 
+    def validate_device_token(self, value: str) -> str:
+        """디바이스 토큰 유효성 검사"""
+        if not value:
+            raise serializers.ValidationError("디바이스 토큰은 필수 입력 항목입니다.")
+
+        if value.lower() not in [device_type[0] for device_type in UserDevice.DEVICE_TYPE_CHOICES]:
+            raise serializers.ValidationError("유효하지 않은 디바이스 토큰입니다.")
+
+        return value
+
     class Meta:
         model = UserDevice
         fields = ["device_token", "device_type"]
