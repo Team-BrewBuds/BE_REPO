@@ -292,7 +292,7 @@ class NotificationService:
 
         알림 대상 선정
         - {알림 대상} - {알림 트리거 유저} - {댓글 알림 설정 OFF 유저}
-        - 댓글 작성시 : 댓글의 해당 게시물 작성자만 고려
+        - 댓글 작성시 : 댓글의 해당 게시글 작성자만 고려
         - 대댓글 작성시 : 대댓글의 해당 댓글의 작성자만 고려
         """
 
@@ -355,7 +355,7 @@ class NotificationService:
         ):
             return False
 
-        object_type_map = {Post: ("게시물", "post_id"), TastedRecord: ("시음 기록", "tasted_record_id")}
+        object_type_map = {Post: ("게시글", "post_id"), TastedRecord: ("시음기록", "tasted_record_id")}
 
         object_str, id_key = object_type_map[type(liked_obj)]
         data = {id_key: str(liked_obj.id)}
