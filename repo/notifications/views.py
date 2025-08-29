@@ -123,7 +123,8 @@ class NotificationTokenAPIView(APIView):
         device, created = UserDevice.objects.update_or_create(
             user=request.user,
             device_token=device_token,
-            defaults={"device_type": device_type, "is_active": True},
+            device_type=device_type,
+            defaults={"is_active": True},
         )
 
         serializer = UserDeviceSerializer(device)
