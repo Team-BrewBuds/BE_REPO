@@ -78,10 +78,7 @@ class NotificationSettingAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        """알림 설정 생성
-
-        TODO 회원가입 로직에서 호출되는 것으로 이동 필요
-        """
+        """알림 설정 생성"""
         serializer = NotificationSettingsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -114,14 +111,29 @@ class NotificationTokenAPIView(APIView):
 
     def post(self, request):
         """디바이스 토큰 등록/갱신"""
+        user = request.user
+        user_noti_settings = NotificationSetting.objects.filter(user=user).first()
+        if not user_noti_settings:
+            return Response(data={"message": "알림 설정이 존재하지 않습니다."}, status=status.HTTP_204_NO_CONTENT)
+
+        all_notifications_disabled = not any(
+            [
+                user_noti_settings.marketing_notify,
+                user_noti_settings.like_notify,
+                user_noti_settings.comment_notify,
+                user_noti_settings.follow_notify,
+            ]
+        )
+        if all_notifications_disabled:
+            return Response(data={"message": "알림 설정이 모두 비활성화되어 있습니다."}, status=status.HTTP_204_NO_CONTENT)
+
         serializer = UserDeviceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         device_token = serializer.validated_data["device_token"]
         device_type = serializer.validated_data["device_type"]
 
         device, created = UserDevice.objects.update_or_create(
-            user=request.user,
+            user=user,
             device_token=device_token,
             device_type=device_type,
             defaults={"is_active": True},
