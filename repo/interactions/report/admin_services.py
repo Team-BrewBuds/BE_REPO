@@ -1,4 +1,4 @@
-from django.db.models import Count, F, IntegerField, OuterRef, Q, Subquery
+from django.db.models import Count, F, IntegerField, Min, OuterRef, Q, Subquery
 
 from repo.common.utils import make_date_format
 from repo.interactions.note.models import Note
@@ -10,41 +10,45 @@ def get_users_activity_report() -> list[dict]:
     """
     사용자 활동 보고서를 생성하는 함수
     """
-    user_activities = CustomUser.objects.annotate(
-        coffee_life=F("user_detail__coffee_life"),
-        is_certificated=F("user_detail__is_certificated"),
-        tr_count=get_record_cnt_subquery(TastedRecord),
-        post_count=get_record_cnt_subquery(Post),
-        noted_bean_count=get_record_cnt_subquery(Note, "bean"),
-        noted_tr_count=get_record_cnt_subquery(Note, "tasted_record"),
-        noted_post_count=get_record_cnt_subquery(Note, "post"),
-        first_tr_at=get_created_at_record_by_seq_subquery(TastedRecord, 1),
-        first_post_at=get_created_at_record_by_seq_subquery(Post, 1),
-        second_tr_at=get_created_at_record_by_seq_subquery(TastedRecord, 2),
-        second_post_at=get_created_at_record_by_seq_subquery(Post, 2),
-        first_noted_tr_at=get_created_at_record_by_seq_subquery(Note, 1, "tasted_record"),
-        first_noted_post_at=get_created_at_record_by_seq_subquery(Note, 1, "post"),
-        first_noted_bean_at=get_created_at_record_by_seq_subquery(Note, 1, "bean"),
-    ).values(
-        "id",
-        "nickname",
-        "created_at",
-        "gender",
-        "birth",
-        "coffee_life",
-        "is_certificated",
-        "tr_count",
-        "post_count",
-        "noted_bean_count",
-        "noted_tr_count",
-        "noted_post_count",
-        "first_tr_at",
-        "first_post_at",
-        "second_tr_at",
-        "second_post_at",
-        "first_noted_tr_at",
-        "first_noted_post_at",
-        "first_noted_bean_at",
+    user_activities = (
+        CustomUser.objects.select_related("user_detail")
+        .annotate(
+            coffee_life=F("user_detail__coffee_life"),
+            is_certificated=F("user_detail__is_certificated"),
+            tr_count=Count("tastedrecord", distinct=True),
+            post_count=Count("post", distinct=True),
+            noted_bean_count=Count("note__bean", distinct=True, filter=Q(note__bean__isnull=False)),
+            noted_tr_count=Count("note__tasted_record", distinct=True, filter=Q(note__tasted_record__isnull=False)),
+            noted_post_count=Count("note__post", distinct=True, filter=Q(note__post__isnull=False)),
+            first_tr_at=Min("tastedrecord__created_at"),
+            first_post_at=Min("post__created_at"),
+            second_tr_at=get_created_at_record_by_seq_subquery(TastedRecord, 2),
+            second_post_at=get_created_at_record_by_seq_subquery(Post, 2),
+            first_noted_tr_at=get_created_at_record_by_seq_subquery(Note, 1, "tasted_record"),
+            first_noted_post_at=get_created_at_record_by_seq_subquery(Note, 1, "post"),
+            first_noted_bean_at=get_created_at_record_by_seq_subquery(Note, 1, "bean"),
+        )
+        .values(
+            "id",
+            "nickname",
+            "created_at",
+            "gender",
+            "birth",
+            "coffee_life",
+            "is_certificated",
+            "tr_count",
+            "post_count",
+            "noted_bean_count",
+            "noted_tr_count",
+            "noted_post_count",
+            "first_tr_at",
+            "first_post_at",
+            "second_tr_at",
+            "second_post_at",
+            "first_noted_tr_at",
+            "first_noted_post_at",
+            "first_noted_bean_at",
+        )
     )
 
     reports = []
