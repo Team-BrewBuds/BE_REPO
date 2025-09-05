@@ -88,8 +88,8 @@ class CommentService:
 
     def get_comment_list(self, user: CustomUser) -> list[Comment]:
         """댓글 목록 조회 (유저 최신 댓글 우선 정렬)"""
+        # 차단한 유저들 필터링
         blocked_users = set(self.relationship_service.get_unique_blocked_user_list(user.id))
-
         target_object_comments = self.target_object.comment_set.exclude(author__in=blocked_users)
 
         # 유저가 좋아요한 댓글들 ID
@@ -103,7 +103,7 @@ class CommentService:
         # 댓글 + 대댓글
         comments = target_object_comments.select_related("author", "parent").order_by("id").all()
 
-        root_comments = []
+        root_comments: list[Comment] = []
         child_comments_map: dict[int, list[Comment]] = defaultdict(list)
         user_recent_comment_obj = None
 
@@ -119,12 +119,13 @@ class CommentService:
                     continue
                 root_comments.append(comment)
 
+        # 최상위 댓글들의 대댓글 깊이 제거 및 DFS 순서대로 정렬
         for parent in root_comments:
-            parent.replies_list = child_comments_map[parent.id]
+            parent.replies_list = self.get_replies_in_dfs_order(parent)
 
         # 유저의 최신 부모 댓글 우선순위 적용
         if user_recent_comment_obj:
-            user_recent_comment_obj.replies_list = child_comments_map[user_recent_comment_obj.id]
+            user_recent_comment_obj.replies_list = self.get_replies_in_dfs_order(user_recent_comment_obj)
             return [user_recent_comment_obj] + root_comments
 
         return root_comments
@@ -145,6 +146,29 @@ class CommentService:
                 root_comments.append(comment)
 
         for parent in root_comments:
-            parent.replies_list = child_comments_map[parent.id]
+            parent.replies_list = self.get_replies_in_dfs_order(parent)
 
         return root_comments
+
+    def get_replies_in_dfs_order(self, comment: Comment) -> list[Comment]:
+        """depths가 있는 댓글 순서를 DFS 순서대로 정렬 (부모 댓글 제외)"""
+        result: list[Comment] = []
+
+        stack = []
+        visited = set()
+
+        # 부모 댓글의 자식들만 스택에 추가
+        replies = comment.replies.all().order_by("-id")
+        for reply in replies:
+            stack.append(reply)
+            visited.add(reply.id)
+
+        while stack:
+            current_comment = stack.pop()
+            result.append(current_comment)
+            replies = current_comment.replies.all().order_by("-id")  # "-id"로 result 조회시 시간순서대로 정렬하기 위함
+            for reply in replies:
+                if reply.id not in visited:
+                    stack.append(reply)
+                    visited.add(reply.id)
+        return result
