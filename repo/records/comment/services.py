@@ -153,12 +153,12 @@ class CommentService:
     def get_replies_to_one_depths_by_dfs(self, parent: Comment, child_dict: dict[int, list[Comment]]) -> list[Comment]:
         """재귀참조하는 부모 댓글의 대댓글들의 깊이를 제거하고 DFS 순서대로 정렬 (부모 댓글 제외)"""
         result: list[Comment] = []
-        stack = child_dict[parent.id][::-1]  # 부모 댓글의 대댓글들
+        stack = child_dict.get(parent.id, [])[::-1]  # 부모 댓글의 대댓글들
 
         while stack:
             curr_comment = stack.pop()
             result.append(curr_comment)
-            cur_commnet_child = child_dict[curr_comment.id][::-1]
+            cur_commnet_child = child_dict.get(curr_comment.id, [])[::-1]
             stack.extend(cur_commnet_child)
 
         return result
