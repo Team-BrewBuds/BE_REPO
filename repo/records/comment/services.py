@@ -76,8 +76,14 @@ class CommentService:
         comment_data = {
             "author": user,
             "content": validated_data.get("content"),
-            "parent": validated_data.get("parent", None),
+            "parent": validated_data.get("parent"),
         }
+
+        if comment_data["parent"]:
+            parent_comment = Comment.objects.get(id=comment_data["parent"])
+            if not parent_comment:
+                raise NotFoundException(detail="Parent comment does not exist", code="not_found")
+            comment_data["parent"] = parent_comment
 
         if isinstance(self.target_object, Post):
             comment_data["post"] = self.target_object
