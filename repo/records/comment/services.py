@@ -60,13 +60,10 @@ class CommentService:
         return comment
 
     def delete_comment(self, comment: Comment) -> None:
-        """댓글 삭제"""
-        if comment.parent is None:
-            comment.is_deleted = True
-            comment.content = "삭제된 댓글입니다."
-            comment.save()
-        else:
-            comment.delete()
+        """댓글 삭제 (Soft Delete)"""
+        comment.content = "삭제된 댓글입니다."
+        comment.is_deleted = True
+        comment.save(update_fields=["content", "is_deleted"])
 
     def create_comment(self, user: CustomUser, validated_data: dict) -> Comment:
         """댓글 생성"""
