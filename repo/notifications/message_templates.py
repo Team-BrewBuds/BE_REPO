@@ -52,7 +52,7 @@ class PushNotificationTemplate:
                 "body": template["body"].format(sender_name=self.sender_name, object_type=object_type),
             }
 
-    def like_noti_template(self, object_type: str = "게시물") -> dict:
+    def like_noti_template(self, object_type: str = "게시글") -> dict:
         """좋아요 알림 메시지 템플릿"""
         template = self.MESSAGE_FORMATS["like"]
         return {
@@ -91,7 +91,7 @@ class PushNotificationRecordTemplate:
     def __init__(self, sender_name: str):
         self.sender_name = sender_name
 
-    def like_noti_template(self, object_type: str = "게시물") -> Dict[str, str]:
+    def like_noti_template(self, object_type: str = "게시글") -> Dict[str, str]:
         """좋아요 알림 메시지 템플릿"""
         template = self.MESSAGE_FORMATS["like"]
         return {
