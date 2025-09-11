@@ -7,9 +7,7 @@ from repo.records.models import Comment
 
 class CommentInputSerializer(serializers.Serializer):
     content = serializers.CharField(max_length=200)
-    parent = serializers.PrimaryKeyRelatedField(
-        queryset=Comment.objects.select_related("author").filter(parent__isnull=True), required=False
-    )
+    parent = serializers.IntegerField(required=False)
 
 
 class CommentOutputSerializer(serializers.ModelSerializer):
