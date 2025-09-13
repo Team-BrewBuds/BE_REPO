@@ -18,7 +18,7 @@ from .enums import Topic
 from .message_templates import PushNotificationRecordTemplate, PushNotificationTemplate
 from .models import NotificationSetting, PushNotification, UserDevice
 
-logger = logging.getLogger("django.server")
+logger = logging.getLogger(__name__)
 
 SERVICE_ACCOUNT_FILE = getattr(settings, "FCM_SERVICE_ACCOUNT_FILE", None)
 DRY_RUN = True if settings.DEBUG else False

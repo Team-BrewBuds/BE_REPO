@@ -14,7 +14,7 @@ from repo.common.exception.exceptions import (
     S3Exception,
 )
 
-logger = logging.getLogger("django.server")
+logger = logging.getLogger(__name__)
 
 
 def custom_exception_handler(exc, context):

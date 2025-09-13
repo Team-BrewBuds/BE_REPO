@@ -9,7 +9,7 @@ from repo.notifications.services import NotificationService
 from repo.profiles.models import CustomUser
 from repo.records.models import Comment
 
-logger = logging.getLogger("django.server")
+logger = logging.getLogger(__name__)
 
 
 # @receiver(post_save, sender=Post)

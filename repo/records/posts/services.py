@@ -20,7 +20,7 @@ from repo.records.models import Post, TastedRecord
 from repo.records.posts.serializers import PostListSerializer
 from repo.records.posts.tasks import cache_top_posts
 
-redis_logger = logging.getLogger("redis.server")
+logger = logging.getLogger(__name__)
 cache_key = "post_list_ids"
 
 
@@ -316,7 +316,7 @@ class TopPostService:
 
             return self.get_top_posts_for_authenticated_user(user.id, posts)
         except ConnectionError as e:
-            redis_logger.error(f"Redis 연결 실패 post_list_ids: {str(e)}", exc_info=True)
+            logger.error(f"Redis 연결 실패 post_list_ids: {str(e)}", exc_info=True)
             return self.get_top_subject_weekly_posts(user, subject)
 
     def get_top_posts_for_authenticated_user(self, user_id: int, posts: list):
