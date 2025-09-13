@@ -7,12 +7,14 @@ from rest_framework import status
 from rest_framework.exceptions import APIException
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
+from rest_framework_simplejwt.exceptions import InvalidToken
 
 from repo.common.exception.exceptions import (
     BaseAPIException,
     InternalServerErrorException,
     NotFoundException,
     S3Exception,
+    TokenException,
 )
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,10 @@ def custom_exception_handler(exc, context):
     # django 예외 처리 (get_object_or_404)
     if isinstance(exc, Http404):
         exc = NotFoundException()
+
+    # JWT 토큰 관련 예외 처리
+    if isinstance(exc, InvalidToken):
+        exc = TokenException()
 
     # S3 관련 예외 처리
     if isinstance(exc, Boto3Error):
