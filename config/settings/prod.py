@@ -51,4 +51,116 @@ AWS_SECRET_ACCESS_KEY = env.str("AWS_SECRET_ACCESS_KEY")
 # FCM
 FCM_SERVICE_ACCOUNT_FILE = os.path.join(BASE_DIR, "secrets", "brew-buds-fcm-account.json")
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+        "production_detailed": {
+            "format": "[{asctime}] {name} [{levelname}] {process:d} {thread:d} {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        "exception_detailed": {
+            "format": "[{asctime}] {name} [{levelname}] {pathname}:{lineno} in {funcName}\n{message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "filters": {
+        "exclude_sensitive_data": {
+            "()": "django.utils.log.CallbackFilter",
+            "callback": lambda log: not any(word in log.getMessage().lower() for word in ["password", "token", "secret", "key"]),
+        },
+        "exclude_error_and_above": {
+            "()": "django.utils.log.CallbackFilter",
+            "callback": lambda log: log.levelno < 40,  # ERROR(40) 미만만 통과
+        },
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
+        },
+    },
+    "handlers": {
+        "console_critical": {
+            "level": "CRITICAL",
+            "class": "logging.StreamHandler",
+            "formatter": "production_detailed",
+            "filters": ["exclude_sensitive_data"],
+        },
+        "file_app": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": LOG_DIR / "production_app.log",
+            "maxBytes": 1024 * 1024 * 20,  # 20 MB
+            "backupCount": 10,
+            "formatter": "production_detailed",
+            "filters": ["exclude_sensitive_data", "exclude_error_and_above"],
+        },
+        "file_error": {
+            "level": "ERROR",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": LOG_DIR / "production_error.log",
+            "maxBytes": 1024 * 1024 * 10,  # 10 MB
+            "backupCount": 10,
+            "formatter": "exception_detailed",
+            "filters": ["exclude_sensitive_data"],
+        },
+        "file_critical": {
+            "level": "CRITICAL",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": LOG_DIR / "production_critical.log",
+            "maxBytes": 1024 * 1024 * 5,  # 5 MB
+            "backupCount": 15,
+            "formatter": "exception_detailed",
+        },
+        "file_security": {
+            "level": "WARNING",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": LOG_DIR / "production_security.log",
+            "maxBytes": 1024 * 1024 * 5,  # 5 MB
+            "backupCount": 20,
+            "formatter": "production_detailed",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["file_app"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.server": {
+            "handlers": ["file_app"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["file_error", "console_critical"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["file_security", "file_critical"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "repo": {
+            "handlers": ["file_app", "file_error"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "performance": {
+            "handlers": ["file_app"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "": {
+            "handlers": ["file_app"],
+            "level": "WARNING",
+        },
+    },
+}
+
 from .settings_modules.sentry import *  # noqa: E402

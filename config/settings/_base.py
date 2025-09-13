@@ -97,78 +97,8 @@ TEMPLATES = [
     },
 ]
 
-# 로깅 설정
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "server": {
-            "()": "django.utils.log.ServerFormatter",
-            "format": "{message}",
-            "style": "{",
-        },
-        "verbose": {
-            "()": "django.utils.log.ServerFormatter",
-            "format": "[{asctime}][{levelname}]=>{message}",
-            "style": "{",
-        },
-    },
-    "filters": {
-        "require_debug_false": {
-            "()": "django.utils.log.RequireDebugFalse",
-        },
-        "require_debug_true": {
-            "()": "django.utils.log.RequireDebugTrue",
-        },
-        "exclude_debug_toolbar": {
-            "()": "django.utils.log.CallbackFilter",
-            "callback": lambda log: "/__debug__/" not in log.getMessage(),
-        },
-    },
-    "handlers": {
-        "console": {
-            "level": "INFO",
-            "class": "logging.StreamHandler",
-            "filters": ["require_debug_true"],
-            "formatter": "server",
-        },
-        "performance_console": {
-            "level": "INFO",
-            "class": "logging.StreamHandler",
-            "filters": ["require_debug_true"],
-            "formatter": "verbose",
-        },
-        "file": {
-            "level": "INFO",
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": BASE_DIR / "app.log",
-            "maxBytes": 1024 * 1024 * 5,  # 5 MB
-            "backupCount": 5,
-            "filters": ["require_debug_false"],
-            "formatter": "verbose",
-        },
-    },
-    "loggers": {
-        "django.server": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "filters": ["exclude_debug_toolbar"],
-            "propagate": False,
-        },
-        "performance": {
-            "handlers": ["performance_console"],
-            "level": "INFO",
-            "filters": ["exclude_debug_toolbar"],
-            "propagate": False,
-        },
-        "redis.server": {
-            "handlers": ["console", "file"],
-            "level": "ERROR",
-            "filters": ["exclude_debug_toolbar"],
-            "propagate": False,
-        },
-    },
-}
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(exist_ok=True)
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Seoul"
