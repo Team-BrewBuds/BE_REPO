@@ -24,6 +24,7 @@ from repo.beans.models import Bean
 from repo.beans.services import BeanService
 from repo.common.utils import get_paginated_response_with_class
 from repo.interactions.note.models import Note
+from repo.notifications.models import NotificationSetting
 from repo.profiles.models import CustomUser, UserDetail
 from repo.profiles.schemas import *
 from repo.profiles.serializers import (
@@ -346,6 +347,9 @@ class SignupView(APIView):
                         if field in detail_data:
                             setattr(user_detail, field, detail_data[field])
                     user_detail.save()
+
+                # 알림 설정 생성
+                NotificationSetting.objects.create(user=user)
 
             return Response({"message": "회원가입을 성공했습니다."}, status=status.HTTP_200_OK)
 

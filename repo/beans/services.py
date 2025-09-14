@@ -15,7 +15,7 @@ from repo.profiles.models import CustomUser
 from repo.profiles.services import UserService
 from repo.records.models import TastedRecord
 
-redis_logger = logging.getLogger("redis.server")
+logger = logging.getLogger(__name__)
 
 
 class BeanService:
@@ -129,7 +129,7 @@ class BeanRankingService:
 
             return cached_data
         except ConnectionError as e:
-            redis_logger.error(f"Redis 연결 실패 bean_list: {str(e)}", exc_info=True)
+            logger.error(f"Redis 연결 실패 bean_list: {str(e)}", exc_info=True)
             return self._get_top_beans_from_db()
 
     def _get_top_beans_from_db(self):

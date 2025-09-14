@@ -140,6 +140,9 @@ class NotificationSchema:
             사용자의 디바이스 토큰을 생성 합니다. (로그인 시 호출)
             이미 존재하는 디바이스 토큰인 경우 갱신됩니다.
 
+            Notice:
+            - Android 디바이스는 device_type을 "android"로 설정해야 합니다.
+
             담당자: hwstar1204
         """,
         request=UserDeviceSerializer,
@@ -160,6 +163,9 @@ class NotificationSchema:
                 "device_token": "디바이스 토큰",
                 "device_type": "디바이스 타입"  # "ios" 또는 "android"
             }
+
+            Notice:
+            - Android 디바이스는 device_type을 "android"로 설정해야 합니다.
 
             담당자: hwstar1204
         """,

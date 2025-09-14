@@ -54,7 +54,7 @@ class NotificationSetting(models.Model):
     """
 
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    like_notify = models.BooleanField(default=True)
-    comment_notify = models.BooleanField(default=True)
-    follow_notify = models.BooleanField(default=True)
+    like_notify = models.BooleanField(default=False)
+    comment_notify = models.BooleanField(default=False)
+    follow_notify = models.BooleanField(default=False)
     marketing_notify = models.BooleanField(default=False)

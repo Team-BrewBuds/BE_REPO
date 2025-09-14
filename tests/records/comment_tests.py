@@ -46,6 +46,30 @@ class TestCommentAPIView:
         assert response.data["count"] == 3
         assert len(response.data["results"]) == 3
 
+    def test_get_post_comments_success_with_replies_dfs_order(self, authenticated_client):
+        """게시글 댓글의 대댓글 DFS 순서대로 조회 성공 테스트 (대댓글 포함)"""
+        # Given
+        client, user = authenticated_client()
+        post = PostFactory()
+        comment_1 = CommentFactory(post=post, parent=None, content="seq_1")
+        comment_2 = CommentFactory(post=post, parent=comment_1, content="seq_2")
+        comment_4 = CommentFactory(post=post, parent=comment_2, content="seq_3")
+        comment_8 = CommentFactory(post=post, parent=comment_4, content="seq_4")
+        comment_5 = CommentFactory(post=post, parent=comment_2, content="seq_5")
+        comment_3 = CommentFactory(post=post, parent=comment_1, content="seq_6")
+        comment_6 = CommentFactory(post=post, parent=comment_3, content="seq_7")
+        comment_7 = CommentFactory(post=post, parent=comment_6, content="seq_8")
+
+        # When
+        from repo.records.comment.services import CommentService
+
+        service = CommentService(object_type="post", object_id=post.id)
+        response = service.get_replies_in_dfs_order(comment_1)
+
+        # Then
+        for seq, comment in enumerate(response, 2):
+            assert comment.content == f"seq_{seq}"
+
     def test_get_tasted_record_comments_success(self, authenticated_client):
         """시음기록 댓글 목록 조회 성공 테스트"""
         # Given

@@ -13,7 +13,7 @@ from repo.notifications.services import NotificationService
 from repo.profiles.models import CustomUser
 from repo.records.models import Comment, Post, TastedRecord
 
-logger = logging.getLogger("django.server")
+logger = logging.getLogger(__name__)
 
 
 class LikeService:
