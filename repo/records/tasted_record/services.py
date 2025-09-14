@@ -1,4 +1,3 @@
-import logging
 from itertools import chain
 from typing import Optional
 
@@ -16,8 +15,6 @@ from repo.profiles.services import UserService
 from repo.records.base import BaseRecordService
 from repo.records.models import BeanTasteReview, Photo, TastedRecord
 from repo.records.tasted_record.serializers import TastedRecordListSerializer
-
-redis_logger = logging.getLogger("redis.server")
 
 
 def get_tasted_record_service():
