@@ -44,8 +44,13 @@ def custom_exception_handler(exc, context):
         if isinstance(exc, BaseAPIException):
             response.data = exc.error_response
         elif isinstance(exc, APIException):  # 코드상에서 예상하지 못한 APIException을 위한 처리
-            logger.error("[!!!Need to check this APIException (uncaught exception)!!!]")
-            response.data = f"message: {exc.detail}, code: {exc.get_codes()}, status: {exc.status_code}"
+            data = {
+                "message": exc.detail,
+                "code": exc.get_codes(),
+                "status": exc.status_code,
+            }
+            logger.error("[!!!Need to check this APIException (uncaught exception)!!!] \n" + str(data))
+            response.data = data
         return response
 
     # 처리되지 않은 예외
