@@ -1,20 +1,17 @@
 import logging
-import traceback
 
 from boto3.exceptions import Boto3Error
 from django.http import Http404
 from rest_framework import status
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
-from rest_framework_simplejwt.exceptions import InvalidToken
 
 from repo.common.exception.exceptions import (
     BaseAPIException,
     InternalServerErrorException,
     NotFoundException,
     S3Exception,
-    TokenException,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,10 +23,6 @@ def custom_exception_handler(exc, context):
     # django 예외 처리 (get_object_or_404)
     if isinstance(exc, Http404):
         exc = NotFoundException()
-
-    # JWT 토큰 관련 예외 처리
-    if isinstance(exc, InvalidToken):
-        exc = TokenException()
 
     # S3 관련 예외 처리
     if isinstance(exc, Boto3Error):
@@ -43,9 +36,29 @@ def custom_exception_handler(exc, context):
 
         if isinstance(exc, BaseAPIException):
             response.data = exc.error_response
-        elif isinstance(exc, APIException):  # 코드상에서 예상하지 못한 APIException을 위한 처리
-            logger.error("[!!!Need to check this APIException (uncaught exception)!!!]")
-            response.data = f"message: {exc.detail}, code: {exc.get_codes()}, status: {exc.status_code}"
+            if exc.status_code >= 500:
+                logger.error(f"[Custom Server Error] {type(exc).__name__}: {exc.custom_detail}")
+            elif exc.status_code == 404:
+                logger.info(f"[Resource Not Found] {type(exc).__name__}: {exc.custom_detail}")
+            else:
+                logger.warning(f"[Custom Client Error] {type(exc).__name__}: {exc.custom_detail}")
+
+        elif isinstance(exc, ValidationError):
+            response.data = {
+                "message": exc.detail,
+                "code": exc.get_codes(),
+                "status": exc.status_code,
+            }
+            logger.info(f"[Validation Error] Fields: {list(exc.detail.keys()) if isinstance(exc.detail, dict) else 'N/A'}")
+
+        elif isinstance(exc, APIException):
+            data = {
+                "message": exc.detail,
+                "code": exc.get_codes(),
+                "status": exc.status_code,
+            }
+            logger.warning(f"[Unhandled APIException] Type: {type(exc).__name__}, Data: {data}")
+            response.data = data
         return response
 
     # 처리되지 않은 예외
@@ -82,21 +95,8 @@ def create_error_log(exc, context, original_exc=None):
         if hasattr(view, "action"):
             view_info += f".{view.action}"
 
-    # 스택 트레이스 정보
-    stack_trace = traceback.format_exc()
-
-    # 상세 로깅
     logger.error(
-        "\n"
-        + "=" * 80
-        + "\n[EXCEPTION DETAILS]"
-        + f"\nException Type: {type(exception_to_log).__name__}"
-        + f"\nException Message: {str(exception_to_log)}"
-        + f"\nUser: {user_info}"
-        + f"\nRequest: {request_info}"
-        + f"\nView: {view_info}"
-        + f"\n\n[STACK TRACE]\n{stack_trace}"
-        + f"\n\n[CONTEXT]\n{context}"
-        + "\n"
-        + "=" * 80
+        f"[API Exception] {type(exception_to_log).__name__}: {str(exception_to_log)} | "
+        f"User: {user_info} | Request: {request_info} | View: {view_info}",
+        exc_info=True,  # 스택 트레이스 포함
     )
