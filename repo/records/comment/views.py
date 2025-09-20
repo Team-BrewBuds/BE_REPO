@@ -67,7 +67,7 @@ class CommentDetailAPIView(APIView):
 
     def get(self, request, id):
         comment = self.get_object(id)
-        comment_detail = self.comment_service.get_comment_detail(comment)
+        comment_detail = self.comment_service.get_comment_detail(comment, request.user)
 
         response_serializer = CommentOutputSerializer(comment_detail, context={"request": request})
         return Response(response_serializer.data, status=status.HTTP_200_OK)

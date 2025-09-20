@@ -88,11 +88,8 @@ class CommentDetailSchema:
         summary="댓글 상세 조회",
         description="""
             id : 댓글 ID
-            notice : 차단한 사용자의 댓글은 제외됩니다.
             replies : 해당 댓글의 대댓글 리스트를 포함하여 반환합니다.
-
-            - url 주소 끝에 '/'가 빠져있었어서 추가하였습니다.
-            (해당 api를 사용하고있었다면 수정해주세요!!)
+            notice : 차단한 사용자의 댓글은 제외됩니다.
             담당자: hwstar1204
         """,
         tags=[Comment_TAG],

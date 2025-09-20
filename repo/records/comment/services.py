@@ -48,9 +48,37 @@ class CommentService:
         except Comment.DoesNotExist as e:
             raise NotFoundException(detail="Comment not found", code="not_found") from e
 
-    def get_comment_detail(self, comment: Comment) -> Comment:
-        """댓글 상세 조회"""
-        comment.replies_list = comment.replies.all()
+    def get_comment_detail(self, comment: Comment, user: CustomUser = None) -> Comment:
+        """댓글 상세 조회 - 해당 댓글의 모든 대댓글들을 계층 구조로 조회"""
+        if comment.post:
+            target_object = comment.post
+        elif comment.tasted_record:
+            target_object = comment.tasted_record
+        else:
+            comment.replies_list = []
+            comment.is_user_liked = comment.like_cnt.filter(id=user.id).exists() if user else False
+            return comment
+
+        if user:
+            blocked_users = set(self.relationship_service.get_unique_blocked_user_list(user.id))
+            base_queryset = target_object.comment_set.select_related("author", "parent").exclude(author__in=blocked_users)
+            user_liked_comments_ids = set(base_queryset.filter(like_cnt=user.id).values_list("id", flat=True))
+        else:
+            base_queryset = target_object.comment_set.select_related("author", "parent")
+            user_liked_comments_ids = set()
+
+        # 모든 댓글들을 가져와서 해당 댓글과 관련된 대댓글들만 필터링
+        child_comments_dict: dict[int, list[Comment]] = defaultdict(list)
+        all_comments = list(base_queryset.order_by("id").all())
+
+        # 좋아요 상태 설정 및 댓글 분류
+        for reply in all_comments:
+            reply.is_user_liked = reply.id in user_liked_comments_ids if user else False
+            if reply.parent_id:
+                child_comments_dict[reply.parent_id].append(reply)
+
+        comment.replies_list = self.get_replies_to_one_depths_by_dfs(comment, child_comments_dict)
+        comment.is_user_liked = comment.like_cnt.filter(id=user.id).exists() if user else False
         return comment
 
     def update_comment(self, comment: Comment, validated_data: dict) -> Comment:

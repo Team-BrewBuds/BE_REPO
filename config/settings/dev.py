@@ -111,7 +111,7 @@ LOGGING = {
             "propagate": False,
         },
         "performance": {
-            "handlers": ["console_detailed"],
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },
