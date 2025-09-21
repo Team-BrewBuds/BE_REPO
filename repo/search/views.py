@@ -3,6 +3,7 @@ from django.db.models import (
     Count,
     ExpressionWrapper,
     FloatField,
+    IntegerField,
     OuterRef,
     Prefetch,
     Subquery,
@@ -37,19 +38,21 @@ class BuddySearchView(APIView):
         serializer = BuddySearchInputSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
 
-        record_cnt_subquery = (
-            TastedRecord.objects.filter(author_id=OuterRef("id"))
-            .values("author_id")
-            .annotate(cnt=Coalesce(Count("id"), Value(0)))
-            .values("cnt")
+        record_cnt_subquery = Subquery(
+            TastedRecord.objects.filter(author_id=OuterRef("id")).values("author_id").annotate(cnt=Count("id")).values("cnt"),
+            output_field=IntegerField(),
         )
-        follower_cnt_subquery = (
+        follower_cnt_subquery = Subquery(
             Relationship.objects.filter(to_user_id=OuterRef("id"), relationship_type="follow")
             .values("to_user_id")
-            .annotate(cnt=Coalesce(Count("id"), Value(0)))
-            .values("cnt")
+            .annotate(cnt=Count("id"))
+            .values("cnt"),
+            output_field=IntegerField(),
         )
-        users = CustomUser.objects.annotate(record_cnt=Subquery(record_cnt_subquery), follower_cnt=Subquery(follower_cnt_subquery))
+        users = CustomUser.objects.annotate(
+            record_cnt=Coalesce(record_cnt_subquery, Value(0)),
+            follower_cnt=Coalesce(follower_cnt_subquery, Value(0)),
+        )
 
         if request.user.is_authenticated:
             blocked_users = RelationshipService().get_unique_blocked_user_list(request.user.id)
