@@ -11,8 +11,9 @@ from repo.beans.models import Bean
 from repo.beans.schemas import *
 from repo.beans.serializers import (
     BeanDetailSerializer,
+    BeanNameSearchInputSerializer,
+    BeanNameSearchOutputSerializer,
     BeanRankingSerializer,
-    BeanSerializer,
     UserBeanSerializer,
 )
 from repo.beans.services import BeanRankingService, BeanService
@@ -32,20 +33,20 @@ class BeanNameSearchView(APIView):
         self.bean_service = BeanService()
 
     def get(self, request):
-        name = request.query_params.get("name")
-        is_official = request.query_params.get("is_official", None)
+        input_serializer = BeanNameSearchInputSerializer(data=request.query_params)
+        input_serializer.is_valid(raise_exception=True)
 
-        beans = self.bean_service.search_by_name(name).order_by("name")
+        validated_data = input_serializer.validated_data
+        name = validated_data.get("name")
+        is_official = validated_data.get("is_official")
 
-        if is_official is not None:
-            is_official_bool = is_official.lower() == "true"
-            beans = beans.filter(is_official=is_official_bool)
+        beans = self.bean_service.search_by_name(name).filter(is_official=is_official).order_by("name")
 
         paginator = PageNumberPagination()
         paginator.page_size = 20
         paginated_beans = paginator.paginate_queryset(beans, request)
 
-        serializer = BeanSerializer(paginated_beans, many=True)
+        serializer = BeanNameSearchOutputSerializer(paginated_beans, many=True)
         return paginator.get_paginated_response(serializer.data)
 
 
