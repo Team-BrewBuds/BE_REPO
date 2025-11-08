@@ -3,6 +3,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from repo.events.schemas import (
+    EventCompleteSchema,
+    EventDetailSchema,
+    EventListSchema,
+    MyCompletionListSchema,
+)
 from repo.events.serializers import (
     EventCompletionResponseSerializer,
     EventCompletionSerializer,
@@ -11,6 +17,7 @@ from repo.events.serializers import (
 from repo.events.services import EventService
 
 
+@EventListSchema.event_list_schema_view
 class EventListAPIView(APIView):
     """
     통합 이벤트 목록 조회 API
@@ -39,6 +46,7 @@ class EventListAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@EventDetailSchema.event_detail_schema_view
 class EventDetailAPIView(APIView):
     """
     통합 이벤트 상세 조회 API
@@ -62,6 +70,7 @@ class EventDetailAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@EventCompleteSchema.event_complete_schema_view
 class EventCompleteAPIView(APIView):
     """
     이벤트 참여 완료 기록 API (프로모션만 허용)
@@ -92,6 +101,7 @@ class EventCompleteAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+@MyCompletionListSchema.my_completion_list_schema_view
 class MyEventCompletionListAPIView(APIView):
     """
     내 참여 이력 조회 API
