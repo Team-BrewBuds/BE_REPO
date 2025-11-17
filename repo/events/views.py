@@ -45,11 +45,10 @@ class EventDetailAPIView(APIView):
         super().__init__(**kwargs)
         self.event_service = EventService()
 
-    def get(self, request, pk):
+    def get(self, request, event_key):
         """이벤트 상세 조회 (타입 자동 판별)"""
-        event = self.event_service.get_event_by_id(pk, request.user)
-
-        # 직렬화
+        user = request.user if request.user.is_authenticated else None
+        event = self.event_service.get_event_by_key(event_key, user)
         serializer = UnifiedEventSerializer(event)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

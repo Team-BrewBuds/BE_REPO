@@ -1,9 +1,10 @@
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import BooleanField, Exists, OuterRef, Q, Value
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
 
 from repo.events.enums import EventType
 from repo.events.models import EventCompletion, InternalEvent, PromotionalEvent
+from repo.profiles.models import CustomUser
 
 
 class EventService:
@@ -53,12 +54,12 @@ class EventService:
 
         return events
 
-    def get_event_by_id(self, event_id, user):
+    def get_event_by_key(self, event_key, user):
         """
         id로 이벤트 조회 (타입 자동 판별)
 
         Args:
-            event_id: 이벤트 UUID
+            event_key: 이벤트 키
             user: 현재 사용자
 
         Returns:
@@ -69,29 +70,17 @@ class EventService:
         """
         # 프로모션 이벤트 확인
         try:
-            event = PromotionalEvent.objects.annotate(
-                is_completed=Exists(
-                    EventCompletion.objects.filter(
-                        user=user,
-                        promotional_event=OuterRef("event_key"),
-                    )
-                )
-            ).get(event_key=event_id)
-            return event
+            queryset = PromotionalEvent.objects.filter(event_key=event_key)
+            queryset = self._annotate_completion_status(queryset, user, "promotional_event")
+            return queryset.get()
         except PromotionalEvent.DoesNotExist:
             pass
 
         # 내부 이벤트 확인
         try:
-            event = InternalEvent.objects.annotate(
-                is_completed=Exists(
-                    EventCompletion.objects.filter(
-                        user=user,
-                        internal_event=OuterRef("event_key"),
-                    )
-                )
-            ).get(event_key=event_id)
-            return event
+            queryset = InternalEvent.objects.filter(event_key=event_key)
+            queryset = self._annotate_completion_status(queryset, user, "internal_event")
+            return queryset.get()
         except InternalEvent.DoesNotExist:
             pass
 
@@ -208,3 +197,20 @@ class EventService:
             pass
 
         raise NotFound("이벤트를 찾을 수 없습니다.")
+
+    def _annotate_completion_status(self, queryset, user: CustomUser | None, event_field: str):
+        """
+        이벤트 완료 여부를 annotation으로 추가하는 헬퍼 메서드
+
+        Args:
+            queryset: 이벤트 QuerySet
+            user: 현재 사용자 (None이면 비회원)
+            event_field: 'promotional_event' 또는 'internal_event'
+
+        Returns:
+            완료 여부가 annotation된 QuerySet
+        """
+        if user is None or user.is_anonymous:
+            return queryset.annotate(is_completed=Value(False, output_field=BooleanField()))
+
+        return queryset.annotate(is_completed=Exists(EventCompletion.objects.filter(user=user, **{event_field: OuterRef("event_key")})))
