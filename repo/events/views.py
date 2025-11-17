@@ -21,10 +21,6 @@ from repo.events.services import EventService
 class EventListAPIView(APIView):
     """
     통합 이벤트 목록 조회 API
-
-    GET /events/
-    GET /events/?event_type=promotional
-    GET /events/?event_type=internal
     """
 
     def __init__(self, **kwargs):
@@ -34,13 +30,8 @@ class EventListAPIView(APIView):
     def get(self, request):
         """이벤트 목록 조회"""
         event_type = request.query_params.get("event_type", None)
-
-        # 이벤트 목록 조회 (완료 여부 포함)
         events = self.event_service.get_active_events(request.user, event_type)
-
-        # 직렬화
         serializer = UnifiedEventSerializer(events, many=True)
-
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -48,8 +39,6 @@ class EventListAPIView(APIView):
 class EventDetailAPIView(APIView):
     """
     통합 이벤트 상세 조회 API
-
-    GET /events/{id}/
     """
 
     def __init__(self, **kwargs):
@@ -62,7 +51,6 @@ class EventDetailAPIView(APIView):
 
         # 직렬화
         serializer = UnifiedEventSerializer(event)
-
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -101,10 +89,6 @@ class EventCompleteAPIView(APIView):
 class MyEventCompletionListAPIView(APIView):
     """
     내 참여 이력 조회 API
-
-    GET /events/my-completions/
-    GET /events/my-completions/?event_type=promotional
-    GET /events/my-completions/?event_type=internal
     """
 
     permission_classes = [IsAuthenticated]
@@ -116,11 +100,6 @@ class MyEventCompletionListAPIView(APIView):
     def get(self, request):
         """내 완료 이력 조회"""
         event_type = request.query_params.get("event_type", None)
-
-        # 완료 이력 조회
         completions = self.event_service.get_user_completions(request.user, event_type)
-
-        # 직렬화
         serializer = EventCompletionSerializer(completions, many=True)
-
         return Response(serializer.data, status=status.HTTP_200_OK)
