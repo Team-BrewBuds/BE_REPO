@@ -7,6 +7,7 @@ from drf_spectacular.utils import (
 )
 
 from repo.events.serializers import (
+    EventCompleteRequestSerializer,
     EventCompletionResponseSerializer,
     EventCompletionSerializer,
     UnifiedEventSerializer,
@@ -76,24 +77,32 @@ class EventDetailSchema:
 
 
 class EventCompleteSchema:
-    """이벤트 완료 기록 스키마"""
+    """Webhook 이벤트 완료 기록 스키마"""
 
     event_complete_post_schema = extend_schema(
-        request=None,
+        request=EventCompleteRequestSerializer,
         responses={
             201: EventCompletionResponseSerializer,
-            400: OpenApiResponse(description="Bad Request - 검증 실패"),
-            401: OpenApiResponse(description="Unauthorized"),
-            404: OpenApiResponse(description="Not Found"),
+            400: OpenApiResponse(description="Bad Request - 검증 실패 (사용자 없음, 중복 참여 등)"),
+            403: OpenApiResponse(description="Forbidden - API Key 인증 실패"),
+            404: OpenApiResponse(description="Not Found - 이벤트를 찾을 수 없음"),
         },
-        summary="이벤트 참여 완료 기록",
+        summary="Webhook 이벤트 참여 완료 기록",
         description="""
-            프로모션 이벤트의 참여 완료를 기록합니다.
+            Walla webhook을 통한 프로모션 이벤트 참여 완료를 기록합니다.
 
+            **인증**: X-API-Key 헤더에 시스템 API Key 필요
             **프로모션 이벤트만 허용됩니다.**
 
+            요청 Body:
+            - projectKey: projectID (이벤트 식별)
+            - email: 사용자 이메일
+            - timestamp: 완료 시간
+            - is_agree: 사용자 동의 여부
+            - 기타 필드: 폼 제출 내용 (content로 저장)
+
             검증 사항:
-            - 이벤트 타입: 내부 이벤트는 수동 완료 불가 (400)
+            - 사용자 이메일: 존재하는 사용자만 가능 (400)
             - 이벤트 상태: 진행 중(active)인 이벤트만 가능 (400)
             - 이벤트 기간: 현재 시간이 이벤트 기간 내여야 함 (400)
             - 중복 참여: 이미 완료한 이벤트는 재참여 불가 (400)

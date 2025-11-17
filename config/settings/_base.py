@@ -109,6 +109,7 @@ USE_TZ = False
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+WEBHOOK_API_KEY = env.str("WEBHOOK_API_KEY", "test-webhook-key-12345")
 
 SITE_ID = 1
 ROOT_URLCONF = "config.urls"

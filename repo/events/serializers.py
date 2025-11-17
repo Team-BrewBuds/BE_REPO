@@ -39,7 +39,7 @@ class InternalEventDataSerializer(serializers.ModelSerializer):
 class UnifiedEventSerializer(serializers.Serializer):
     """통합 이벤트 응답용 serializer (타입별 중첩 구조)"""
 
-    id = serializers.UUIDField(source="event_key", read_only=True)
+    id = serializers.CharField(source="event_key", read_only=True)
     event_type = serializers.SerializerMethodField()
     status = serializers.CharField(read_only=True)
     is_completed = serializers.BooleanField(read_only=True, default=False)
@@ -95,3 +95,22 @@ class EventCompletionResponseSerializer(serializers.Serializer):
 
     message = serializers.CharField(read_only=True)
     completed_at = serializers.DateTimeField(read_only=True)
+
+
+class EventCompleteRequestSerializer(serializers.Serializer):
+    """Webhook 이벤트 완료 요청용 serializer"""
+
+    projectKey = serializers.CharField(required=True, help_text="projectID")  # noqa: N815
+    email = serializers.EmailField(required=True, help_text="사용자 이메일")
+    timestamp = serializers.DateTimeField(required=True, help_text="완료 시간")
+    is_agree = serializers.BooleanField(required=True, help_text="사용자 동의 여부")
+
+    def validate(self, attrs):
+        """나머지 필드는 content로 저장"""
+        # 기본 필드 외의 모든 필드를 content로 저장
+        content = {}
+        for key, value in self.initial_data.items():
+            if key not in ["projectKey", "email", "timestamp", "is_agree"]:
+                content[key] = value
+        attrs["content"] = content
+        return attrs

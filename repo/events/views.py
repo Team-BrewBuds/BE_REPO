@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from repo.common.permissions import APIKeyPermission
 from repo.events.schemas import (
     EventCompleteSchema,
     EventDetailSchema,
@@ -10,6 +11,7 @@ from repo.events.schemas import (
     MyCompletionListSchema,
 )
 from repo.events.serializers import (
+    EventCompleteRequestSerializer,
     EventCompletionResponseSerializer,
     EventCompletionSerializer,
     UnifiedEventSerializer,
@@ -56,32 +58,36 @@ class EventDetailAPIView(APIView):
 @EventCompleteSchema.event_complete_schema_view
 class EventCompleteAPIView(APIView):
     """
-    이벤트 참여 완료 기록 API (프로모션만 허용)
-
-    POST /events/{id}/complete/
+    Webhook 이벤트 참여 완료 기록 API (프로모션만 허용)
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [APIKeyPermission]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.event_service = EventService()
 
-    def post(self, request, pk):
-        """이벤트 완료 처리"""
-        # 완료 처리 (검증 포함)
-        completion = self.event_service.complete_event(pk, request.user)
+    def post(self, request):
+        """Webhook을 통한 이벤트 완료 처리"""
+        serializer = EventCompleteRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        # 응답 데이터 구성
+        validated_data = serializer.validated_data
+
+        completion = self.event_service.complete_event_webhook(
+            project_key=validated_data["projectKey"],
+            email=validated_data["email"],
+            timestamp=validated_data["timestamp"],
+            is_agree=validated_data["is_agree"],
+            content=validated_data["content"],
+        )
+
         response_data = {
             "message": "이벤트 참여가 완료되었습니다",
             "completed_at": completion.completed_at,
         }
-
-        # 직렬화
-        serializer = EventCompletionResponseSerializer(response_data)
-
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        response_serializer = EventCompletionResponseSerializer(response_data)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
 @MyCompletionListSchema.my_completion_list_schema_view

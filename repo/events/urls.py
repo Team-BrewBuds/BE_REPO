@@ -9,7 +9,7 @@ from repo.events.views import (
 
 urlpatterns = [
     path("", EventListAPIView.as_view(), name="event-list"),
-    path("<uuid:pk>/", EventDetailAPIView.as_view(), name="event-detail"),
-    path("<uuid:pk>/complete/", EventCompleteAPIView.as_view(), name="event-complete"),
+    path("<str:event_key>/", EventDetailAPIView.as_view(), name="event-detail"),
+    path("complete/", EventCompleteAPIView.as_view(), name="event-complete"),
     path("my-completions/", MyEventCompletionListAPIView.as_view(), name="my-completions"),
 ]
