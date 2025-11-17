@@ -27,8 +27,6 @@ class EventListAPIView(APIView):
     GET /events/?event_type=internal
     """
 
-    permission_classes = [IsAuthenticated]
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.event_service = EventService()
@@ -53,8 +51,6 @@ class EventDetailAPIView(APIView):
 
     GET /events/{id}/
     """
-
-    permission_classes = [IsAuthenticated]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
