@@ -1,5 +1,3 @@
-import uuid
-
 from django.db import models
 
 from repo.profiles.models import CustomUser
@@ -13,13 +11,16 @@ class BaseEvent(models.Model):
         ("active", "진행 중"),
         ("done", "종료"),
     ]
-    event_key = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, db_index=True, verbose_name="이벤트 키")
+    event_key = models.CharField(max_length=100, primary_key=True, verbose_name="이벤트 키", help_text="projectID를 입력하세요")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="ready", verbose_name="상태")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="수정일")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일")
 
     class Meta:
         abstract = True
+        indexes = [
+            models.Index(fields=["event_key"]),
+        ]
 
 
 class InternalEvent(BaseEvent):
@@ -84,7 +85,9 @@ class EventCompletion(models.Model):
     internal_event = models.ForeignKey(InternalEvent, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="completions")
     promotional_event = models.ForeignKey(PromotionalEvent, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="completions")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="completed_events")
-    completed_at = models.DateTimeField(auto_now_add=True)
+    is_agree = models.BooleanField(default=True, verbose_name="사용자 동의 여부")
+    content = models.JSONField(default=dict, blank=True, verbose_name="폼 제출 내용")
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name="완료 시간")
 
     class Meta:
         db_table = "event_completions"
