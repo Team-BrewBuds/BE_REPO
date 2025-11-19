@@ -120,4 +120,4 @@ class EventCompletion(models.Model):
 
     def __str__(self):
         event = self.internal_event or self.promotional_event
-        return f"{self.user.name} - {event}"
+        return f"{self.user.nickname} - {event}"
