@@ -101,7 +101,9 @@ class EventCompleteRequestSerializer(serializers.Serializer):
     """Webhook 이벤트 완료 요청용 serializer"""
 
     projectKey = serializers.CharField(required=True, help_text="projectID")  # noqa: N815
+    nickname = serializers.CharField(required=True, help_text="사용자 닉네임")
     email = serializers.EmailField(required=True, help_text="사용자 이메일")
+    phone = serializers.CharField(required=True, help_text="사용자 전화번호")
     timestamp = serializers.DateTimeField(required=True, help_text="완료 시간")
     is_agree = serializers.BooleanField(required=True, help_text="사용자 동의 여부")
 
@@ -110,7 +112,7 @@ class EventCompleteRequestSerializer(serializers.Serializer):
         # 기본 필드 외의 모든 필드를 content로 저장
         content = {}
         for key, value in self.initial_data.items():
-            if key not in ["projectKey", "email", "timestamp", "is_agree"]:
+            if key not in ["projectKey", "timestamp", "is_agree"]:
                 content[key] = value
         attrs["content"] = content
         return attrs

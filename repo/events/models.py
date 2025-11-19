@@ -85,6 +85,7 @@ class EventCompletion(models.Model):
     internal_event = models.ForeignKey(InternalEvent, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="completions")
     promotional_event = models.ForeignKey(PromotionalEvent, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="completions")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="completed_events")
+    phone = models.CharField(max_length=20, null=True, blank=True, verbose_name="사용자 전화번호")
     is_agree = models.BooleanField(default=True, verbose_name="사용자 동의 여부")
     content = models.JSONField(default=dict, blank=True, verbose_name="폼 제출 내용")
     completed_at = models.DateTimeField(null=True, blank=True, verbose_name="완료 시간")
