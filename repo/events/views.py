@@ -1,4 +1,7 @@
+import logging
+
 from rest_framework import status
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,6 +20,8 @@ from repo.events.serializers import (
     UnifiedEventSerializer,
 )
 from repo.events.services import EventService
+
+logger = logging.getLogger(__name__)
 
 
 @EventListSchema.event_list_schema_view
@@ -69,25 +74,40 @@ class EventCompleteAPIView(APIView):
 
     def post(self, request):
         """Webhook을 통한 이벤트 완료 처리"""
-        serializer = EventCompleteRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer = EventCompleteRequestSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
 
-        validated_data = serializer.validated_data
+            validated_data = serializer.validated_data
 
-        completion = self.event_service.complete_event_webhook(
-            project_key=validated_data["projectKey"],
-            email=validated_data["email"],
-            timestamp=validated_data["timestamp"],
-            is_agree=validated_data["is_agree"],
-            content=validated_data["content"],
-        )
+            completion = self.event_service.complete_event_webhook(
+                project_key=validated_data["projectKey"],
+                nickname=validated_data["nickname"],
+                email=validated_data["email"],
+                phone=validated_data["phone"],
+                timestamp=validated_data["timestamp"],
+                is_agree=validated_data["is_agree"],
+                content=validated_data["content"],
+            )
 
-        response_data = {
-            "message": "이벤트 참여가 완료되었습니다",
-            "completed_at": completion.completed_at,
-        }
-        response_serializer = EventCompletionResponseSerializer(response_data)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+            response_data = {
+                "message": "이벤트 참여가 완료되었습니다",
+                "completed_at": completion.completed_at,
+            }
+            response_serializer = EventCompletionResponseSerializer(response_data)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+        except ValidationError as e:
+            logger.warning(f"Webhook 이벤트 완료 검증 실패: {e.detail}")
+            raise
+
+        except NotFound as e:
+            logger.warning(f"Webhook 이벤트 완료 - 이벤트 없음: {e.detail}")
+            raise
+
+        except Exception as e:
+            logger.error(f"Webhook 이벤트 완료 처리 중 오류: {str(e)}", exc_info=True)
+            raise
 
 
 @MyCompletionListSchema.my_completion_list_schema_view
