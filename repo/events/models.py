@@ -8,7 +8,7 @@ class BaseEvent(models.Model):
     """이벤트 기본 모델"""
 
     event_key = models.CharField(max_length=100, primary_key=True, verbose_name="이벤트 키", help_text="projectID를 입력하세요")
-    status = models.CharField(max_length=10, choices=EventStatus.values(), default=EventStatus.READY, verbose_name="상태")
+    status = models.CharField(max_length=10, choices=EventStatus.choices, default=EventStatus.READY, verbose_name="상태")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="수정일")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일")
 
@@ -78,8 +78,8 @@ class PromotionalEvent(BaseEvent):
 class EventCompletion(models.Model):
     """이벤트 완료 기록 (이벤트 타입별로 분리)"""
 
-    internal_event = models.ForeignKey(InternalEvent, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="completions")
-    promotional_event = models.ForeignKey(PromotionalEvent, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="completions")
+    internal = models.ForeignKey(InternalEvent, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="completions")
+    promotional = models.ForeignKey(PromotionalEvent, on_delete=models.DO_NOTHING, null=True, blank=True, related_name="completions")
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="completed_events")
     phone = models.CharField(max_length=20, null=True, blank=True, verbose_name="사용자 전화번호")
     is_agree = models.BooleanField(default=True, verbose_name="사용자 동의 여부")
@@ -91,29 +91,28 @@ class EventCompletion(models.Model):
         constraints = [
             models.CheckConstraint(
                 check=(
-                    models.Q(internal_event__isnull=False, promotional_event__isnull=True)
-                    | models.Q(internal_event__isnull=True, promotional_event__isnull=False)
+                    models.Q(internal__isnull=False, promotional__isnull=True) | models.Q(internal__isnull=True, promotional__isnull=False)
                 ),
                 name="only_one_event_type",
             ),
             # 사용자당 프로모션 이벤트 중복 참여 방지
             models.UniqueConstraint(
-                fields=["user", "promotional_event"],
-                condition=models.Q(promotional_event__isnull=False),
+                fields=["user", "promotional"],
+                condition=models.Q(promotional__isnull=False),
                 name="unique_user_promotional_event",
             ),
             # 사용자당 내부 이벤트 중복 참여 방지
             models.UniqueConstraint(
-                fields=["user", "internal_event"], condition=models.Q(internal_event__isnull=False), name="unique_user_internal_event"
+                fields=["user", "internal"], condition=models.Q(internal__isnull=False), name="unique_user_internal_event"
             ),
         ]
         indexes = [
-            models.Index(fields=["user", "internal_event"]),
-            models.Index(fields=["user", "promotional_event"]),
+            models.Index(fields=["user", "internal"]),
+            models.Index(fields=["user", "promotional"]),
         ]
         verbose_name = "이벤트 완료 기록"
         verbose_name_plural = "이벤트 완료 기록"
 
     def __str__(self):
-        event = self.internal_event or self.promotional_event
+        event = self.internal or self.promotional
         return f"{self.user.nickname} - {event}"
