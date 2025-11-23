@@ -39,7 +39,7 @@ class InternalEventDataSerializer(serializers.ModelSerializer):
 class UnifiedEventSerializer(serializers.Serializer):
     """통합 이벤트 응답용 serializer (타입별 중첩 구조)"""
 
-    id = serializers.CharField(source="event_key", read_only=True)
+    event_key = serializers.CharField(source="event_key", read_only=True)
     event_type = serializers.SerializerMethodField()
     status = serializers.CharField(read_only=True)
     is_completed = serializers.BooleanField(read_only=True, default=False)
@@ -50,9 +50,9 @@ class UnifiedEventSerializer(serializers.Serializer):
     def get_event_type(self, obj):
         """이벤트 타입 반환"""
         if isinstance(obj, PromotionalEvent):
-            return EventType.PROMOTIONAL.value
+            return EventType.PROMOTIONAL
         elif isinstance(obj, InternalEvent):
-            return EventType.INTERNAL.value
+            return EventType.INTERNAL
         return None
 
     def get_data(self, obj):
@@ -62,6 +62,13 @@ class UnifiedEventSerializer(serializers.Serializer):
         elif isinstance(obj, InternalEvent):
             return InternalEventDataSerializer(obj).data
         return None
+
+
+class EventDetailRequestSerializer(serializers.Serializer):
+    """이벤트 상세 조회 요청 검증용 serializer"""
+
+    event_key = serializers.CharField()
+    event_type = serializers.ChoiceField(choices=EventType.choices)
 
 
 class EventCompletionSerializer(serializers.ModelSerializer):
@@ -76,15 +83,15 @@ class EventCompletionSerializer(serializers.ModelSerializer):
 
     def get_event_type(self, obj):
         """이벤트 타입 반환"""
-        if obj.promotional_event:
-            return EventType.PROMOTIONAL.value
-        elif obj.internal_event:
-            return EventType.INTERNAL.value
+        if obj.promotional:
+            return EventType.PROMOTIONAL
+        elif obj.internal:
+            return EventType.INTERNAL
         return None
 
     def get_event(self, obj):
         """완료된 이벤트 정보 반환"""
-        event = obj.promotional_event or obj.internal_event
+        event = obj.promotional or obj.internal
         if event:
             return UnifiedEventSerializer(event).data
         return None
@@ -107,12 +114,14 @@ class EventCompleteRequestSerializer(serializers.Serializer):
     timestamp = serializers.DateTimeField(required=True, help_text="완료 시간")
     is_agree = serializers.BooleanField(required=True, help_text="사용자 동의 여부")
 
-    def validate(self, attrs):
-        """나머지 필드는 content로 저장"""
+    # 기본 필드 목록 (클래스 변수로 관리)
+    BASE_FIELDS = {"projectKey", "nickname", "email", "phone", "timestamp", "is_agree"}
+
+    def to_internal_value(self, data):
+        """검증된 데이터에 content 추가"""
+        validated_data = super().to_internal_value(data)
+
         # 기본 필드 외의 모든 필드를 content로 저장
-        content = {}
-        for key, value in self.initial_data.items():
-            if key not in ["projectKey", "timestamp", "is_agree"]:
-                content[key] = value
-        attrs["content"] = content
-        return attrs
+        validated_data["content"] = {key: value for key, value in data.items() if key not in self.BASE_FIELDS}
+
+        return validated_data
