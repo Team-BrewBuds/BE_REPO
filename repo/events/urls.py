@@ -11,5 +11,5 @@ urlpatterns = [
     path("", EventListAPIView.as_view(), name="event-list"),
     path("complete/", EventCompleteAPIView.as_view(), name="event-complete"),
     path("my-completions/", MyEventCompletionListAPIView.as_view(), name="my-completions"),
-    path("<str:event_key>/", EventDetailAPIView.as_view(), name="event-detail"),
+    path("<str:event_type>/<str:event_key>/", EventDetailAPIView.as_view(), name="event-detail"),
 ]

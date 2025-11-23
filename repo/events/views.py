@@ -17,6 +17,7 @@ from repo.events.serializers import (
     EventCompleteRequestSerializer,
     EventCompletionResponseSerializer,
     EventCompletionSerializer,
+    EventDetailRequestSerializer,
     UnifiedEventSerializer,
 )
 from repo.events.services import EventService
@@ -52,10 +53,18 @@ class EventDetailAPIView(APIView):
         super().__init__(**kwargs)
         self.event_service = EventService()
 
-    def get(self, request, event_key):
+    def get(self, request, event_type, event_key):
         """이벤트 상세 조회 (타입 자동 판별)"""
+        request_serializer = EventDetailRequestSerializer(data={"event_type": event_type, "event_key": event_key})
+        request_serializer.is_valid(raise_exception=True)
+
         user = request.user if request.user.is_authenticated else None
-        event = self.event_service.get_event_by_key(event_key, user)
+        event = self.event_service.get_event_by_key(
+            request_serializer.validated_data["event_type"],  # Enum으로 변환됨
+            request_serializer.validated_data["event_key"],
+            user,
+        )
+
         serializer = UnifiedEventSerializer(event)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
