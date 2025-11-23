@@ -1,3 +1,5 @@
+import json
+
 from django.contrib import admin
 
 from repo.events.models import EventCompletion, InternalEvent, PromotionalEvent
@@ -146,69 +148,71 @@ class EventCompletionAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "get_user_email",
+        "phone",
         "get_event_key",
         "get_event_type",
         "is_agree",
         "completed_at",
+        # "post_processed_content",
     ]
     list_filter = ["is_agree", "completed_at"]
     search_fields = ["user__email", "user__nickname"]
     ordering = ["-completed_at"]
     readonly_fields = [
         "user",
-        "internal_event",
-        "promotional_event",
+        "internal",
+        "promotional",
         "is_agree",
         "content",
         "completed_at",
     ]
 
-    def has_add_permission(self, request):
-        """생성 권한 없음"""
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        """수정 권한 없음"""
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        """삭제 권한 없음 (조회만 가능)"""
-        return False
-
     def get_user_email(self, obj):
         """사용자 이메일 반환"""
         return obj.user.email if obj.user else "-"
 
-    get_user_email.short_description = "사용자 이메일"
-
     def get_event_key(self, obj):
         """이벤트 키 반환"""
-        event = obj.promotional_event or obj.internal_event
+        event = obj.promotional or obj.internal
         return event.event_key if event else "-"
-
-    get_event_key.short_description = "이벤트 키"
 
     def get_event_type(self, obj):
         """이벤트 타입 반환"""
-        if obj.promotional_event:
+        if obj.promotional:
             return "프로모션"
-        elif obj.internal_event:
+        elif obj.internal:
             return "내부"
         return "-"
 
+    def post_processed_content(self, obj):
+        """폼 제출 내용 반환"""
+        return json.dumps(obj.content, indent=2, ensure_ascii=False)
+
+    get_user_email.short_description = "사용자 이메일"
+    get_event_key.short_description = "이벤트 키"
     get_event_type.short_description = "이벤트 타입"
+    post_processed_content.short_description = "폼 제출 내용"
+
+    def has_add_permission(self, request):
+        return False  # fmt: skip
+
+    def has_change_permission(self, request, obj=None):
+        return False  # fmt: skip
+
+    def has_delete_permission(self, request, obj=None):
+        return False  # fmt: skip
 
     fieldsets = (
         (
             "사용자 정보",
-            {"fields": ("user",)},
+            {"fields": ("user", "get_user_email", "phone")},
         ),
         (
             "이벤트 정보",
             {
                 "fields": (
-                    "promotional_event",
-                    "internal_event",
+                    "promotional",
+                    "internal",
                 )
             },
         ),
@@ -218,7 +222,7 @@ class EventCompletionAdmin(admin.ModelAdmin):
                 "fields": (
                     "is_agree",
                     "completed_at",
-                    "content",
+                    "post_processed_content",
                 )
             },
         ),
