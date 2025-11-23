@@ -1,18 +1,14 @@
 from django.db import models
 
+from repo.events.enums import EventStatus
 from repo.profiles.models import CustomUser
 
 
 class BaseEvent(models.Model):
     """이벤트 기본 모델"""
 
-    STATUS_CHOICES = [
-        ("ready", "진행 전"),
-        ("active", "진행 중"),
-        ("done", "종료"),
-    ]
     event_key = models.CharField(max_length=100, primary_key=True, verbose_name="이벤트 키", help_text="projectID를 입력하세요")
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="ready", verbose_name="상태")
+    status = models.CharField(max_length=10, choices=EventStatus.values(), default=EventStatus.READY, verbose_name="상태")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="수정일")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일")
 

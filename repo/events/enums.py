@@ -1,4 +1,16 @@
-from enum import Enum
+from enum import Enum, StrEnum
+
+
+class EventStatus(StrEnum):
+    """이벤트 상태"""
+
+    READY = "ready"
+    ACTIVE = "active"
+    DONE = "done"
+
+    @classmethod
+    def values(cls) -> list[str]:
+        return [choice.value for choice in cls]
 
 
 class EventType(Enum):
