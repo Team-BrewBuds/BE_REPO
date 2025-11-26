@@ -10,4 +10,5 @@ urlpatterns = [
     path("comment/", include("repo.records.comment.urls")),
     path("photo/", views.PhotoApiView.as_view(), name="photo-upload"),
     path("photo/profile/", views.ProfilePhotoAPIView.as_view(), name="profile-photo"),
+    path("logs/", views.ExceptionLogRecordAPIView.as_view()),
 ]

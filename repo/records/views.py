@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.http import Http404
-from rest_framework import status
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse
+from rest_framework import serializers, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -22,7 +23,7 @@ from repo.common.utils import (
     get_object_by_type,
     get_paginated_response_with_class,
 )
-from repo.records.models import Photo
+from repo.records.models import ExceptionLogRecord, Photo
 from repo.records.schemas import *
 from repo.records.serializers import FeedSerializer
 from repo.records.services import get_feed_service
@@ -219,3 +220,45 @@ class ProfilePhotoAPIView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ExceptionLogRecordAPIView(APIView):
+
+    class InputSeriailizer(serializers.Serializer):
+        input_data_1 = serializers.CharField()
+        input_data_2 = serializers.CharField()
+        input_data_3 = serializers.CharField()
+        input_data_4 = serializers.CharField()
+        input_data_5 = serializers.CharField()
+
+    @extend_schema(
+        summary="예외 로그 기록 저장",
+        description="예외 로그 텍스트 데이터를 받아 예외 로그를 저장합니다.",
+        request=InputSeriailizer,
+        responses={
+            201: OpenApiResponse(description="예외 로그 저장 성공"),
+            400: OpenApiResponse(description="잘못된 요청"),
+            500: OpenApiResponse(description="서버 에러"),
+        },
+        examples=[
+            OpenApiExample(
+                name="로그 기록",
+                description="로그 기록 요청 예시",
+                value={
+                    "input_data_1": "데이터1",
+                    "input_data_2": "데이터2",
+                    "input_data_3": "데이터3",
+                    "input_data_4": "데이터4",
+                    "input_data_5": "데이터5",
+                },
+                request_only=True,
+            ),
+        ],
+        tags=["로그"],
+    )
+    def post(self, request):
+        serializer = self.InputSeriailizer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        ExceptionLogRecord.objects.create(**data)
+        return Response(status=status.HTTP_201_CREATED)

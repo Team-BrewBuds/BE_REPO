@@ -44,6 +44,16 @@ class BeanDetailSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class BeanNameSearchInputSerializer(serializers.Serializer):
+    name = serializers.CharField(required=False, allow_blank=True)
+    is_official = serializers.BooleanField(required=False, default=True)
+
+
+class BeanNameSearchOutputSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+
+
 class BeanRankingSerializer(serializers.Serializer):
     bean_id = serializers.IntegerField()
     bean__name = serializers.CharField()

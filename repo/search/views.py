@@ -3,14 +3,18 @@ from django.db.models import (
     Count,
     ExpressionWrapper,
     FloatField,
+    IntegerField,
+    OuterRef,
     Prefetch,
-    Q,
+    Subquery,
+    Value,
 )
-from django.db.models.functions import Round
+from django.db.models.functions import Coalesce, Round
 from rest_framework.views import APIView
 
 from repo.beans.models import Bean
 from repo.common.utils import get_paginated_response_with_class
+from repo.interactions.relationship.models import Relationship
 from repo.interactions.relationship.services import RelationshipService
 from repo.profiles.models import CustomUser
 from repo.records.models import Photo, Post, TastedRecord
@@ -34,14 +38,24 @@ class BuddySearchView(APIView):
         serializer = BuddySearchInputSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
 
+        record_cnt_subquery = Subquery(
+            TastedRecord.objects.filter(author_id=OuterRef("id")).values("author_id").annotate(cnt=Count("id")).values("cnt"),
+            output_field=IntegerField(),
+        )
+        follower_cnt_subquery = Subquery(
+            Relationship.objects.filter(to_user_id=OuterRef("id"), relationship_type="follow")
+            .values("to_user_id")
+            .annotate(cnt=Count("id"))
+            .values("cnt"),
+            output_field=IntegerField(),
+        )
         users = CustomUser.objects.annotate(
-            record_cnt=Count("tastedrecord"), follower_cnt=Count("relationships_to", filter=Q(relationships_to__relationship_type="follow"))
+            record_cnt=Coalesce(record_cnt_subquery, Value(0)),
+            follower_cnt=Coalesce(follower_cnt_subquery, Value(0)),
         )
 
         if request.user.is_authenticated:
-            user = request.user
-            service = RelationshipService()
-            blocked_users = service.get_unique_blocked_user_list(user)
+            blocked_users = RelationshipService().get_unique_blocked_user_list(request.user.id)
             users = users.exclude(id__in=blocked_users)
 
         filterset = BuddyFilter(serializer.validated_data, queryset=users)
