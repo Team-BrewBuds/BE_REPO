@@ -92,3 +92,15 @@ class Comment(models.Model):
         db_table = "comment"
         verbose_name = "댓글"
         verbose_name_plural = "댓글"
+
+
+class ExceptionLogRecord(models.Model):
+    input_data_1 = models.TextField(verbose_name="입력 데이터 1")
+    input_data_2 = models.TextField(verbose_name="입력 데이터 2")
+    input_data_3 = models.TextField(verbose_name="입력 데이터 3")
+    input_data_4 = models.TextField(verbose_name="입력 데이터 4")
+    input_data_5 = models.TextField(verbose_name="입력 데이터 5")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일")
+
+    class Meta:
+        db_table = "exception_log_record"
