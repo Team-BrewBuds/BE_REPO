@@ -39,7 +39,7 @@ class InternalEventDataSerializer(serializers.ModelSerializer):
 class UnifiedEventSerializer(serializers.Serializer):
     """통합 이벤트 응답용 serializer (타입별 중첩 구조)"""
 
-    event_key = serializers.CharField(source="event_key", read_only=True)
+    event_key = serializers.CharField(read_only=True)
     event_type = serializers.SerializerMethodField()
     status = serializers.CharField(read_only=True)
     is_completed = serializers.BooleanField(read_only=True, default=False)
