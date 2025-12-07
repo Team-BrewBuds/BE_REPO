@@ -6,7 +6,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from repo.common.permissions import APIKeyPermission
 from repo.events.schemas import (
     EventCompleteSchema,
     EventDetailSchema,
@@ -81,7 +80,7 @@ class EventCompleteAPIView(APIView):
     Webhook 이벤트 참여 완료 기록 API (프로모션만 허용)
     """
 
-    permission_classes = [APIKeyPermission]
+    # permission_classes = [APIKeyPermission]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
