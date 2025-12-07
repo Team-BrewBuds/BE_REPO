@@ -10,13 +10,19 @@ from repo.profiles.models import CustomUser
 class EventService:
     """이벤트 관련 비즈니스 로직"""
 
-    def get_active_events(self, user: CustomUser | None, event_type: str | None = None) -> list[PromotionalEvent | InternalEvent]:
+    def get_active_events(
+        self,
+        user: CustomUser | None,
+        event_type: str | None = None,
+        event_status: str | None = None,
+    ) -> list[PromotionalEvent | InternalEvent]:
         """
-        진행 중인 이벤트 목록 조회 + 사용자 완료 여부
+        이벤트 목록 조회 + 사용자 완료 여부
 
         Args:
             user: 현재 사용자
-            event_type: 'promotional' 또는 'internal' (None이면 전체 조회)
+            event_type: 이벤트 타입 ('promotional' 또는 'internal') (None이면 전체 조회)
+            event_status: 이벤트 상태 ('ready', 'active', 'done') (None이면 전체 조회)
 
         Returns:
             list: 통합된 이벤트 목록 (프로모션 + 내부)
@@ -24,20 +30,27 @@ class EventService:
         now = timezone.now()
         events = []
 
+        # 필터 조건 구성
+        # 1. 상태 필터 (event_status가 명시적으로 주어진 경우)
+        status_filter = Q(status=event_status) if event_status else Q(status="active")
+
+        # 2. 프로모션 이벤트용 날짜 필터 (event_status가 None이거나 "active"일 때만)
+        should_apply_date_filter = event_status is None or event_status == "active"
+        promotional_date_filter = Q(start_date__lte=now, end_date__gte=now) if should_apply_date_filter else Q()
+
         # 프로모션 이벤트 조회
         if event_type is None or event_type == EventType.PROMOTIONAL:
-            promotional_queryset = PromotionalEvent.objects.filter(
-                status="active",
-                start_date__lte=now,
-                end_date__gte=now,
-            )
-            promotional_queryset = self._annotate_completion_status(promotional_queryset, user, "promotional")
+            promotional_filter = status_filter & promotional_date_filter
+            promotional_queryset = PromotionalEvent.objects.filter(promotional_filter)
+            promotional_queryset = self._annotate_completion_status(promotional_queryset, user, EventType.PROMOTIONAL)
             events.extend(list(promotional_queryset))
 
         # 내부 이벤트 조회
         if event_type is None or event_type == EventType.INTERNAL:
-            internal_queryset = InternalEvent.objects.filter(status="active")
-            internal_queryset = self._annotate_completion_status(internal_queryset, user, "internal")
+            # 내부 이벤트는 event_status가 None일 때 기본적으로 active만 조회
+            internal_status_filter = status_filter if event_status else Q(status="active")
+            internal_queryset = InternalEvent.objects.filter(internal_status_filter)
+            internal_queryset = self._annotate_completion_status(internal_queryset, user, EventType.INTERNAL)
             events.extend(list(internal_queryset))
 
         return events

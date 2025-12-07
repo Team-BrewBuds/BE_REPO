@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from repo.events.enums import EventType
+from repo.events.enums import EventStatus, EventType
 from repo.events.models import EventCompletion, InternalEvent, PromotionalEvent
 
 
@@ -34,6 +34,13 @@ class InternalEventDataSerializer(serializers.ModelSerializer):
             "priority",
             "condition",
         ]
+
+
+class EventFilterSerializer(serializers.Serializer):
+    """이벤트 필터 요청 검증용 serializer"""
+
+    event_type = serializers.ChoiceField(choices=EventType.choices, required=False)
+    status = serializers.ChoiceField(choices=EventStatus.choices, required=False)
 
 
 class UnifiedEventSerializer(serializers.Serializer):

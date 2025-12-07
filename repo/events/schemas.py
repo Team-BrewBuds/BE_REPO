@@ -6,6 +6,7 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
+from repo.events.enums import EventStatus, EventType
 from repo.events.serializers import (
     EventCompleteRequestSerializer,
     EventCompletionResponseSerializer,
@@ -25,9 +26,17 @@ class EventListSchema:
                 name="event_type",
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description="이벤트 타입 필터 (promotional, internal)",
+                description="이벤트 타입 필터 (내부조건형, 프로모션)",
                 required=False,
-                enum=["promotional", "internal"],
+                enum=[choice[0] for choice in EventType.choices],
+            ),
+            OpenApiParameter(
+                name="status",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="이벤트 상태 필터 (진행 전, 진행 중, 종료)",
+                required=False,
+                enum=[choice[0] for choice in EventStatus.choices],
             ),
         ],
         responses={

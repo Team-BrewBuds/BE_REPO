@@ -18,6 +18,7 @@ from repo.events.serializers import (
     EventCompletionResponseSerializer,
     EventCompletionSerializer,
     EventDetailRequestSerializer,
+    EventFilterSerializer,
     UnifiedEventSerializer,
 )
 from repo.events.services import EventService
@@ -37,8 +38,13 @@ class EventListAPIView(APIView):
 
     def get(self, request):
         """이벤트 목록 조회"""
-        event_type = request.query_params.get("event_type", None)
-        events = self.event_service.get_active_events(request.user, event_type)
+        event_filter = EventFilterSerializer(data=request.query_params)
+        event_filter.is_valid(raise_exception=True)
+
+        event_type = event_filter.validated_data.get("event_type", None)
+        event_status = event_filter.validated_data.get("status", None)
+
+        events = self.event_service.get_active_events(request.user, event_type, event_status)
         serializer = UnifiedEventSerializer(events, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
