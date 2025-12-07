@@ -65,6 +65,23 @@ class EventDetailSchema:
     """이벤트 상세 조회 스키마"""
 
     event_detail_get_schema = extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="event_key",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="이벤트 키",
+                required=True,
+            ),
+            OpenApiParameter(
+                name="event_type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="이벤트 타입 필터 (내부조건형, 프로모션)",
+                required=True,
+                enum=[choice[0] for choice in EventType.choices],
+            ),
+        ],
         responses={
             200: UnifiedEventSerializer,
             401: OpenApiResponse(description="Unauthorized"),
