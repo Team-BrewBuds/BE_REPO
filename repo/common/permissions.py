@@ -1,4 +1,18 @@
+from django.conf import settings
 from rest_framework import permissions
+
+
+class APIKeyPermission(permissions.BasePermission):
+    """
+    Webhook용 API Key 인증 권한 클래스
+    X-API-Key 헤더의 키가 settings.WEBHOOK_API_KEY와 일치하는지 확인
+    """
+
+    def has_permission(self, request, view):
+        api_key = request.headers.get("X-API-Key")
+        if not api_key:
+            return False
+        return api_key == getattr(settings, "WEBHOOK_API_KEY", None)
 
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
