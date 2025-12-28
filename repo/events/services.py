@@ -152,7 +152,7 @@ class EventService:
 
         raise NotFound("이벤트를 찾을 수 없습니다.")
 
-    def complete_event_webhook(self, project_key: str, nickname: str, email: str, phone: str, timestamp, is_agree: bool, content: dict):
+    def complete_event_webhook(self, project_key: str, nickname: str, email: str, phone: str, timestamp, is_agree: str, content: dict):
         """
         Webhook을 통한 이벤트 완료 처리 (프로모션 전용)
 
@@ -196,6 +196,9 @@ class EventService:
         # 중복 참여 검증
         if EventCompletion.objects.filter(user=user, promotional=event).exists():
             raise ValidationError("이미 참여 완료한 이벤트입니다.")
+
+        # 동의 여부 검증
+        is_agree = is_agree.strip() == "동의합니다"
 
         # 완료 기록 생성
         completion = EventCompletion.objects.create(
