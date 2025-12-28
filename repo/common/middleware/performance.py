@@ -5,8 +5,8 @@ from django.db import connection
 
 logger = logging.getLogger("performance")
 
-# 의심스러운 경로 패턴 (로깅 제외)
-SUSPICIOUS_PATHS = [
+# 공격 시도 경로
+ATTACK_PATHS = [
     "/wp-",
     "/xmlrpc.php",
     "/.env",
@@ -22,10 +22,15 @@ SUSPICIOUS_PATHS = [
     "/actuator",
     "/config/aws",
     "/.well-known/security.txt",
+]
+
+LEGITIMATE_BOT_PATHS = [
     "/robots.txt",
     "/sitemap.xml",
     "/favicon.ico",
 ]
+
+SUSPICIOUS_PATHS = ATTACK_PATHS + LEGITIMATE_BOT_PATHS
 
 # PHP 파일 확장자
 SUSPICIOUS_EXTENSIONS = [".php", ".asp", ".aspx", ".jsp"]
