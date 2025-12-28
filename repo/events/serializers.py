@@ -119,7 +119,7 @@ class EventCompleteRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True, help_text="사용자 이메일")
     phone = serializers.CharField(required=True, help_text="사용자 전화번호")
     timestamp = serializers.DateTimeField(required=True, help_text="완료 시간")
-    is_agree = serializers.BooleanField(required=True, help_text="사용자 동의 여부")
+    is_agree = serializers.CharField(required=True, help_text="사용자 동의 여부")
 
     # 기본 필드 목록 (클래스 변수로 관리)
     BASE_FIELDS = {"projectKey", "nickname", "email", "phone", "timestamp", "is_agree"}
