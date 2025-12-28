@@ -198,7 +198,7 @@ class EventService:
             raise ValidationError("이미 참여 완료한 이벤트입니다.")
 
         # 동의 여부 검증
-        is_agree = is_agree == "동의합니다"
+        is_agree = is_agree.strip() == "동의합니다"
 
         # 완료 기록 생성
         completion = EventCompletion.objects.create(
