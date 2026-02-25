@@ -20,6 +20,8 @@ urlpatterns = [
     # def-spectacular
     path("api/v1/schema/spectacular/", SpectacularAPIView.as_view(), name="schema"),
     path("api/v1/docs/spectacular/", SpectacularSwaggerView.as_view(url_name="schema")),
+    # offboarding
+    path("offboarding/", include("repo.offboarding.urls")),
 ]
 
 if settings.DEBUG:
