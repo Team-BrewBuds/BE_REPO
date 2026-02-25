@@ -21,6 +21,7 @@ LOCAL_APPS = [
     "repo.notifications",
     "repo.admins",
     "repo.events",
+    "repo.offboarding",
 ]
 
 THIRD_PARTY_APPS = [
